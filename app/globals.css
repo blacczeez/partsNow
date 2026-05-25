@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Colors - Primary */
+  --color-primary: #1E40AF;
+  --color-primary-light: #3B82F6;
+  --color-primary-dark: #1E3A8A;
+
+  /* Colors - Secondary */
+  --color-secondary: #F97316;
+  --color-secondary-light: #FB923C;
+  --color-secondary-dark: #EA580C;
+
+  /* Colors - Success */
+  --color-success: #16A34A;
+  --color-success-light: #DCFCE7;
+
+  /* Colors - Warning */
+  --color-warning: #CA8A04;
+  --color-warning-light: #FEF9C3;
+
+  /* Colors - Error */
+  --color-error: #DC2626;
+  --color-error-light: #FEE2E2;
+
+  /* Colors - Info */
+  --color-info: #0284C7;
+  --color-info-light: #E0F2FE;
+
+  /* Colors - Order Status */
+  --color-status-pending: #CA8A04;
+  --color-status-confirmed: #0284C7;
+  --color-status-sourcing: #7C3AED;
+  --color-status-picked: #0891B2;
+  --color-status-dispatched: #2563EB;
+  --color-status-delivered: #16A34A;
+  --color-status-cancelled: #DC2626;
+
+  /* Font */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Border Radius */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Safe area padding utility for iOS bottom nav */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus ring utility */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
