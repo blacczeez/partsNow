@@ -20,7 +20,9 @@ export function BottomNav() {
       <div className="flex h-16 items-center justify-around">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
-            pathname === href || (href !== '/' && pathname.startsWith(href));
+            pathname === href ||
+            (href !== '/' && pathname.startsWith(href)) ||
+            (href === '/orders' && pathname.startsWith('/order/'));
 
           return (
             <Link

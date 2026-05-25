@@ -1,0 +1,204 @@
+import { createClient } from '@/lib/supabase/server';
+import { initializePayment, verifyPayment } from '@/lib/integrations/paystack';
+import { config } from '@/lib/config';
+import type { Wallet, WalletTransaction } from '@/lib/types/database';
+
+export async function getWalletBalance(userId: string): Promise<{
+  balance: number;
+  heldBalance: number;
+  currency: string;
+} | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('wallets')
+    .select('balance, held_balance, currency')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    balance: data.balance,
+    heldBalance: data.held_balance,
+    currency: data.currency,
+  };
+}
+
+export async function getTransactions(
+  userId: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<{ transactions: WalletTransaction[]; total: number }> {
+  const supabase = await createClient();
+  const offset = (page - 1) * limit;
+
+  // First get the wallet id
+  const { data: wallet } = await supabase
+    .from('wallets')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!wallet) return { transactions: [], total: 0 };
+
+  const { data, error, count } = await supabase
+    .from('wallet_transactions')
+    .select('*', { count: 'exact' })
+    .eq('wallet_id', wallet.id)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(error.message);
+
+  return { transactions: data || [], total: count || 0 };
+}
+
+export async function initiateTopUp(
+  userId: string,
+  amount: number
+): Promise<{ authorizationUrl: string; reference: string }> {
+  const supabase = await createClient();
+
+  // Get user email for Paystack
+  const { data: user } = await supabase
+    .from('users')
+    .select('email, phone')
+    .eq('id', userId)
+    .single();
+
+  if (!user) throw new Error('User not found');
+
+  const email = user.email || `${user.phone}@partsnow.ng`;
+  const reference = `topup_${userId}_${Date.now()}`;
+
+  const result = await initializePayment({
+    email,
+    amount,
+    reference,
+    callbackUrl: `${config.app.url}/wallet?reference=${reference}`,
+    metadata: {
+      type: 'wallet_topup',
+      user_id: userId,
+    },
+  });
+
+  return {
+    authorizationUrl: result.authorizationUrl,
+    reference: result.reference,
+  };
+}
+
+export async function verifyAndCreditTopUp(
+  userId: string,
+  reference: string
+): Promise<{ success: boolean; amount?: number; newBalance?: number }> {
+  const supabase = await createClient();
+
+  // Check if already processed
+  const { data: existing } = await supabase
+    .from('payment_events')
+    .select('id')
+    .eq('provider_reference', reference)
+    .eq('status', 'success')
+    .single();
+
+  if (existing) {
+    // Already processed, return current balance
+    const balance = await getWalletBalance(userId);
+    return { success: true, amount: 0, newBalance: balance?.balance };
+  }
+
+  // Verify with Paystack
+  const payment = await verifyPayment(reference);
+
+  if (payment.status !== 'success') {
+    return { success: false };
+  }
+
+  // Get wallet
+  const { data: wallet } = await supabase
+    .from('wallets')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!wallet) throw new Error('Wallet not found');
+
+  // Credit wallet via RPC
+  await supabase.rpc('credit_wallet', {
+    p_wallet_id: wallet.id,
+    p_amount: payment.amount,
+    p_reference: reference,
+    p_description: 'Wallet top-up via Paystack',
+  });
+
+  // Log payment event
+  await supabase.from('payment_events').insert({
+    wallet_id: wallet.id,
+    type: 'charge_succeeded',
+    amount: payment.amount,
+    provider: 'paystack',
+    provider_reference: reference,
+    status: 'success',
+  });
+
+  const newBalance = await getWalletBalance(userId);
+  return {
+    success: true,
+    amount: payment.amount,
+    newBalance: newBalance?.balance,
+  };
+}
+
+export async function debitWallet(
+  userId: string,
+  amount: number,
+  reference: string,
+  description: string
+): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { data: wallet } = await supabase
+    .from('wallets')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!wallet) return false;
+
+  const { data: success } = await supabase.rpc('debit_wallet', {
+    p_wallet_id: wallet.id,
+    p_amount: amount,
+    p_reference: reference,
+    p_description: description,
+  });
+
+  return success === true;
+}
+
+export async function creditWallet(
+  userId: string,
+  amount: number,
+  reference: string,
+  description: string
+): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { data: wallet } = await supabase
+    .from('wallets')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!wallet) return false;
+
+  const { data: success } = await supabase.rpc('credit_wallet', {
+    p_wallet_id: wallet.id,
+    p_amount: amount,
+    p_reference: reference,
+    p_description: description,
+  });
+
+  return success === true;
+}
