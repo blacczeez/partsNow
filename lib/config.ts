@@ -101,11 +101,19 @@ export const config = {
     riderMaxCallAttempts: getEnvNumber('RIDER_MAX_CALL_ATTEMPTS', 2),
     highValueThreshold: getEnvNumber('HIGH_VALUE_ORDER_THRESHOLD', 100000),
     highValueRequiresPhoto: getEnvBoolean('HIGH_VALUE_REQUIRES_PHOTO_CONFIRMATION', true),
+    riderMaxConcurrentDeliveries: getEnvNumber('RIDER_MAX_CONCURRENT_DELIVERIES', 3),
   },
 
   vendor: {
     minReliabilityScore: getEnvNumber('VENDOR_MIN_RELIABILITY_SCORE', 70),
     qualityIssueLimitBeforeRemoval: getEnvNumber('VENDOR_QUALITY_ISSUE_LIMIT_BEFORE_REMOVAL', 3),
+  },
+
+  whatsapp: {
+    provider: getEnvVar('WHATSAPP_PROVIDER', 'wati'),
+    apiUrl: getEnvVar('WATI_API_URL', ''),
+    apiKey: getEnvVar('WATI_API_KEY', ''),
+    webhookSecret: getEnvVar('WATI_WEBHOOK_SECRET', ''),
   },
 
   features: {

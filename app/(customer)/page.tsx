@@ -23,7 +23,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Header */}
-      <div className="bg-primary px-4 pb-8 pt-6">
+      <div className="bg-primary px-4 pb-8 pt-6 lg:rounded-b-2xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-blue-200">
@@ -68,7 +68,7 @@ export default function HomePage() {
       )}
 
       {/* Value Props */}
-      <div className="flex gap-4 overflow-x-auto px-4 py-4">
+      <div className="flex gap-4 overflow-x-auto px-4 py-4 lg:flex-wrap">
         <div className="flex min-w-fit items-center gap-2 rounded-pill bg-green-50 px-3 py-1.5">
           <Clock className="h-4 w-4 text-success" />
           <span className="text-xs font-medium text-green-800">45-min delivery</span>
@@ -86,7 +86,7 @@ export default function HomePage() {
       {/* Categories */}
       <div className="px-4 py-4">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Categories</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-3 md:grid-cols-6 xl:grid-cols-8">
           {categories.map(({ name, icon: Icon, href }) => (
             <Link
               key={name}
@@ -124,7 +124,7 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
               {orders.map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}

@@ -98,7 +98,7 @@ export default function CartPage() {
       </div>
 
       {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg">
+      <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:bottom-0 lg:left-64">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm text-slate-500">Subtotal</span>
           <span className="text-lg font-bold text-slate-900">

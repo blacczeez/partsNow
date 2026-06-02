@@ -3,6 +3,8 @@ import { config } from '@/lib/config';
 import { getMarkupPercentage, calculatePricing, isCodAllowed } from '@/lib/utils/pricing';
 import { initializePayment } from '@/lib/integrations/paystack';
 import { debitWallet } from './wallet';
+import { assignRunner } from './dispatch';
+import { notifyOrderConfirmed } from './notifications';
 import type { Order, OrderWithItems, LoyaltyTier } from '@/lib/types/database';
 
 interface CreateOrderInput {
@@ -145,6 +147,16 @@ export async function createOrder(
       })
       .eq('id', customerId);
 
+    // Auto-assign runner
+    try {
+      await assignRunner(order.id, clusterId);
+    } catch {
+      // Assignment failure should not fail order creation
+    }
+
+    // Fire-and-forget notification
+    notifyOrderConfirmed(order.id).catch(() => {});
+
     return { ...order, status: 'confirmed' as const, payment_status: 'paid' as const };
   }
 
@@ -186,6 +198,16 @@ export async function createOrder(
         total_orders: customer.total_orders + 1,
       })
       .eq('id', customerId);
+
+    // Auto-assign runner
+    try {
+      await assignRunner(order.id, clusterId);
+    } catch {
+      // Assignment failure should not fail order creation
+    }
+
+    // Fire-and-forget notification
+    notifyOrderConfirmed(order.id).catch(() => {});
 
     return { ...order, status: 'confirmed' as const };
   }
@@ -286,7 +308,7 @@ async function findNearestCluster(
   return nearestCluster.id;
 }
 
-function calculateDistance(
+export function calculateDistance(
   lat1: number,
   lng1: number,
   lat2: number,
@@ -305,6 +327,6 @@ function calculateDistance(
   return R * c;
 }
 
-function toRad(deg: number): number {
+export function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }

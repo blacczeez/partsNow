@@ -129,7 +129,7 @@ function WalletContent() {
   return (
     <div>
       {/* Balance Card */}
-      <div className="bg-primary px-4 pb-8 pt-6">
+      <div className="bg-primary px-4 pb-8 pt-6 lg:rounded-b-2xl">
         <h1 className="mb-4 text-xl font-bold text-white">Wallet</h1>
         <div className="rounded-card bg-white/10 px-5 py-5">
           {isLoadingBalance || verifying ? (

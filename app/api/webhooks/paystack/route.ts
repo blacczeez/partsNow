@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/integrations/paystack';
 import { createClient } from '@/lib/supabase/server';
+import { assignRunner } from '@/lib/services/dispatch';
+import { notifyWalletTopUp, notifyOrderConfirmed } from '@/lib/services/notifications';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -48,6 +50,21 @@ export async function POST(request: NextRequest) {
           status: 'success',
           raw_response: data,
         });
+
+        // Notify user of top-up (fire-and-forget)
+        if (metadata.user_id) {
+          const { data: updatedWallet } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', metadata.user_id)
+            .single();
+
+          notifyWalletTopUp(
+            metadata.user_id,
+            amountNaira,
+            updatedWallet?.balance ?? amountNaira
+          ).catch(() => {});
+        }
       } else if (metadata?.type === 'order_payment') {
         // Confirm order payment
         await supabase
@@ -71,6 +88,24 @@ export async function POST(request: NextRequest) {
           status: 'success',
           raw_response: data,
         });
+
+        // Notify customer of confirmed order (fire-and-forget)
+        notifyOrderConfirmed(metadata.order_id).catch(() => {});
+
+        // Auto-assign runner
+        const { data: order } = await supabase
+          .from('orders')
+          .select('cluster_id')
+          .eq('id', metadata.order_id)
+          .single();
+
+        if (order) {
+          try {
+            await assignRunner(metadata.order_id, order.cluster_id);
+          } catch {
+            // Assignment failure should not fail webhook
+          }
+        }
       }
       break;
     }

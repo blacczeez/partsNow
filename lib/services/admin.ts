@@ -1,0 +1,1107 @@
+import { createClient } from '@/lib/supabase/server';
+import { creditWallet } from './wallet';
+import { notifyOrderCancelled } from './notifications';
+import type { OrderStatus } from '@/lib/types/database';
+
+// ============================================
+// DASHBOARD
+// ============================================
+
+export async function getDashboardStats() {
+  const supabase = await createClient();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  // Today's orders
+  const { count: todayOrderCount } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', todayStart.toISOString());
+
+  // Today's revenue
+  const { data: todayRevenue } = await supabase
+    .from('orders')
+    .select('total')
+    .gte('created_at', todayStart.toISOString())
+    .eq('payment_status', 'paid');
+
+  const totalRevenue = todayRevenue?.reduce((sum, o) => sum + o.total, 0) ?? 0;
+
+  // Active orders by status
+  const { data: activeOrders } = await supabase
+    .from('orders')
+    .select('status')
+    .in('status', ['pending', 'confirmed', 'sourcing', 'picked', 'dispatched']);
+
+  const activeByStatus: Record<string, number> = {};
+  if (activeOrders) {
+    for (const o of activeOrders) {
+      activeByStatus[o.status] = (activeByStatus[o.status] || 0) + 1;
+    }
+  }
+  const totalActive = activeOrders?.length ?? 0;
+
+  // SLA breaches - orders past promised delivery time
+  const { data: slaOrders } = await supabase
+    .from('orders')
+    .select('id, order_number, status, created_at, promised_delivery_minutes')
+    .in('status', ['confirmed', 'sourcing', 'picked', 'dispatched'])
+    .not('promised_delivery_minutes', 'is', null);
+
+  const now = Date.now();
+  const slaBreaches = (slaOrders ?? []).filter((o) => {
+    const created = new Date(o.created_at).getTime();
+    const elapsed = (now - created) / 60000;
+    return elapsed > (o.promised_delivery_minutes ?? 0);
+  });
+
+  // Active runners (with active shift)
+  const { count: activeRunnerCount } = await supabase
+    .from('runner_shifts')
+    .select('*', { count: 'exact', head: true })
+    .is('ended_at', null);
+
+  // Active riders (with active assignments)
+  const { data: activeRiderAssignments } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .eq('role', 'rider')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  const activeRiderIds = new Set(
+    activeRiderAssignments?.map((a) => a.assignee_id) ?? []
+  );
+
+  // Recent 10 orders
+  const { data: recentOrders } = await supabase
+    .from('orders')
+    .select('id, order_number, status, total, payment_status, created_at, customer_id')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  // Get customer names for recent orders
+  let recentOrdersWithCustomer = recentOrders ?? [];
+  if (recentOrders && recentOrders.length > 0) {
+    const customerIds = [...new Set(recentOrders.map((o) => o.customer_id))];
+    const { data: customers } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', customerIds);
+
+    const customerMap: Record<string, string> = {};
+    customers?.forEach((c) => {
+      customerMap[c.id] = c.full_name;
+    });
+
+    recentOrdersWithCustomer = recentOrders.map((o) => ({
+      ...o,
+      customer_name: customerMap[o.customer_id] ?? 'Unknown',
+    }));
+  }
+
+  return {
+    todayOrderCount: todayOrderCount ?? 0,
+    todayRevenue: totalRevenue,
+    totalActive,
+    activeByStatus,
+    slaBreachCount: slaBreaches.length,
+    slaBreaches: slaBreaches.slice(0, 5),
+    activeRunnerCount: activeRunnerCount ?? 0,
+    activeRiderCount: activeRiderIds.size,
+    recentOrders: recentOrdersWithCustomer,
+  };
+}
+
+// ============================================
+// ORDERS
+// ============================================
+
+export async function getAdminOrders(filters: {
+  page: number;
+  limit: number;
+  status?: OrderStatus;
+  search?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, status, search } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('orders')
+    .select('id, order_number, status, total, payment_method, payment_status, created_at, customer_id, source_channel', {
+      count: 'exact',
+    })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  if (search) {
+    query = query.ilike('order_number', `%${search}%`);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  // Get customer names
+  const orders = data ?? [];
+  let ordersWithCustomer = orders;
+  if (orders.length > 0) {
+    const customerIds = [...new Set(orders.map((o) => o.customer_id))];
+    const { data: customers } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', customerIds);
+
+    const customerMap: Record<string, string> = {};
+    customers?.forEach((c) => {
+      customerMap[c.id] = c.full_name;
+    });
+
+    ordersWithCustomer = orders.map((o) => ({
+      ...o,
+      customer_name: customerMap[o.customer_id] ?? 'Unknown',
+    }));
+  }
+
+  return {
+    orders: ordersWithCustomer,
+    total: count ?? 0,
+  };
+}
+
+export async function getAdminOrderDetail(orderId: string) {
+  const supabase = await createClient();
+
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
+
+  if (error || !order) throw new Error('Order not found');
+
+  // Get order items
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('*')
+    .eq('order_id', orderId);
+
+  // Get assignments
+  const { data: assignments } = await supabase
+    .from('order_assignments')
+    .select('*')
+    .eq('order_id', orderId)
+    .order('assigned_at', { ascending: false });
+
+  // Get assignee names
+  let assignmentsWithNames = assignments ?? [];
+  if (assignments && assignments.length > 0) {
+    const assigneeIds = assignments.map((a) => a.assignee_id);
+    const { data: assignees } = await supabase
+      .from('users')
+      .select('id, full_name, phone')
+      .in('id', assigneeIds);
+
+    const assigneeMap: Record<string, { name: string; phone: string }> = {};
+    assignees?.forEach((a) => {
+      assigneeMap[a.id] = { name: a.full_name, phone: a.phone };
+    });
+
+    assignmentsWithNames = assignments.map((a) => ({
+      ...a,
+      assignee_name: assigneeMap[a.assignee_id]?.name ?? 'Unknown',
+      assignee_phone: assigneeMap[a.assignee_id]?.phone ?? '',
+    }));
+  }
+
+  // Get customer info
+  const { data: customer } = await supabase
+    .from('users')
+    .select('id, full_name, phone, email, loyalty_tier')
+    .eq('id', order.customer_id)
+    .single();
+
+  // Get delivery tracking
+  const { data: tracking } = await supabase
+    .from('delivery_tracking')
+    .select('*')
+    .eq('order_id', orderId)
+    .single();
+
+  // Get delivery attempts
+  const { data: deliveryAttempts } = await supabase
+    .from('delivery_attempts')
+    .select('*')
+    .eq('order_id', orderId)
+    .order('attempted_at', { ascending: false });
+
+  // Get payment events
+  const { data: paymentEvents } = await supabase
+    .from('payment_events')
+    .select('*')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: false });
+
+  return {
+    ...order,
+    items: items ?? [],
+    assignments: assignmentsWithNames,
+    customer,
+    tracking,
+    deliveryAttempts: deliveryAttempts ?? [],
+    paymentEvents: paymentEvents ?? [],
+  };
+}
+
+export async function reassignOrder(
+  orderId: string,
+  role: 'runner' | 'rider',
+  newAssigneeId: string
+) {
+  const supabase = await createClient();
+
+  // Fail current assignment of that role
+  await supabase
+    .from('order_assignments')
+    .update({ status: 'failed' })
+    .eq('order_id', orderId)
+    .eq('role', role)
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  // Create new assignment
+  const { data, error } = await supabase
+    .from('order_assignments')
+    .insert({
+      order_id: orderId,
+      assignee_id: newAssigneeId,
+      role,
+      status: 'assigned',
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function adminCancelOrder(orderId: string, reason: string) {
+  const supabase = await createClient();
+
+  // Get order
+  const { data: order, error: fetchError } = await supabase
+    .from('orders')
+    .select('id, customer_id, total, payment_status, status')
+    .eq('id', orderId)
+    .single();
+
+  if (fetchError || !order) throw new Error('Order not found');
+
+  if (['delivered', 'cancelled'].includes(order.status)) {
+    throw new Error('Cannot cancel order in current status');
+  }
+
+  // Update order
+  await supabase
+    .from('orders')
+    .update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+      internal_notes: reason,
+    })
+    .eq('id', orderId);
+
+  // Fail active assignments
+  await supabase
+    .from('order_assignments')
+    .update({ status: 'failed' })
+    .eq('order_id', orderId)
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  // Auto-refund if paid
+  if (order.payment_status === 'paid') {
+    await processRefund(orderId);
+  }
+
+  // Fire-and-forget notification
+  notifyOrderCancelled(orderId, reason).catch(() => {});
+
+  return { success: true };
+}
+
+export async function processRefund(orderId: string) {
+  const supabase = await createClient();
+
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('id, customer_id, total, payment_status')
+    .eq('id', orderId)
+    .single();
+
+  if (error || !order) throw new Error('Order not found');
+
+  // Credit customer wallet
+  const credited = await creditWallet(
+    order.customer_id,
+    order.total,
+    `refund_${orderId}`,
+    `Refund for order ${orderId}`
+  );
+
+  if (!credited) throw new Error('Failed to credit wallet');
+
+  // Update payment status
+  await supabase
+    .from('orders')
+    .update({ payment_status: 'refunded' })
+    .eq('id', orderId);
+
+  // Log payment event
+  await supabase.from('payment_events').insert({
+    order_id: orderId,
+    type: 'refund_completed',
+    amount: order.total,
+    provider: 'wallet',
+    status: 'success',
+  });
+
+  return { success: true };
+}
+
+// ============================================
+// RUNNERS
+// ============================================
+
+export async function getAdminRunners(filters: {
+  page: number;
+  limit: number;
+  search?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, search } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('users')
+    .select('id, full_name, phone, is_active, created_at', { count: 'exact' })
+    .eq('user_type', 'runner')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (search) {
+    query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  const runners = data ?? [];
+  if (runners.length === 0) return { runners: [], total: 0 };
+
+  const runnerIds = runners.map((r) => r.id);
+
+  // Get floats
+  const { data: floats } = await supabase
+    .from('runner_floats')
+    .select('runner_id, balance')
+    .in('runner_id', runnerIds);
+
+  const floatMap: Record<string, number> = {};
+  floats?.forEach((f) => {
+    floatMap[f.runner_id] = f.balance;
+  });
+
+  // Get active shifts
+  const { data: shifts } = await supabase
+    .from('runner_shifts')
+    .select('runner_id, started_at, commission_earned')
+    .in('runner_id', runnerIds)
+    .is('ended_at', null);
+
+  const shiftMap: Record<string, { onShift: boolean; commission: number }> = {};
+  shifts?.forEach((s) => {
+    shiftMap[s.runner_id] = { onShift: true, commission: s.commission_earned };
+  });
+
+  // Get active order counts
+  const { data: assignments } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .in('assignee_id', runnerIds)
+    .eq('role', 'runner')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  const orderCountMap: Record<string, number> = {};
+  assignments?.forEach((a) => {
+    orderCountMap[a.assignee_id] = (orderCountMap[a.assignee_id] || 0) + 1;
+  });
+
+  const runnersWithData = runners.map((r) => ({
+    ...r,
+    float_balance: floatMap[r.id] ?? 0,
+    on_shift: shiftMap[r.id]?.onShift ?? false,
+    today_commission: shiftMap[r.id]?.commission ?? 0,
+    active_orders: orderCountMap[r.id] ?? 0,
+  }));
+
+  return { runners: runnersWithData, total: count ?? 0 };
+}
+
+export async function getAdminRunnerDetail(runnerId: string) {
+  const supabase = await createClient();
+
+  const { data: runner, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', runnerId)
+    .eq('user_type', 'runner')
+    .single();
+
+  if (error || !runner) throw new Error('Runner not found');
+
+  // Float
+  const { data: float } = await supabase
+    .from('runner_floats')
+    .select('*')
+    .eq('runner_id', runnerId)
+    .single();
+
+  // Current shift
+  const { data: currentShift } = await supabase
+    .from('runner_shifts')
+    .select('*')
+    .eq('runner_id', runnerId)
+    .is('ended_at', null)
+    .single();
+
+  // Recent shifts
+  const { data: recentShifts } = await supabase
+    .from('runner_shifts')
+    .select('*')
+    .eq('runner_id', runnerId)
+    .order('started_at', { ascending: false })
+    .limit(10);
+
+  // Recent orders
+  const { data: recentAssignments } = await supabase
+    .from('order_assignments')
+    .select('order_id, status, assigned_at, completed_at')
+    .eq('assignee_id', runnerId)
+    .eq('role', 'runner')
+    .order('assigned_at', { ascending: false })
+    .limit(10);
+
+  return {
+    ...runner,
+    float,
+    currentShift,
+    recentShifts: recentShifts ?? [],
+    recentAssignments: recentAssignments ?? [],
+  };
+}
+
+export async function topUpRunnerFloat(runnerId: string, amount: number) {
+  const supabase = await createClient();
+
+  // Upsert float record
+  const { data: existing } = await supabase
+    .from('runner_floats')
+    .select('id, balance')
+    .eq('runner_id', runnerId)
+    .single();
+
+  if (existing) {
+    await supabase
+      .from('runner_floats')
+      .update({
+        balance: existing.balance + amount,
+        last_topped_up: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+  } else {
+    await supabase.from('runner_floats').insert({
+      runner_id: runnerId,
+      balance: amount,
+      last_topped_up: new Date().toISOString(),
+    });
+  }
+
+  return { success: true, newBalance: (existing?.balance ?? 0) + amount };
+}
+
+// ============================================
+// RIDERS
+// ============================================
+
+export async function getAdminRiders(filters: { page: number; limit: number }) {
+  const supabase = await createClient();
+  const { page, limit } = filters;
+  const offset = (page - 1) * limit;
+
+  const { data, error, count } = await supabase
+    .from('users')
+    .select('id, full_name, phone, is_active, created_at', { count: 'exact' })
+    .eq('user_type', 'rider')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(error.message);
+
+  const riders = data ?? [];
+  if (riders.length === 0) return { riders: [], total: 0 };
+
+  const riderIds = riders.map((r) => r.id);
+
+  // Active deliveries
+  const { data: activeAssignments } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .in('assignee_id', riderIds)
+    .eq('role', 'rider')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  const activeCountMap: Record<string, number> = {};
+  activeAssignments?.forEach((a) => {
+    activeCountMap[a.assignee_id] = (activeCountMap[a.assignee_id] || 0) + 1;
+  });
+
+  // Total completed
+  const { data: completedAssignments } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .in('assignee_id', riderIds)
+    .eq('role', 'rider')
+    .eq('status', 'completed');
+
+  const completedCountMap: Record<string, number> = {};
+  completedAssignments?.forEach((a) => {
+    completedCountMap[a.assignee_id] =
+      (completedCountMap[a.assignee_id] || 0) + 1;
+  });
+
+  const ridersWithData = riders.map((r) => ({
+    ...r,
+    active_deliveries: activeCountMap[r.id] ?? 0,
+    total_completed: completedCountMap[r.id] ?? 0,
+  }));
+
+  return { riders: ridersWithData, total: count ?? 0 };
+}
+
+export async function getAdminRiderDetail(riderId: string) {
+  const supabase = await createClient();
+
+  const { data: rider, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', riderId)
+    .eq('user_type', 'rider')
+    .single();
+
+  if (error || !rider) throw new Error('Rider not found');
+
+  // Active deliveries
+  const { data: activeDeliveries } = await supabase
+    .from('order_assignments')
+    .select('order_id, status, assigned_at')
+    .eq('assignee_id', riderId)
+    .eq('role', 'rider')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  // Recent history
+  const { data: recentHistory } = await supabase
+    .from('order_assignments')
+    .select('order_id, status, assigned_at, completed_at')
+    .eq('assignee_id', riderId)
+    .eq('role', 'rider')
+    .order('assigned_at', { ascending: false })
+    .limit(20);
+
+  return {
+    ...rider,
+    activeDeliveries: activeDeliveries ?? [],
+    recentHistory: recentHistory ?? [],
+  };
+}
+
+// ============================================
+// VENDORS
+// ============================================
+
+export async function getAdminVendors(filters: {
+  page: number;
+  limit: number;
+  clusterId?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, clusterId } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('vendors')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (clusterId) {
+    query = query.eq('cluster_id', clusterId);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  // Get cluster names
+  const vendors = data ?? [];
+  if (vendors.length > 0) {
+    const clusterIds = [...new Set(vendors.map((v) => v.cluster_id))];
+    const { data: clusters } = await supabase
+      .from('clusters')
+      .select('id, name')
+      .in('id', clusterIds);
+
+    const clusterMap: Record<string, string> = {};
+    clusters?.forEach((c) => {
+      clusterMap[c.id] = c.name;
+    });
+
+    const vendorsWithCluster = vendors.map((v) => ({
+      ...v,
+      cluster_name: clusterMap[v.cluster_id] ?? 'Unknown',
+    }));
+
+    return { vendors: vendorsWithCluster, total: count ?? 0 };
+  }
+
+  return { vendors: [], total: 0 };
+}
+
+export async function createVendor(data: {
+  name: string;
+  contact_phone: string;
+  contact_name?: string;
+  cluster_id: string;
+  location_in_market?: string;
+  specializations?: string[];
+  payment_terms?: string;
+}) {
+  const supabase = await createClient();
+
+  const { data: vendor, error } = await supabase
+    .from('vendors')
+    .insert({
+      name: data.name,
+      contact_phone: data.contact_phone,
+      contact_name: data.contact_name ?? null,
+      cluster_id: data.cluster_id,
+      location_in_market: data.location_in_market ?? null,
+      specializations: data.specializations ?? [],
+      payment_terms: data.payment_terms ?? 'cash',
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return vendor;
+}
+
+export async function updateVendor(
+  vendorId: string,
+  data: Record<string, unknown>
+) {
+  const supabase = await createClient();
+
+  const { data: vendor, error } = await supabase
+    .from('vendors')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', vendorId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return vendor;
+}
+
+// ============================================
+// CUSTOMERS
+// ============================================
+
+export async function getAdminCustomers(filters: {
+  page: number;
+  limit: number;
+  search?: string;
+  tier?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, search, tier } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('users')
+    .select('id, full_name, phone, user_type, loyalty_tier, total_orders, lifetime_spend, is_active, created_at', {
+      count: 'exact',
+    })
+    .in('user_type', ['mechanic', 'car_owner'])
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (search) {
+    query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`);
+  }
+
+  if (tier) {
+    query = query.eq('loyalty_tier', tier);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  const customers = data ?? [];
+  if (customers.length === 0) return { customers: [], total: 0 };
+
+  // Get wallet balances
+  const customerIds = customers.map((c) => c.id);
+  const { data: wallets } = await supabase
+    .from('wallets')
+    .select('user_id, balance')
+    .in('user_id', customerIds);
+
+  const walletMap: Record<string, number> = {};
+  wallets?.forEach((w) => {
+    walletMap[w.user_id] = w.balance;
+  });
+
+  const customersWithWallet = customers.map((c) => ({
+    ...c,
+    wallet_balance: walletMap[c.id] ?? 0,
+  }));
+
+  return { customers: customersWithWallet, total: count ?? 0 };
+}
+
+export async function getAdminCustomerDetail(customerId: string) {
+  const supabase = await createClient();
+
+  const { data: customer, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', customerId)
+    .single();
+
+  if (error || !customer) throw new Error('Customer not found');
+
+  // Wallet
+  const { data: wallet } = await supabase
+    .from('wallets')
+    .select('*')
+    .eq('user_id', customerId)
+    .single();
+
+  // Recent orders
+  const { data: recentOrders } = await supabase
+    .from('orders')
+    .select('id, order_number, status, total, created_at')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  return {
+    ...customer,
+    wallet,
+    recentOrders: recentOrders ?? [],
+  };
+}
+
+// ============================================
+// PAYMENTS
+// ============================================
+
+export async function getAdminPayments(filters: {
+  page: number;
+  limit: number;
+  type?: string;
+  status?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, type, status } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('payment_events')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (type) {
+    query = query.eq('type', type);
+  }
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  return { payments: data ?? [], total: count ?? 0 };
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+export async function getAnalytics(period: 'week' | 'month') {
+  const supabase = await createClient();
+  const periodStart = new Date();
+  if (period === 'week') {
+    periodStart.setDate(periodStart.getDate() - 7);
+  } else {
+    periodStart.setMonth(periodStart.getMonth() - 1);
+  }
+
+  // Order counts
+  const { count: totalOrders } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', periodStart.toISOString());
+
+  const { count: deliveredOrders } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', periodStart.toISOString())
+    .eq('status', 'delivered');
+
+  // Revenue
+  const { data: revenueData } = await supabase
+    .from('orders')
+    .select('total')
+    .gte('created_at', periodStart.toISOString())
+    .eq('payment_status', 'paid');
+
+  const totalRevenue = revenueData?.reduce((sum, o) => sum + o.total, 0) ?? 0;
+
+  // Average delivery time
+  const { data: deliveredData } = await supabase
+    .from('orders')
+    .select('actual_delivery_minutes')
+    .gte('created_at', periodStart.toISOString())
+    .eq('status', 'delivered')
+    .not('actual_delivery_minutes', 'is', null);
+
+  const avgDeliveryTime =
+    deliveredData && deliveredData.length > 0
+      ? Math.round(
+          deliveredData.reduce(
+            (sum, o) => sum + (o.actual_delivery_minutes ?? 0),
+            0
+          ) / deliveredData.length
+        )
+      : 0;
+
+  // Success rate
+  const successRate =
+    totalOrders && totalOrders > 0
+      ? Math.round(((deliveredOrders ?? 0) / totalOrders) * 100)
+      : 0;
+
+  // Top runners
+  const { data: runnerAssignments } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .eq('role', 'runner')
+    .eq('status', 'completed')
+    .gte('completed_at', periodStart.toISOString());
+
+  const runnerCounts: Record<string, number> = {};
+  runnerAssignments?.forEach((a) => {
+    runnerCounts[a.assignee_id] = (runnerCounts[a.assignee_id] || 0) + 1;
+  });
+
+  const topRunnerIds = Object.entries(runnerCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([id]) => id);
+
+  let topRunners: Array<{
+    name: string;
+    orders_completed: number;
+    commission: number;
+  }> = [];
+  if (topRunnerIds.length > 0) {
+    const { data: runnerUsers } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', topRunnerIds);
+
+    const nameMap: Record<string, string> = {};
+    runnerUsers?.forEach((u) => {
+      nameMap[u.id] = u.full_name;
+    });
+
+    topRunners = topRunnerIds.map((id) => ({
+      name: nameMap[id] ?? 'Unknown',
+      orders_completed: runnerCounts[id],
+      commission: runnerCounts[id] * 600,
+    }));
+  }
+
+  // Top vendors by reliability
+  const { data: topVendors } = await supabase
+    .from('vendors')
+    .select('name, reliability_score, total_orders')
+    .eq('is_active', true)
+    .order('reliability_score', { ascending: false })
+    .limit(5);
+
+  return {
+    totalOrders: totalOrders ?? 0,
+    deliveredOrders: deliveredOrders ?? 0,
+    totalRevenue,
+    avgDeliveryTime,
+    successRate,
+    topRunners,
+    topVendors: topVendors ?? [],
+  };
+}
+
+// ============================================
+// RECONCILIATION
+// ============================================
+
+export async function getReconciliation(date?: string) {
+  const supabase = await createClient();
+  const targetDate = date ? new Date(date) : new Date();
+  const dayStart = new Date(targetDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(targetDate);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  const { data: shifts } = await supabase
+    .from('runner_shifts')
+    .select('*')
+    .gte('started_at', dayStart.toISOString())
+    .lte('started_at', dayEnd.toISOString())
+    .order('started_at', { ascending: false });
+
+  if (!shifts || shifts.length === 0) return { shifts: [], summary: null };
+
+  // Get runner names
+  const runnerIds = [...new Set(shifts.map((s) => s.runner_id))];
+  const { data: runners } = await supabase
+    .from('users')
+    .select('id, full_name')
+    .in('id', runnerIds);
+
+  const nameMap: Record<string, string> = {};
+  runners?.forEach((r) => {
+    nameMap[r.id] = r.full_name;
+  });
+
+  const shiftsWithNames = shifts.map((s) => ({
+    ...s,
+    runner_name: nameMap[s.runner_id] ?? 'Unknown',
+  }));
+
+  const totalSourced = shifts.reduce((sum, s) => sum + s.total_sourced, 0);
+  const totalCommission = shifts.reduce(
+    (sum, s) => sum + s.commission_earned,
+    0
+  );
+  const totalDiscrepancy = shifts.reduce(
+    (sum, s) => sum + (s.discrepancy_amount ?? 0),
+    0
+  );
+  const unreconciledCount = shifts.filter((s) => !s.is_reconciled).length;
+
+  return {
+    shifts: shiftsWithNames,
+    summary: {
+      totalShifts: shifts.length,
+      totalSourced,
+      totalCommission,
+      totalDiscrepancy,
+      unreconciledCount,
+    },
+  };
+}
+
+// ============================================
+// SETTINGS
+// ============================================
+
+export async function getSystemConfig() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('system_config')
+    .select('*')
+    .order('key');
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function updateSystemConfig(
+  key: string,
+  value: unknown,
+  adminId: string
+) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('system_config')
+    .upsert(
+      {
+        key,
+        value: JSON.parse(JSON.stringify(value)),
+        updated_at: new Date().toISOString(),
+        updated_by: adminId,
+      },
+      { onConflict: 'key' }
+    )
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ============================================
+// HELPERS for reassignment
+// ============================================
+
+export async function getAvailableRunners(clusterId?: string) {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('users')
+    .select('id, full_name, phone')
+    .eq('user_type', 'runner')
+    .eq('is_active', true);
+
+  if (clusterId) {
+    query = query.eq('cluster_id', clusterId);
+  }
+
+  const { data } = await query;
+  return data ?? [];
+}
+
+export async function getAvailableRiders(clusterId?: string) {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('users')
+    .select('id, full_name, phone')
+    .eq('user_type', 'rider')
+    .eq('is_active', true);
+
+  if (clusterId) {
+    query = query.eq('cluster_id', clusterId);
+  }
+
+  const { data } = await query;
+  return data ?? [];
+}

@@ -132,7 +132,7 @@ function SearchContent() {
 
         {/* Results grid */}
         {results.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
             {results.map((part) => (
               <PartCard
                 key={part.id}

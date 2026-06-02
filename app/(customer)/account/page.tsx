@@ -218,7 +218,7 @@ export default function AccountPage() {
   return (
     <div>
       {/* Profile Header */}
-      <div className="bg-primary px-4 pb-8 pt-6">
+      <div className="bg-primary px-4 pb-8 pt-6 lg:rounded-b-2xl">
         <h1 className="mb-4 text-xl font-bold text-white">Account</h1>
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
