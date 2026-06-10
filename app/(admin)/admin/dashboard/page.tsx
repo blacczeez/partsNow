@@ -115,7 +115,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Active Staff */}
-      <div className="mt-4 flex gap-4">
+      <div className="mt-4 flex flex-wrap gap-4">
         <div className="flex items-center gap-2 rounded-card border border-slate-200 bg-white px-4 py-3">
           <Users className="h-5 w-5 text-primary" />
           <span className="text-sm text-slate-500">Runners on shift:</span>

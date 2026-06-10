@@ -65,7 +65,7 @@ export function DataTable<T>({
 
   return (
     <div className="overflow-hidden rounded-card border border-slate-200 bg-white">
-      <div className="overflow-x-auto">
+      <div className="scrollbar-subtle overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
@@ -73,7 +73,7 @@ export function DataTable<T>({
                 <th
                   key={i}
                   className={cn(
-                    'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500',
+                    'sticky top-0 z-10 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500',
                     col.className
                   )}
                 >

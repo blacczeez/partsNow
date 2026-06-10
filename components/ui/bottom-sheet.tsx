@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -13,7 +13,7 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ isOpen, onClose, title, children, className }: BottomSheetProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (isOpen) {
@@ -39,17 +39,21 @@ export function BottomSheet({ isOpen, onClose, title, children, className }: Bot
 
   return (
     <div
-      ref={overlayRef}
       className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center lg:p-4"
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose();
-      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? titleId : undefined}
     >
-      <div className="fixed inset-0 bg-black/50" />
+      <button
+        type="button"
+        aria-label="Close dialog"
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
       <div
         className={cn(
           'relative z-10 w-full rounded-t-2xl bg-white px-4 pb-8 pt-4 shadow-xl',
-          'max-h-[85vh] overflow-y-auto',
+          'max-h-[85vh] overflow-y-auto scrollbar-subtle',
           'lg:max-w-lg lg:rounded-card',
           className
         )}
@@ -57,8 +61,11 @@ export function BottomSheet({ isOpen, onClose, title, children, className }: Bot
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300 lg:hidden" />
         {title && (
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+            <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+              {title}
+            </h2>
             <button
+              type="button"
               onClick={onClose}
               className="rounded-button p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             >
