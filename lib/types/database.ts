@@ -11,7 +11,7 @@ export type OrderStatus =
   | 'rejected'
   | 'failed';
 export type PaymentMethod = 'wallet' | 'card' | 'bank_transfer' | 'cod';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
 export type SourceChannel = 'whatsapp' | 'web' | 'app';
 export type DeliveryType = 'express' | 'standard';
 export type AssignmentRole = 'runner' | 'rider';
@@ -202,6 +202,10 @@ export interface Order {
   whatsapp_conversation_id: string | null;
   customer_notes: string | null;
   internal_notes: string | null;
+  price_review_status: string;
+  original_total: number | null;
+  price_topup_amount: number;
+  revised_total: number | null;
   created_at: string;
   confirmed_at: string | null;
   sourcing_started_at: string | null;
@@ -213,6 +217,16 @@ export interface Order {
   actual_delivery_minutes: number | null;
   rating: number | null;
   rating_comment: string | null;
+  delivery_resolution: string | null;
+  delivery_retry_after: string | null;
+  parts_custody: string | null;
+  settlement_status: string | null;
+  settlement_fault: string | null;
+  parts_recovery_rate: number | null;
+  return_handling_fee: number | null;
+  settlement_refund_amount: number | null;
+  settlement_breakdown: Record<string, unknown> | null;
+  settlement_completed_at: string | null;
 }
 
 export interface OrderItem {
@@ -225,6 +239,9 @@ export interface OrderItem {
   quantity: number;
   vendor_price: number | null;
   selling_price: number;
+  expected_vendor_price: number | null;
+  max_vendor_price: number | null;
+  price_review_status: string | null;
   customer_image_url: string | null;
   qc_image_url: string | null;
   is_found: boolean;

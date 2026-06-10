@@ -1,11 +1,11 @@
 import { createMockSupabase } from '@/lib/__tests__/helpers';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(),
 }));
 
-const mockedCreateClient = vi.mocked(createClient);
+const mockedCreateServiceClient = vi.mocked(createServiceClient);
 
 // Helper: create a chainable that resolves with given data/error
 // Supports both .single() and direct await (thenable)
@@ -16,8 +16,11 @@ function createChain(data: unknown, error: unknown = null) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
   chain.single = vi.fn().mockResolvedValue({ data, error });
-  (chain as any).then = (resolve: (v: unknown) => void, reject: (v: unknown) => void) =>
-    Promise.resolve({ data, error, count: null }).then(resolve, reject);
+  chain.maybeSingle = vi.fn().mockResolvedValue({ data, error });
+  Object.defineProperty(chain, 'then', {
+    value: (resolve: (v: unknown) => void, reject: (v: unknown) => void) =>
+      Promise.resolve({ data, error, count: null }).then(resolve, reject),
+  });
   return chain;
 }
 
@@ -28,7 +31,7 @@ describe('assignRunner', () => {
 
   function setupMock() {
     const { mockSupabase, mockRpc } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateServiceClient.mockReturnValue(mockSupabase);
     return { mockSupabase, mockRpc };
   }
 
@@ -62,10 +65,14 @@ describe('assignRunner', () => {
       if (table === 'order_assignments') {
         assignmentCallCount++;
         if (assignmentCallCount === 1) {
-          // First call: select existing assignments
+          // Check for existing assignment on this order
+          return createChain(null);
+        }
+        if (assignmentCallCount === 2) {
+          // Count assignments per runner
           return createChain([{ assignee_id: 'r1' }, { assignee_id: 'r1' }]);
         }
-        // Second call: insert
+        // Insert
         return createChain({ id: 'assignment-1' });
       }
       return originalFrom(table);
@@ -94,6 +101,9 @@ describe('assignRunner', () => {
         case 'order_assignments':
           assignmentCallCount++;
           if (assignmentCallCount === 1) {
+            return createChain(null);
+          }
+          if (assignmentCallCount === 2) {
             // r1 has 2 assignments, r2 has 0
             return createChain([{ assignee_id: 'r1' }, { assignee_id: 'r1' }]);
           }
@@ -205,7 +215,8 @@ describe('assignRunner', () => {
           return createChain([{ runner_id: 'r1' }]);
         case 'order_assignments':
           assignmentCallCount++;
-          if (assignmentCallCount === 1) return createChain([]);
+          if (assignmentCallCount === 1) return createChain(null);
+          if (assignmentCallCount === 2) return createChain([]);
           // Insert fails
           return createChain(null, { message: 'Insert error' });
         default:
@@ -232,7 +243,8 @@ describe('assignRunner', () => {
           return createChain([{ runner_id: 'r1' }]);
         case 'order_assignments':
           assignmentCallCount++;
-          if (assignmentCallCount === 1) return createChain(null); // null assignments
+          if (assignmentCallCount === 1) return createChain(null);
+          if (assignmentCallCount === 2) return createChain(null);
           return createChain({ id: 'assignment-null' });
         default:
           return createChain(null);
@@ -253,7 +265,7 @@ describe('assignRider', () => {
 
   function setupMock() {
     const { mockSupabase, mockRpc } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateServiceClient.mockReturnValue(mockSupabase);
     return { mockSupabase, mockRpc };
   }
 

@@ -89,7 +89,7 @@ export default function VehiclesPage() {
   return (
     <div>
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:top-[6.5rem]">
         <Link href="/account" className="rounded-button p-1 hover:bg-slate-100">
           <ArrowLeft className="h-5 w-5 text-slate-600" />
         </Link>

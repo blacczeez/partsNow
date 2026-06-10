@@ -1,5 +1,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  getPathArea,
+  getRoleHomePath,
+  isPathAllowedForUserType,
+} from '@/lib/auth/role-routes';
+import type { UserType } from '@/lib/types/database';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -48,10 +54,46 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('user_type')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const needsSetup = !profile;
+    const userType = profile?.user_type as UserType | undefined;
+    const homePath = getRoleHomePath(userType, needsSetup);
+    const pathname = request.nextUrl.pathname;
+
+    if (isAuthRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = homePath;
+      return NextResponse.redirect(url);
+    }
+
+    if (needsSetup) {
+      if (
+        !pathname.startsWith('/account') &&
+        !isApiRoute
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/account';
+        return NextResponse.redirect(url);
+      }
+      return supabaseResponse;
+    }
+
+    const pathArea = getPathArea(pathname);
+    if (
+      pathArea &&
+      userType &&
+      !isPathAllowedForUserType(pathname, userType)
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = homePath;
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

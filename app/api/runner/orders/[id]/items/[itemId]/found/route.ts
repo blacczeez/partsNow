@@ -12,18 +12,23 @@ export async function POST(
 
   const { id, itemId } = await params;
   const body = await request.json();
-  const result = markItemFoundSchema.safeParse(body);
+  const parsed = markItemFoundSchema.safeParse(body);
 
-  if (!result.success) {
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Validation failed', details: result.error.format() },
+      { error: 'Validation failed', details: parsed.error.format() },
       { status: 400 }
     );
   }
 
   try {
-    await markItemFound(auth.user.id, id, itemId, result.data);
-    return NextResponse.json({ success: true });
+    const markResult = await markItemFound(auth.user.id, id, itemId, parsed.data);
+    return NextResponse.json({
+      success: true,
+      priceReviewPending: markResult.escalated,
+      targetVendorPrice: markResult.expectedVendorPrice,
+      expectedVendorPrice: markResult.expectedVendorPrice,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to mark item as found';
     return NextResponse.json({ error: message }, { status: 500 });

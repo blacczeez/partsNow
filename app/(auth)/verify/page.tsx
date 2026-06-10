@@ -85,7 +85,7 @@ function VerifyForm() {
       const meRes = await fetch('/api/users/me');
       const me = meRes.ok ? await meRes.json() : { needsSetup: true };
 
-      router.push(me.needsSetup ? '/account' : '/');
+      router.push(me.homePath ?? (me.needsSetup ? '/account' : '/'));
       router.refresh();
     } catch {
       setError('Something went wrong. Please try again.');

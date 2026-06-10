@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { config } from '@/lib/config';
 
 const PAYSTACK_API = 'https://api.paystack.co';
@@ -84,11 +85,35 @@ export async function verifyPayment(
   };
 }
 
+export async function refundTransaction(
+  transactionReference: string,
+  amountNaira: number
+): Promise<{ reference: string }> {
+  const response = await fetch(`${PAYSTACK_API}/refund`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.payments.paystackSecretKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      transaction: transactionReference,
+      amount: Math.round(amountNaira * 100),
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!data.status) {
+    throw new Error(data.message || 'Paystack refund failed');
+  }
+
+  return { reference: data.data?.transaction?.reference ?? transactionReference };
+}
+
 export function verifyWebhookSignature(
   payload: string,
   signature: string
 ): boolean {
-  const crypto = require('crypto');
   const hash = crypto
     .createHmac('sha512', config.payments.paystackSecretKey)
     .update(payload)

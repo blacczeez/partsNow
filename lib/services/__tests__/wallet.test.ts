@@ -24,15 +24,19 @@ function createChain(data: unknown, error: unknown = null) {
   }
   chain.single = vi.fn().mockResolvedValue({ data, error });
   // Make thenable for non-.single() awaits
-  (chain as any).then = (resolve: (v: unknown) => void, reject: (v: unknown) => void) =>
-    Promise.resolve({ data, error, count: null }).then(resolve, reject);
+  Object.defineProperty(chain, 'then', {
+    value: (resolve: (v: unknown) => void, reject: (v: unknown) => void) =>
+      Promise.resolve({ data, error, count: null }).then(resolve, reject),
+  });
   return chain;
 }
 
 describe('debitWallet', () => {
   function setup() {
     const { mockSupabase, mockRpc } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
     return { mockSupabase, mockRpc };
   }
 
@@ -59,15 +63,16 @@ describe('debitWallet', () => {
     });
   });
 
-  it('returns false when wallet is not found', async () => {
+  it('throws when wallet is not found', async () => {
     const { mockSupabase } = setup();
 
     const walletChain = createChain(null, { message: 'Not found' });
     mockSupabase.from.mockReturnValue(walletChain);
 
     const debitWallet = await getDebitWallet();
-    const result = await debitWallet('user-1', 5000, 'order-1', 'Test debit');
-    expect(result).toBe(false);
+    await expect(
+      debitWallet('user-1', 5000, 'order-1', 'Test debit')
+    ).rejects.toThrow('Wallet not found');
   });
 
   it('returns false when RPC returns false (insufficient balance)', async () => {
@@ -86,7 +91,9 @@ describe('debitWallet', () => {
 describe('creditWallet', () => {
   function setup() {
     const { mockSupabase, mockRpc } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
     return { mockSupabase, mockRpc };
   }
 
@@ -140,7 +147,9 @@ describe('creditWallet', () => {
 describe('initiateTopUp', () => {
   function setup() {
     const { mockSupabase, mockRpc } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
     return { mockSupabase, mockRpc };
   }
 
@@ -231,7 +240,9 @@ describe('verifyAndCreditTopUp', () => {
 
   it('returns current balance without duplicate processing when already processed', async () => {
     const { mockSupabase } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
 
     // Track which table is being queried
     let fromCallCount = 0;
@@ -257,7 +268,9 @@ describe('verifyAndCreditTopUp', () => {
 
   it('credits wallet and logs event on successful Paystack verification', async () => {
     const { mockSupabase, mockRpc } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
 
     let fromCallCount = 0;
     const insertChain = createChain(null);
@@ -306,7 +319,9 @@ describe('verifyAndCreditTopUp', () => {
 
   it('returns success: false when Paystack verification shows failed status', async () => {
     const { mockSupabase } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
 
     mockSupabase.from.mockImplementation(() => {
       // payment_events — not found
@@ -330,7 +345,9 @@ describe('verifyAndCreditTopUp', () => {
 
   it('throws when wallet not found after successful verification', async () => {
     const { mockSupabase } = createMockSupabase();
-    mockedCreateClient.mockResolvedValue(mockSupabase as any);
+    mockedCreateClient.mockResolvedValue(
+      mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>
+    );
 
     let fromCallCount = 0;
     mockSupabase.from.mockImplementation(() => {

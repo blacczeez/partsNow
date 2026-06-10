@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils/cn';
 const navItems = [
   { href: '/runner/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/runner/shift', icon: Clock, label: 'Shift' },
-  { href: '/account', icon: User, label: 'Account' },
+  { href: '/runner/account', icon: User, label: 'Account' },
 ];
 
 export function RunnerBottomNav() {
@@ -20,7 +20,8 @@ export function RunnerBottomNav() {
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href ||
-            (href === '/runner/dashboard' && pathname.startsWith('/runner/order/'));
+            (href === '/runner/dashboard' && pathname.startsWith('/runner/order/')) ||
+            (href === '/runner/account' && pathname.startsWith('/runner/account'));
 
           return (
             <Link

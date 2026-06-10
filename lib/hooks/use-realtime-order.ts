@@ -1,31 +1,32 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Order } from '@/lib/types/database';
 
+/**
+ * Subscribe to live updates for a single order.
+ * Only mount once per orderId per page (e.g. OrderStatusLive), or channels collide.
+ */
 export function useRealtimeOrder(orderId: string) {
   const [order, setOrder] = useState<Order | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  const updateOrder = useCallback((payload: { new: Order }) => {
-    setOrder(payload.new);
-  }, []);
-
   useEffect(() => {
-    const supabase = createClient();
+    if (!orderId) return;
 
-    // Fetch initial order state
+    const supabase = createClient();
+    let cancelled = false;
+
     supabase
       .from('orders')
       .select('*')
       .eq('id', orderId)
       .single()
       .then(({ data }) => {
-        if (data) setOrder(data as Order);
+        if (!cancelled && data) setOrder(data as Order);
       });
 
-    // Subscribe to realtime changes
     const channel = supabase
       .channel(`order-${orderId}`)
       .on(
@@ -36,16 +37,24 @@ export function useRealtimeOrder(orderId: string) {
           table: 'orders',
           filter: `id=eq.${orderId}`,
         },
-        updateOrder
+        (payload) => {
+          if (!cancelled && payload.new) {
+            setOrder(payload.new as Order);
+          }
+        }
       )
       .subscribe((status) => {
-        setIsConnected(status === 'SUBSCRIBED');
+        if (!cancelled) {
+          setIsConnected(status === 'SUBSCRIBED');
+        }
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      setIsConnected(false);
+      void supabase.removeChannel(channel);
     };
-  }, [orderId, updateOrder]);
+  }, [orderId]);
 
   return { order, isConnected };
 }

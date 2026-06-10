@@ -7,8 +7,18 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { useAdminOrderDetail } from '@/lib/hooks/use-admin-order-detail';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import {
+  customerPartsTotal,
+  listedLineTotal,
+  quotedServiceFeeLine,
+  runnerSourcingTargetTotal,
+} from '@/lib/utils/order-pricing-display';
 import { toast } from '@/components/ui/toast';
 import { ReassignSheet } from './reassign-sheet';
+import { PriceReviewPanel } from './price-review-panel';
+import { DeliverySettlementPanel } from './delivery-settlement-panel';
+import { canAdminReassignRider } from '@/lib/constants/order-status';
+import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
 import type { OrderStatus } from '@/lib/types/database';
 
 interface OrderDetailSheetProps {
@@ -18,7 +28,16 @@ interface OrderDetailSheetProps {
 }
 
 export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetProps) {
-  const { order, isLoading, actionLoading, reassign, cancel, refund } = useAdminOrderDetail(orderId);
+  const {
+    order,
+    isLoading,
+    actionLoading,
+    reassign,
+    cancel,
+    refund,
+    resolvePriceReview,
+    refresh,
+  } = useAdminOrderDetail(orderId);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [reassignRole, setReassignRole] = useState<'runner' | 'rider'>('runner');
   const [cancelReason, setCancelReason] = useState('');
@@ -57,6 +76,25 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
     }
   };
 
+  const handleSendToCustomer = async (itemId: string) => {
+    const success = await resolvePriceReview(itemId, 'send_to_customer');
+    if (success) {
+      toast('success', 'Customer notified — awaiting top-up or cancellation');
+    } else {
+      toast('error', 'Failed to notify customer');
+    }
+  };
+
+  const handleRejectPrice = async (itemId: string) => {
+    const reason = window.prompt('Reason for rejecting this item (optional):') ?? undefined;
+    const success = await resolvePriceReview(itemId, 'reject_item', reason);
+    if (success) {
+      toast('success', 'Item rejected — runner must resolve or complete without it');
+    } else {
+      toast('error', 'Failed to reject item');
+    }
+  };
+
   return (
     <>
       <BottomSheet isOpen={isOpen} onClose={onClose} title={order?.order_number || 'Order Details'}>
@@ -71,6 +109,21 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
             {/* Status & Meta */}
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={order.status as OrderStatus} />
+              {order.price_review_status === 'pending' && (
+                <Badge variant="warning">Admin review</Badge>
+              )}
+              {order.price_review_status === 'awaiting_customer' && (
+                <Badge variant="warning">Awaiting customer</Badge>
+              )}
+              {order.delivery_resolution === 'admin_review' && (
+                <Badge variant="warning">Delivery escalation</Badge>
+              )}
+              {order.delivery_resolution === 'retry' && (
+                <Badge variant="warning">Delivery retry</Badge>
+              )}
+              {order.parts_custody === 'with_rider' && (
+                <Badge variant="error">Parts with rider</Badge>
+              )}
               <Badge variant={order.payment_status === 'paid' ? 'success' : 'warning'}>
                 {order.payment_status}
               </Badge>
@@ -87,6 +140,26 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
               </div>
             )}
 
+            {order.price_review_status === 'pending' && (
+              <PriceReviewPanel
+                items={order.items}
+                deliveryFee={order.delivery_fee}
+                discountAmount={order.discount_amount}
+                orderTotal={order.total}
+                actionLoading={actionLoading}
+                onSendToCustomer={handleSendToCustomer}
+                onReject={handleRejectPrice}
+              />
+            )}
+
+            {order.price_review_status === 'awaiting_customer' && (
+              <p className="text-sm text-slate-600">
+                Customer must pay {formatCurrency(order.price_topup_amount)} extra or
+                cancel for a full refund of{' '}
+                {formatCurrency(order.original_total ?? order.total)}.
+              </p>
+            )}
+
             {/* Items */}
             <div>
               <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Items</h4>
@@ -99,14 +172,41 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                       </p>
                       {item.vendor_price != null && (
                         <p className="text-xs text-slate-400">
-                          Vendor: {formatCurrency(item.vendor_price)}
+                          Vendor paid: {formatCurrency(item.vendor_price * item.quantity)}
+                          {item.expected_vendor_price != null && (
+                            <> · Target budget: {formatCurrency(item.expected_vendor_price * item.quantity)}</>
+                          )}
                         </p>
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{formatCurrency(item.selling_price)}</p>
-                      {item.is_found && <Badge variant="success" className="mt-0.5">Found</Badge>}
-                      {item.is_unavailable && <Badge variant="error" className="mt-0.5">N/A</Badge>}
+                      <p className="text-sm font-medium">
+                        {formatCurrency(listedLineTotal(item))}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        + {formatCurrency(quotedServiceFeeLine(item))} fee
+                      </p>
+                      {item.is_unavailable && (
+                        <Badge variant="error" className="mt-0.5">N/A</Badge>
+                      )}
+                      {!item.is_unavailable && item.price_review_status === 'pending' && (
+                        <Badge variant="warning" className="mt-0.5">Price review</Badge>
+                      )}
+                      {!item.is_unavailable && item.price_review_status === 'customer_approved' && (
+                          <Badge variant="success" className="mt-0.5">Customer approved</Badge>
+                        )}
+                      {!item.is_unavailable &&
+                        item.is_found &&
+                        item.price_review_status === 'awaiting_customer' && (
+                          <Badge variant="warning" className="mt-0.5">Awaiting customer</Badge>
+                        )}
+                      {!item.is_unavailable &&
+                        item.is_found &&
+                        item.price_review_status !== 'pending' &&
+                        item.price_review_status !== 'customer_approved' &&
+                        item.price_review_status !== 'awaiting_customer' && (
+                          <Badge variant="success" className="mt-0.5">Found</Badge>
+                        )}
                     </div>
                   </div>
                 ))}
@@ -117,15 +217,111 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
             <div>
               <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Pricing</h4>
               <div className="space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Markup</span><span>{formatCurrency(order.markup_amount)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Delivery</span><span>{formatCurrency(order.delivery_fee)}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Parts (customer)</span>
+                  <span>{formatCurrency(customerPartsTotal(order.items))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Parts (vendor est.)</span>
+                  <span>{formatCurrency(order.subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Service fee</span>
+                  <span>{formatCurrency(order.markup_amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Target sourcing budget</span>
+                  <span>{formatCurrency(runnerSourcingTargetTotal(order.items))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Delivery</span>
+                  <span>{formatCurrency(order.delivery_fee)}</span>
+                </div>
                 {order.discount_amount > 0 && (
-                  <div className="flex justify-between"><span className="text-slate-500">Discount</span><span className="text-success">-{formatCurrency(order.discount_amount)}</span></div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Discount</span>
+                    <span className="text-success">-{formatCurrency(order.discount_amount)}</span>
+                  </div>
                 )}
-                <div className="flex justify-between border-t border-slate-200 pt-1 font-semibold"><span>Total</span><span>{formatCurrency(order.total)}</span></div>
+                {order.price_topup_amount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Price adjustment</span>
+                    <span>{formatCurrency(order.price_topup_amount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-slate-200 pt-1 font-semibold">
+                  <span>Customer total</span>
+                  <span>{formatCurrency(order.revised_total ?? order.total)}</span>
+                </div>
               </div>
             </div>
+
+            {order.deliveryAttempts.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">
+                  Delivery Attempts
+                </h4>
+                <div className="space-y-2">
+                  {order.deliveryAttempts.map((attempt) => (
+                    <div
+                      key={attempt.id}
+                      className="rounded-button border border-slate-200 bg-slate-50 p-3 text-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700">
+                          Attempt #{attempt.attempt_number}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {formatRelativeTime(attempt.attempted_at)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {attempt.failure_reason
+                          ? formatDeliveryFailureReason(attempt.failure_reason)
+                          : attempt.status}
+                      </p>
+                      {attempt.call_attempts_made != null && attempt.call_attempts_made > 0 && (
+                        <p className="text-xs text-slate-500">
+                          Calls logged: {attempt.call_attempts_made}
+                        </p>
+                      )}
+                      {attempt.notes && (
+                        <p className="mt-1 text-xs text-slate-500">{attempt.notes}</p>
+                      )}
+                      {attempt.photo_url && (
+                        <a
+                          href={attempt.photo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-block text-xs text-primary"
+                        >
+                          View photo evidence
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {order.delivery_resolution === 'admin_review' && (
+              <p className="rounded-button border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Rider escalated a delivery issue. Reassign rider, update the address with the
+                customer, or cancel the order.
+              </p>
+            )}
+
+            <DeliverySettlementPanel
+              orderId={order.id}
+              settlementStatus={order.settlement_status ?? null}
+              settlementFault={order.settlement_fault ?? null}
+              partsCustody={order.parts_custody ?? null}
+              partsRecoveryRate={order.parts_recovery_rate ?? null}
+              settlementRefundAmount={order.settlement_refund_amount ?? null}
+              settlementCompletedAt={order.settlement_completed_at ?? null}
+              orderStatus={order.status}
+              onUpdated={refresh}
+            />
 
             {/* Assignments */}
             {order.assignments.length > 0 && (
@@ -170,13 +366,19 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
             </div>
 
             {/* Actions */}
-            {!['delivered', 'cancelled', 'failed'].includes(order.status) && (
+            {!['delivered', 'cancelled', 'failed', 'rejected'].includes(order.status) && (
               <div className="space-y-2 border-t border-slate-200 pt-4">
+                {order.price_review_status === 'pending' && (
+                  <p className="text-xs text-warning">
+                    Resolve price review before reassigning or cancelling.
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
                     className="flex-1"
+                    disabled={order.price_review_status === 'pending'}
                     onClick={() => { setReassignRole('runner'); setReassignOpen(true); }}
                   >
                     Reassign Runner
@@ -185,6 +387,10 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                     variant="secondary"
                     size="sm"
                     className="flex-1"
+                    disabled={
+                      order.price_review_status === 'pending' ||
+                      !canAdminReassignRider(order.status as OrderStatus)
+                    }
                     onClick={() => { setReassignRole('rider'); setReassignOpen(true); }}
                   >
                     Reassign Rider
@@ -221,11 +427,10 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
               </div>
             )}
 
-            {/* Refund button for paid cancelled/failed orders */}
-            {['cancelled', 'failed'].includes(order.status) && order.payment_status === 'paid' && (
+            {order.status === 'cancelled' && order.payment_status === 'paid' && (
               <div className="border-t border-slate-200 pt-4">
                 <Button variant="secondary" size="sm" fullWidth isLoading={actionLoading} onClick={handleRefund}>
-                  Process Refund
+                  Process Full Refund
                 </Button>
               </div>
             )}

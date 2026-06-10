@@ -65,6 +65,23 @@ export async function POST(request: NextRequest) {
             updatedWallet?.balance ?? amountNaira
           ).catch(() => {});
         }
+      } else if (metadata?.type === 'order_price_topup') {
+        await supabase.from('payment_events').insert({
+          order_id: metadata.order_id,
+          type: 'charge_succeeded',
+          amount: amountNaira,
+          provider: 'paystack',
+          provider_reference: reference,
+          status: 'success',
+          raw_response: data,
+        });
+
+        const { finalizeCustomerPriceAcceptance } = await import(
+          '@/lib/services/price-review'
+        );
+        const { notifyPriceChangeAccepted } = await import('@/lib/services/notifications');
+        await finalizeCustomerPriceAcceptance(supabase, metadata.order_id);
+        notifyPriceChangeAccepted(metadata.order_id).catch(() => {});
       } else if (metadata?.type === 'order_payment') {
         // Confirm order payment
         await supabase

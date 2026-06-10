@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
-import { creditWallet } from './wallet';
+import { refundOrderPayment } from './order-refund';
+import { clearDeliveryEscalation, markPartsReturnedToHub } from './delivery-failure';
 import { notifyOrderCancelled } from './notifications';
+import {
+  sendPriceChangeToCustomer,
+  rejectPriceReviewItem,
+} from './price-review';
+import { canAdminReassignRider } from '@/lib/constants/order-status';
 import type { OrderStatus } from '@/lib/types/database';
 
 // ============================================
@@ -99,6 +105,11 @@ export async function getDashboardStats() {
     }));
   }
 
+  const { count: priceReviewPendingCount } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .eq('price_review_status', 'pending');
+
   return {
     todayOrderCount: todayOrderCount ?? 0,
     todayRevenue: totalRevenue,
@@ -106,6 +117,7 @@ export async function getDashboardStats() {
     activeByStatus,
     slaBreachCount: slaBreaches.length,
     slaBreaches: slaBreaches.slice(0, 5),
+    priceReviewPendingCount: priceReviewPendingCount ?? 0,
     activeRunnerCount: activeRunnerCount ?? 0,
     activeRiderCount: activeRiderIds.size,
     recentOrders: recentOrdersWithCustomer,
@@ -121,21 +133,27 @@ export async function getAdminOrders(filters: {
   limit: number;
   status?: OrderStatus;
   search?: string;
+  priceReviewPending?: boolean;
 }) {
   const supabase = await createClient();
-  const { page, limit, status, search } = filters;
+  const { page, limit, status, search, priceReviewPending } = filters;
   const offset = (page - 1) * limit;
 
   let query = supabase
     .from('orders')
-    .select('id, order_number, status, total, payment_method, payment_status, created_at, customer_id, source_channel', {
-      count: 'exact',
-    })
+    .select(
+      'id, order_number, status, total, payment_method, payment_status, created_at, customer_id, source_channel, price_review_status',
+      { count: 'exact' }
+    )
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (status) {
     query = query.eq('status', status);
+  }
+
+  if (priceReviewPending) {
+    query = query.eq('price_review_status', 'pending');
   }
 
   if (search) {
@@ -245,6 +263,13 @@ export async function getAdminOrderDetail(orderId: string) {
     .eq('order_id', orderId)
     .order('created_at', { ascending: false });
 
+  const { data: priceIncidents } = await supabase
+    .from('vendor_incidents')
+    .select('*')
+    .eq('order_id', orderId)
+    .eq('type', 'price_discrepancy')
+    .order('created_at', { ascending: false });
+
   return {
     ...order,
     items: items ?? [],
@@ -253,7 +278,32 @@ export async function getAdminOrderDetail(orderId: string) {
     tracking,
     deliveryAttempts: deliveryAttempts ?? [],
     paymentEvents: paymentEvents ?? [],
+    priceIncidents: priceIncidents ?? [],
   };
+}
+
+export async function resolvePriceReview(
+  adminId: string,
+  orderId: string,
+  itemId: string,
+  action: 'send_to_customer' | 'reject_item',
+  notes?: string
+) {
+  const supabase = await createClient();
+
+  if (action === 'send_to_customer') {
+    const result = await sendPriceChangeToCustomer(
+      supabase,
+      orderId,
+      itemId,
+      adminId,
+      notes
+    );
+    return { action: 'sent_to_customer' as const, ...result };
+  }
+
+  await rejectPriceReviewItem(supabase, orderId, itemId, adminId, notes);
+  return { action: 'rejected' as const };
 }
 
 export async function reassignOrder(
@@ -262,6 +312,20 @@ export async function reassignOrder(
   newAssigneeId: string
 ) {
   const supabase = await createClient();
+
+  if (role === 'rider') {
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('status')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError || !order) throw new Error('Order not found');
+
+    if (!canAdminReassignRider(order.status as OrderStatus)) {
+      throw new Error('Cannot reassign rider for a completed or cancelled order');
+    }
+  }
 
   // Fail current assignment of that role
   await supabase
@@ -284,7 +348,20 @@ export async function reassignOrder(
     .single();
 
   if (error) throw new Error(error.message);
+
+  if (role === 'rider') {
+    await clearDeliveryEscalation(orderId);
+  }
+
   return data;
+}
+
+export async function adminMarkPartsReturned(
+  orderId: string,
+  partsRecoveryRate?: number
+) {
+  await markPartsReturnedToHub(orderId, partsRecoveryRate);
+  return { success: true };
 }
 
 export async function adminCancelOrder(orderId: string, reason: string) {
@@ -332,42 +409,11 @@ export async function adminCancelOrder(orderId: string, reason: string) {
 }
 
 export async function processRefund(orderId: string) {
-  const supabase = await createClient();
-
-  const { data: order, error } = await supabase
-    .from('orders')
-    .select('id, customer_id, total, payment_status')
-    .eq('id', orderId)
-    .single();
-
-  if (error || !order) throw new Error('Order not found');
-
-  // Credit customer wallet
-  const credited = await creditWallet(
-    order.customer_id,
-    order.total,
-    `refund_${orderId}`,
-    `Refund for order ${orderId}`
-  );
-
-  if (!credited) throw new Error('Failed to credit wallet');
-
-  // Update payment status
-  await supabase
-    .from('orders')
-    .update({ payment_status: 'refunded' })
-    .eq('id', orderId);
-
-  // Log payment event
-  await supabase.from('payment_events').insert({
-    order_id: orderId,
-    type: 'refund_completed',
-    amount: order.total,
-    provider: 'wallet',
-    status: 'success',
-  });
-
-  return { success: true };
+  const result = await refundOrderPayment(orderId);
+  if (!result.refunded) {
+    throw new Error('Order is not eligible for refund');
+  }
+  return { success: true, amount: result.amount };
 }
 
 // ============================================

@@ -13,12 +13,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const status = searchParams.get('status') as OrderStatus | null;
     const search = searchParams.get('search') || undefined;
+    const priceReviewPending = searchParams.get('priceReview') === 'pending';
 
     const result = await getAdminOrders({
       page,
       limit,
       status: status || undefined,
       search,
+      priceReviewPending: priceReviewPending || undefined,
     });
 
     return NextResponse.json({

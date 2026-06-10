@@ -4,30 +4,60 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { RunnerOrderSummary } from '@/lib/services/runner';
 
+async function fetchRunnerOrders(): Promise<{
+  orders: RunnerOrderSummary[];
+  error: string | null;
+}> {
+  const res = await fetch('/api/runner/orders');
+  const data = await res.json();
+
+  if (!res.ok) {
+    return {
+      orders: [],
+      error: data.error || 'Failed to fetch orders',
+    };
+  }
+
+  return {
+    orders: data.orders || [],
+    error: null,
+  };
+}
+
 export function useRunnerOrders() {
   const [orders, setOrders] = useState<RunnerOrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    try {
-      const res = await fetch('/api/runner/orders');
-      const data = await res.json();
+  useEffect(() => {
+    let cancelled = false;
 
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch orders');
-
-      setOrders(data.orders || []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch orders');
-    } finally {
-      setIsLoading(false);
+    async function loadOrders() {
+      try {
+        const result = await fetchRunnerOrders();
+        if (!cancelled) {
+          setOrders(result.orders);
+          setError(result.error);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     }
+
+    void loadOrders();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  const refresh = useCallback(async () => {
+    const result = await fetchRunnerOrders();
+    setOrders(result.orders);
+    setError(result.error);
+  }, []);
 
   // Subscribe to realtime changes on order_assignments
   useEffect(() => {
@@ -43,8 +73,18 @@ export function useRunnerOrders() {
           table: 'order_assignments',
         },
         () => {
-          // Refetch orders when assignments change
-          fetchOrders();
+          void refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+        },
+        () => {
+          void refresh();
         }
       )
       .subscribe();
@@ -52,7 +92,7 @@ export function useRunnerOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchOrders]);
+  }, [refresh]);
 
-  return { orders, isLoading, error, refresh: fetchOrders };
+  return { orders, isLoading, error, refresh };
 }

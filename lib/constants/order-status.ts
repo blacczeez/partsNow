@@ -86,3 +86,15 @@ export const TERMINAL_ORDER_STATUSES: OrderStatus[] = [
   'rejected',
   'failed',
 ];
+
+/** Terminal orders — no rider reassignment. */
+export const RIDER_REASSIGN_BLOCKED_STATUSES: OrderStatus[] = [
+  'delivered',
+  'cancelled',
+  'rejected',
+  'failed',
+];
+
+export function canAdminReassignRider(status: OrderStatus): boolean {
+  return !RIDER_REASSIGN_BLOCKED_STATUSES.includes(status);
+}

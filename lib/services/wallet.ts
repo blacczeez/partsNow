@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { initializePayment, verifyPayment } from '@/lib/integrations/paystack';
 import { config } from '@/lib/config';
 import type { Wallet, WalletTransaction } from '@/lib/types/database';
@@ -165,14 +166,20 @@ export async function debitWallet(
     .eq('user_id', userId)
     .single();
 
-  if (!wallet) return false;
+  if (!wallet) {
+    throw new Error('Wallet not found');
+  }
 
-  const { data: success } = await supabase.rpc('debit_wallet', {
+  const { data: success, error } = await supabase.rpc('debit_wallet', {
     p_wallet_id: wallet.id,
     p_amount: amount,
     p_reference: reference,
     p_description: description,
   });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 
   return success === true;
 }
@@ -201,4 +208,38 @@ export async function creditWallet(
   });
 
   return success === true;
+}
+
+/** Service-role wallet credit for refunds/settlement (no admin session required). */
+export async function creditWalletAsService(
+  userId: string,
+  amount: number,
+  reference: string,
+  description: string
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  const { data: wallet, error: walletError } = await supabase
+    .from('wallets')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (walletError || !wallet) {
+    throw new Error('Customer wallet not found — cannot process refund');
+  }
+
+  const { data: success, error: rpcError } = await supabase.rpc('credit_wallet', {
+    p_wallet_id: wallet.id,
+    p_amount: amount,
+    p_reference: reference,
+    p_description: description,
+  });
+
+  if (rpcError) {
+    throw new Error(rpcError.message);
+  }
+  if (success !== true) {
+    throw new Error('Wallet credit was rejected');
+  }
 }

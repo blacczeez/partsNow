@@ -30,9 +30,9 @@ export async function POST(
     return NextResponse.json(assignment);
   } catch (error) {
     console.error('Reassign order error:', error);
-    return NextResponse.json(
-      { error: 'Failed to reassign order' },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : 'Failed to reassign order';
+    const status = message.startsWith('Cannot reassign') ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

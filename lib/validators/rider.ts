@@ -22,6 +22,9 @@ export const reportFailureSchema = z.object({
   ]),
   notes: z.string().max(500).optional(),
   photoUrl: z.string().optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  callAttemptsMade: z.number().int().min(0).max(10).optional(),
 });
 
 export type ReportFailureInput = z.infer<typeof reportFailureSchema>;

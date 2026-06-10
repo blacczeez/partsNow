@@ -9,6 +9,7 @@ import type { RunnerShift, RunnerFloat } from '@/lib/types/database';
 interface ShiftStatusCardProps {
   shift: RunnerShift | null;
   float: RunnerFloat | null;
+  activeOrderCount?: number;
   isStarting: boolean;
   onStartShift: () => void;
 }
@@ -25,6 +26,7 @@ function formatDuration(startedAt: string): string {
 export function ShiftStatusCard({
   shift,
   float,
+  activeOrderCount = 0,
   isStarting,
   onStartShift,
 }: ShiftStatusCardProps) {
@@ -83,7 +85,7 @@ export function ShiftStatusCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-button bg-white p-3 text-center shadow-sm">
             <p className="text-xs text-slate-500">Float</p>
             <p className="text-sm font-semibold text-slate-900">
@@ -91,7 +93,13 @@ export function ShiftStatusCard({
             </p>
           </div>
           <div className="rounded-button bg-white p-3 text-center shadow-sm">
-            <p className="text-xs text-slate-500">Orders</p>
+            <p className="text-xs text-slate-500">Active</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {activeOrderCount}
+            </p>
+          </div>
+          <div className="rounded-button bg-white p-3 text-center shadow-sm">
+            <p className="text-xs text-slate-500">Done</p>
             <p className="text-sm font-semibold text-slate-900">
               {shift.orders_completed}
             </p>

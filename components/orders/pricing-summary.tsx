@@ -3,19 +3,27 @@ import type { PricingBreakdown } from '@/lib/types/orders';
 
 interface PricingSummaryProps {
   pricing: PricingBreakdown;
+  /** checkout: base + service fee rows. order: parts total only (service fee included in parts). */
+  variant?: 'checkout' | 'order';
 }
 
-export function PricingSummary({ pricing }: PricingSummaryProps) {
+export function PricingSummary({ pricing, variant = 'checkout' }: PricingSummaryProps) {
+  const showServiceFee = variant === 'checkout' && pricing.markupAmount > 0;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-500">Subtotal</span>
+        <span className="text-slate-500">
+          {variant === 'order' ? 'Parts' : 'Subtotal'}
+        </span>
         <span className="text-slate-700">{formatCurrency(pricing.subtotal)}</span>
       </div>
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-500">Service fee</span>
-        <span className="text-slate-700">{formatCurrency(pricing.markupAmount)}</span>
-      </div>
+      {showServiceFee && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-500">Service fee</span>
+          <span className="text-slate-700">{formatCurrency(pricing.markupAmount)}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between text-sm">
         <span className="text-slate-500">Delivery fee</span>
         <span className="text-slate-700">

@@ -1,6 +1,13 @@
 import { config } from '@/lib/config';
 import crypto from 'crypto';
 
+/** Skip outbound calls when WATI is not configured (local dev without WhatsApp). */
+export function isWatiConfigured(): boolean {
+  const url = config.whatsapp.apiUrl?.trim() ?? '';
+  const key = config.whatsapp.apiKey?.trim() ?? '';
+  return Boolean(key && url.startsWith('http'));
+}
+
 interface WatiApiResponse {
   result: boolean;
   info?: string;
@@ -17,6 +24,8 @@ export async function sendTemplateMessage(
   templateName: string,
   parameters: Record<string, string>
 ): Promise<WatiApiResponse | null> {
+  if (!isWatiConfigured()) return null;
+
   try {
     const response = await fetch(
       `${config.whatsapp.apiUrl}/api/v1/sendTemplateMessage?whatsappNumber=${encodeURIComponent(phone)}`,
@@ -49,6 +58,8 @@ export async function sendTextMessage(
   phone: string,
   message: string
 ): Promise<WatiApiResponse | null> {
+  if (!isWatiConfigured()) return null;
+
   try {
     const response = await fetch(
       `${config.whatsapp.apiUrl}/api/v1/sendSessionMessage/${encodeURIComponent(phone)}`,
@@ -77,6 +88,8 @@ export async function sendInteractiveButtons(
   bodyText: string,
   buttons: Array<{ id: string; title: string }>
 ): Promise<WatiApiResponse | null> {
+  if (!isWatiConfigured()) return null;
+
   try {
     const response = await fetch(
       `${config.whatsapp.apiUrl}/api/v1/sendInteractiveButtonsMessage?whatsappNumber=${encodeURIComponent(phone)}`,
@@ -124,6 +137,8 @@ export function verifyWatiWebhookSignature(
 export async function getMediaUrl(
   mediaId: string
 ): Promise<string | null> {
+  if (!isWatiConfigured()) return null;
+
   try {
     const response = await fetch(
       `${config.whatsapp.apiUrl}/api/v1/getMedia/${encodeURIComponent(mediaId)}`,

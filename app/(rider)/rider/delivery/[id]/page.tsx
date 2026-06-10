@@ -33,7 +33,6 @@ export default function DeliveryDetailPage() {
     error,
     confirmPickup,
     confirmDelivery,
-    reportFailure,
   } = useRiderDeliveryDetail(id);
 
   const isInProgress = delivery?.assignment.status === 'in_progress';
@@ -114,10 +113,29 @@ export default function DeliveryDetailPage() {
     reason: string;
     notes?: string;
     photoUrl?: string;
+    latitude?: number;
+    longitude?: number;
+    callAttemptsMade?: number;
   }) => {
     try {
-      await reportFailure(data);
-      toast('info', 'Issue reported');
+      const res = await fetch(`/api/rider/orders/${id}/fail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to report issue');
+
+      if (body.outcome === 'retry') {
+        toast('info', 'Attempt logged — wait before trying again');
+        setActiveSheet(null);
+        return;
+      }
+      if (body.outcome === 'admin_review') {
+        toast('info', 'Escalated to ops — return parts to hub if needed');
+      } else {
+        toast('info', 'Issue reported');
+      }
       router.push('/rider/dashboard');
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to report issue');
@@ -143,7 +161,7 @@ export default function DeliveryDetailPage() {
             {formatRelativeTime(delivery.created_at)}
           </p>
         </div>
-        <StatusBadge status={delivery.status as any} />
+        <StatusBadge status={delivery.status} />
       </div>
 
       {/* Status Bar */}
@@ -251,7 +269,7 @@ export default function DeliveryDetailPage() {
       )}
 
       {/* Action Buttons */}
-      <div className="fixed bottom-20 left-0 right-0 border-t border-slate-200 bg-white p-4 lg:bottom-0 lg:left-64">
+      <div className="fixed bottom-20 left-0 right-0 border-t border-slate-200 bg-white p-4 lg:bottom-0 lg:left-0">
         {isAssigned && (
           <Button
             fullWidth
@@ -303,6 +321,8 @@ export default function DeliveryDetailPage() {
       <DeliveryFailureSheet
         isOpen={activeSheet === 'failure'}
         onClose={() => setActiveSheet(null)}
+        isHighValue={delivery.is_high_value}
+        deliveryRetryAfter={delivery.delivery_retry_after}
         onSubmit={handleReportFailure}
       />
     </div>

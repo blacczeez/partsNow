@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { OrderCard } from '@/components/orders/order-card';
 import { cn } from '@/lib/utils/cn';
@@ -19,30 +19,43 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchOrders = useCallback(async () => {
+  function handleTabChange(nextTab: Tab) {
+    if (nextTab === tab) return;
     setIsLoading(true);
-    try {
-      const params = new URLSearchParams({ limit: '20' });
-      if (tab !== 'all') params.set('status', tab);
-
-      const res = await fetch(`/api/orders?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data.orders || []);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tab]);
+    setTab(nextTab);
+  }
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    let cancelled = false;
+
+    async function loadOrders() {
+      try {
+        const params = new URLSearchParams({ limit: '20' });
+        if (tab !== 'all') params.set('status', tab);
+
+        const res = await fetch(`/api/orders?${params}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setOrders(data.orders || []);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadOrders();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
 
   return (
     <div>
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 pt-4">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 pt-4 lg:top-[6.5rem]">
         <h1 className="mb-3 text-xl font-bold text-slate-900">My Orders</h1>
 
         {/* Tabs */}
@@ -51,7 +64,7 @@ export default function OrdersPage() {
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => handleTabChange(t.id)}
               className={cn(
                 'flex-1 border-b-2 pb-2 text-sm font-medium transition-colors',
                 tab === t.id

@@ -21,6 +21,11 @@ interface FormValues {
   codAmount: string;
 }
 
+function buildDeliveryPhotoFileName(originalName: string): string {
+  const extension = originalName.split('.').pop() ?? 'jpg';
+  return `delivery-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+}
+
 export function DeliveryConfirmationSheet({
   isOpen,
   onClose,
@@ -65,13 +70,15 @@ export function DeliveryConfirmationSheet({
 
       if (photoFile) {
         const supabase = createClient();
-        const fileName = `delivery-${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split('.').pop()}`;
+        const fileName = buildDeliveryPhotoFileName(photoFile.name);
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('delivery-photos')
           .upload(fileName, photoFile);
 
-        if (uploadError) throw new Error('Failed to upload photo');
+        if (uploadError) {
+          throw new Error(uploadError.message || 'Failed to upload photo');
+        }
 
         const { data: urlData } = supabase.storage
           .from('delivery-photos')

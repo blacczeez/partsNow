@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getRoleHomePath } from '@/lib/auth/role-routes';
 import { getUserProfile, updateUserProfile } from '@/lib/services/users';
 import { updateProfileSchema } from '@/lib/validators/user';
 
@@ -19,6 +20,7 @@ export async function GET() {
     return NextResponse.json({
       needsSetup: true,
       phone: authUser.phone,
+      homePath: getRoleHomePath(null, true),
     });
   }
 
@@ -26,6 +28,7 @@ export async function GET() {
     needsSetup: false,
     user: profile,
     wallet: profile.wallet,
+    homePath: getRoleHomePath(profile.user_type),
   });
 }
 

@@ -18,6 +18,10 @@ interface OrderDetail {
   delivery_notes: string | null;
   customer_notes: string | null;
   internal_notes: string | null;
+  price_review_status: string;
+  original_total: number | null;
+  price_topup_amount: number;
+  revised_total: number | null;
   source_channel: string;
   created_at: string;
   confirmed_at: string | null;
@@ -26,6 +30,15 @@ interface OrderDetail {
   dispatched_at: string | null;
   delivered_at: string | null;
   cancelled_at: string | null;
+  delivery_resolution: string | null;
+  delivery_retry_after: string | null;
+  parts_custody: string | null;
+  settlement_status: string | null;
+  settlement_fault: string | null;
+  parts_recovery_rate: number | null;
+  return_handling_fee: number | null;
+  settlement_refund_amount: number | null;
+  settlement_completed_at: string | null;
   promised_delivery_minutes: number | null;
   actual_delivery_minutes: number | null;
   rating: number | null;
@@ -35,6 +48,9 @@ interface OrderDetail {
     quantity: number;
     vendor_price: number | null;
     selling_price: number;
+    expected_vendor_price: number | null;
+    max_vendor_price: number | null;
+    price_review_status: string | null;
     is_found: boolean;
     is_unavailable: boolean;
     unavailable_reason: string | null;
@@ -63,9 +79,13 @@ interface OrderDetail {
     eta_minutes: number | null;
   } | null;
   deliveryAttempts: Array<{
+    id: string;
     attempt_number: number;
     status: string;
     failure_reason: string | null;
+    notes: string | null;
+    photo_url: string | null;
+    call_attempts_made: number | null;
     attempted_at: string;
   }>;
   paymentEvents: Array<{
@@ -79,10 +99,45 @@ interface OrderDetail {
 
 export function useAdminOrderDetail(orderId: string | null) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(Boolean(orderId));
+  const [prevOrderId, setPrevOrderId] = useState(orderId);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchOrder = useCallback(async () => {
+  if (orderId !== prevOrderId) {
+    setPrevOrderId(orderId);
+    setIsLoading(Boolean(orderId));
+    if (!orderId) {
+      setOrder(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    let cancelled = false;
+
+    async function loadOrder() {
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setOrder(data);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadOrder();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId]);
+
+  const refresh = useCallback(async () => {
     if (!orderId) return;
     setIsLoading(true);
     try {
@@ -96,10 +151,6 @@ export function useAdminOrderDetail(orderId: string | null) {
     }
   }, [orderId]);
 
-  useEffect(() => {
-    fetchOrder();
-  }, [fetchOrder]);
-
   const reassign = async (role: 'runner' | 'rider', assigneeId: string) => {
     if (!orderId) return false;
     setActionLoading(true);
@@ -110,7 +161,7 @@ export function useAdminOrderDetail(orderId: string | null) {
         body: JSON.stringify({ role, assigneeId }),
       });
       if (res.ok) {
-        await fetchOrder();
+        await refresh();
         return true;
       }
       return false;
@@ -129,7 +180,7 @@ export function useAdminOrderDetail(orderId: string | null) {
         body: JSON.stringify({ reason }),
       });
       if (res.ok) {
-        await fetchOrder();
+        await refresh();
         return true;
       }
       return false;
@@ -146,7 +197,7 @@ export function useAdminOrderDetail(orderId: string | null) {
         method: 'POST',
       });
       if (res.ok) {
-        await fetchOrder();
+        await refresh();
         return true;
       }
       return false;
@@ -155,5 +206,37 @@ export function useAdminOrderDetail(orderId: string | null) {
     }
   };
 
-  return { order, isLoading, actionLoading, reassign, cancel, refund, refresh: fetchOrder };
+  const resolvePriceReview = async (
+    itemId: string,
+    action: 'send_to_customer' | 'reject_item',
+    notes?: string
+  ) => {
+    if (!orderId) return false;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/price-review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, action, notes }),
+      });
+      if (res.ok) {
+        await refresh();
+        return true;
+      }
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return {
+    order,
+    isLoading,
+    actionLoading,
+    reassign,
+    cancel,
+    refund,
+    resolvePriceReview,
+    refresh,
+  };
 }

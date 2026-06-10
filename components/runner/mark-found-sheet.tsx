@@ -8,10 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 
+import { formatCurrency } from '@/lib/utils/format';
+
 interface MarkFoundSheetProps {
   isOpen: boolean;
   onClose: () => void;
   itemDescription: string;
+  targetVendorPrice?: number | null;
+  customerUnitCap?: number | null;
   onSubmit: (data: { vendorPrice: number; qcImageUrl: string }) => Promise<void>;
 }
 
@@ -19,10 +23,17 @@ interface FormValues {
   vendorPrice: string;
 }
 
+function buildQcPhotoFileName(originalName: string): string {
+  const extension = originalName.split('.').pop() ?? 'jpg';
+  return `qc-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+}
+
 export function MarkFoundSheet({
   isOpen,
   onClose,
   itemDescription,
+  targetVendorPrice,
+  customerUnitCap,
   onSubmit,
 }: MarkFoundSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,13 +72,15 @@ export function MarkFoundSheet({
     try {
       // Upload photo to Supabase Storage
       const supabase = createClient();
-      const fileName = `qc-${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split('.').pop()}`;
+      const fileName = buildQcPhotoFileName(photoFile.name);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('qc-photos')
         .upload(fileName, photoFile);
 
-      if (uploadError) throw new Error('Failed to upload photo');
+      if (uploadError) {
+        throw new Error(uploadError.message || 'Failed to upload photo');
+      }
 
       const { data: urlData } = supabase.storage
         .from('qc-photos')
@@ -104,6 +117,22 @@ export function MarkFoundSheet({
     <BottomSheet isOpen={isOpen} onClose={handleClose} title="Mark as Found">
       <p className="mb-4 text-sm text-slate-600">{itemDescription}</p>
 
+      {targetVendorPrice != null && (
+        <div className="mb-4 rounded-button bg-primary/5 px-3 py-2 text-sm text-slate-700">
+          <p>
+            Target:{' '}
+            <span className="font-semibold text-success">
+              {formatCurrency(targetVendorPrice)}
+            </span>{' '}
+            per unit — negotiate at or below if you can.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Paying above target triggers admin review and customer approval for the
+            difference.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         <Input
           label="Vendor Price (₦)"
@@ -113,7 +142,16 @@ export function MarkFoundSheet({
           error={errors.vendorPrice?.message}
           {...register('vendorPrice', {
             required: 'Price is required',
-            validate: (v) => parseFloat(v) > 0 || 'Price must be greater than 0',
+            validate: (v) => {
+              const price = parseFloat(v);
+              if (Number.isNaN(price) || price <= 0) {
+                return 'Price must be greater than 0';
+              }
+              if (customerUnitCap != null && price > customerUnitCap) {
+                return `Price cannot exceed ${formatCurrency(customerUnitCap)} (customer part price)`;
+              }
+              return true;
+            },
           })}
         />
 

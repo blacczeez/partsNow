@@ -52,3 +52,11 @@ export function calculatePricing(
 export function isCodAllowed(total: number): boolean {
   return config.payments.codEnabled && total <= config.payments.codMaxOrderValue;
 }
+
+export function isCodAllowedForCustomer(
+  total: number,
+  profile?: Record<string, unknown> | null
+): boolean {
+  if (profile?.cod_disabled === true) return false;
+  return isCodAllowed(total);
+}

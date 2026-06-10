@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { config } from '@/lib/config';
 
 export async function assignRunner(
   orderId: string,
   clusterId: string
 ): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Find eligible runners:
   // - Same cluster
@@ -23,7 +23,7 @@ export async function assignRunner(
 
   if (!activeShifts || activeShifts.length === 0) return null;
 
-  const runnerIds = activeShifts.map((s) => s.runner_id);
+  const runnerIds = activeShifts.map((s: { runner_id: string }) => s.runner_id);
 
   // Get runners who are active users
   const { data: runners } = await supabase
@@ -35,7 +35,7 @@ export async function assignRunner(
 
   if (!runners || runners.length === 0) return null;
 
-  const activeRunnerIds = runners.map((r) => r.id);
+  const activeRunnerIds = runners.map((r: { id: string }) => r.id);
 
   // Get runners with sufficient float
   const { data: floats } = await supabase
@@ -46,7 +46,20 @@ export async function assignRunner(
 
   if (!floats || floats.length === 0) return null;
 
-  const fundedRunnerIds = floats.map((f) => f.runner_id);
+  const fundedRunnerIds: string[] = floats.map(
+    (f: { runner_id: string }) => f.runner_id
+  );
+
+  // Skip if this order already has an active runner assignment
+  const { data: existingAssignment } = await supabase
+    .from('order_assignments')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('role', 'runner')
+    .in('status', ['assigned', 'accepted', 'in_progress'])
+    .maybeSingle();
+
+  if (existingAssignment) return null;
 
   // Count active assignments per runner
   const { data: assignments } = await supabase
@@ -56,13 +69,12 @@ export async function assignRunner(
     .eq('role', 'runner')
     .in('status', ['assigned', 'accepted', 'in_progress']);
 
-  // Count assignments per runner
   const assignmentCounts: Record<string, number> = {};
   for (const id of fundedRunnerIds) {
     assignmentCounts[id] = 0;
   }
   if (assignments) {
-    for (const a of assignments) {
+    for (const a of (assignments ?? []) as { assignee_id: string }[]) {
       assignmentCounts[a.assignee_id] = (assignmentCounts[a.assignee_id] || 0) + 1;
     }
   }
@@ -93,14 +105,51 @@ export async function assignRunner(
     return null;
   }
 
-  return assignment.id;
+  return assignment.id as string;
+}
+
+/** Assign confirmed orders in a cluster that have no active runner yet. */
+export async function assignUnassignedOrdersInCluster(
+  clusterId: string
+): Promise<number> {
+  const supabase = createServiceClient();
+
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('cluster_id', clusterId)
+    .eq('status', 'confirmed')
+    .order('created_at', { ascending: true });
+
+  if (!orders?.length) return 0;
+
+  const orderIds = orders.map((o: { id: string }) => o.id);
+  const { data: activeAssignments } = await supabase
+    .from('order_assignments')
+    .select('order_id')
+    .in('order_id', orderIds)
+    .eq('role', 'runner')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  const assignedOrderIds = new Set(
+    (activeAssignments ?? []).map((a: { order_id: string }) => a.order_id)
+  );
+
+  let assignedCount = 0;
+  for (const order of orders as { id: string }[]) {
+    if (assignedOrderIds.has(order.id)) continue;
+    const assignmentId = await assignRunner(order.id, clusterId);
+    if (assignmentId) assignedCount++;
+  }
+
+  return assignedCount;
 }
 
 export async function assignRider(
   orderId: string,
   clusterId: string
 ): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Find active riders in this cluster
   const { data: riders } = await supabase
@@ -112,7 +161,7 @@ export async function assignRider(
 
   if (!riders || riders.length === 0) return null;
 
-  const riderIds = riders.map((r) => r.id);
+  const riderIds: string[] = riders.map((r: { id: string }) => r.id);
 
   // Count active assignments per rider
   const { data: assignments } = await supabase
@@ -127,7 +176,7 @@ export async function assignRider(
     assignmentCounts[id] = 0;
   }
   if (assignments) {
-    for (const a of assignments) {
+    for (const a of (assignments ?? []) as { assignee_id: string }[]) {
       assignmentCounts[a.assignee_id] = (assignmentCounts[a.assignee_id] || 0) + 1;
     }
   }
@@ -158,5 +207,5 @@ export async function assignRider(
     return null;
   }
 
-  return assignment.id;
+  return assignment.id as string;
 }

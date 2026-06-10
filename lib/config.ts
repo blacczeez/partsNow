@@ -84,13 +84,15 @@ export const config = {
     minFloatToClockIn: getEnvNumber('RUNNER_MIN_FLOAT_TO_CLOCK_IN', 50000),
     autoReassignEnabled: getEnvBoolean('RUNNER_AUTO_REASSIGN_ENABLED', true),
     commissionPerOrder: getEnvNumber('RUNNER_COMMISSION_PER_ORDER', 600),
+    clockInRadiusMeters: getEnvNumber('CLOCK_IN_RADIUS_METERS', 500),
+    /** When true, skip GPS distance check on shift start (local dev only). */
+    skipClockInGeoCheck: getEnvBoolean('RUNNER_SKIP_CLOCK_IN_GEO_CHECK', false),
   },
 
   sourcing: {
     timeoutMinutes: getEnvNumber('SOURCING_TIMEOUT_MINUTES', 45),
     slaMinutes: getEnvNumber('SOURCING_SLA_MINUTES', 30),
     requireQcPhoto: getEnvBoolean('REQUIRE_QC_PHOTO', true),
-    priceTolerancePercentage: getEnvNumber('VENDOR_PRICE_TOLERANCE_PERCENTAGE', 10),
   },
 
   dispatch: {
@@ -102,6 +104,19 @@ export const config = {
     highValueThreshold: getEnvNumber('HIGH_VALUE_ORDER_THRESHOLD', 100000),
     highValueRequiresPhoto: getEnvBoolean('HIGH_VALUE_REQUIRES_PHOTO_CONFIRMATION', true),
     riderMaxConcurrentDeliveries: getEnvNumber('RIDER_MAX_CONCURRENT_DELIVERIES', 3),
+    freeRescheduleWindowHours: getEnvNumber('FREE_RESCHEDULE_WINDOW_HOURS', 24),
+  },
+
+  settlement: {
+    returnHandlingFeeFlat: getEnvNumber('RETURN_HANDLING_FEE_FLAT', 2000),
+    returnHandlingPartsPercentage: getEnvNumber('RETURN_HANDLING_PARTS_PERCENTAGE', 10),
+    returnHandlingFeeMin: getEnvNumber('RETURN_HANDLING_FEE_MIN', 2000),
+    returnHandlingFeeMax: getEnvNumber('RETURN_HANDLING_FEE_MAX', 15000),
+    partsRecoveryRateDefault: getEnvNumber('PARTS_RECOVERY_RATE_DEFAULT', 0),
+    waiveReturnHandlingFirstOrder: getEnvBoolean('RETURN_HANDLING_WAIVE_FIRST_ORDER', true),
+    waiveReturnHandlingPartnerTier: getEnvBoolean('RETURN_HANDLING_WAIVE_TIER_PARTNER', true),
+    requiresPartsAtHub: getEnvBoolean('SETTLEMENT_REQUIRES_PARTS_AT_HUB', true),
+    highValueManualSettlement: getEnvNumber('HIGH_VALUE_MANUAL_SETTLEMENT', 100000),
   },
 
   vendor: {

@@ -9,6 +9,7 @@ interface DashboardStats {
   totalActive: number;
   activeByStatus: Record<string, number>;
   slaBreachCount: number;
+  priceReviewPendingCount: number;
   slaBreaches: Array<{
     id: string;
     order_number: string;

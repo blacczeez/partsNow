@@ -13,12 +13,19 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { OrderTimeline } from '@/components/orders/order-timeline';
 import { PricingSummary } from '@/components/orders/pricing-summary';
+import { PriceChangeBanner } from '@/components/orders/price-change-notice';
 import { RatingForm } from '@/components/orders/rating-form';
 import { useOrder } from '@/lib/hooks/use-order';
-import { useRealtimeOrder } from '@/lib/hooks/use-realtime-order';
+import { useUser } from '@/lib/hooks/use-user';
 import { OrderStatusLive } from '@/components/tracking/order-status-live';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import {
+  catalogLineTotal,
+  catalogUnitPrice,
+} from '@/lib/utils/order-pricing-display';
 import { toast } from '@/components/ui/toast';
+import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
+import { DeliverySettlementSummary } from '@/components/orders/delivery-settlement-summary';
 import type { OrderStatus } from '@/lib/types/database';
 
 function OrderDetailContent({ orderId }: { orderId: string }) {
@@ -26,20 +33,29 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
   const router = useRouter();
   const reference = searchParams.get('reference');
   const { order, isLoading, error, refresh } = useOrder(orderId);
-  const { order: realtimeOrder, isConnected } = useRealtimeOrder(orderId);
+  const { wallet, refresh: refreshUser } = useUser();
+  const fetchedStatus = order?.status as OrderStatus | undefined;
+  const [realtimeStatus, setRealtimeStatus] = useState<OrderStatus | null>(null);
+  const [prevFetchedStatus, setPrevFetchedStatus] = useState<OrderStatus | undefined>();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [priceActionLoading, setPriceActionLoading] = useState(false);
 
-  // Apply realtime status updates
-  const currentStatus = (realtimeOrder?.status ?? order?.status) as OrderStatus | undefined;
+  if (fetchedStatus !== prevFetchedStatus) {
+    setPrevFetchedStatus(fetchedStatus);
+    setRealtimeStatus(null);
+  }
 
-  // Refresh full order data when status changes via realtime
   useEffect(() => {
-    if (realtimeOrder?.status && order?.status && realtimeOrder.status !== order.status) {
+    if (realtimeStatus && fetchedStatus && realtimeStatus !== fetchedStatus) {
       refresh();
     }
-  }, [realtimeOrder?.status, order?.status, refresh]);
+  }, [realtimeStatus, fetchedStatus, refresh]);
+
+  function handleLiveStatusChange(status: OrderStatus) {
+    setRealtimeStatus(status);
+  }
 
   // Handle Paystack return for card payments
   useEffect(() => {
@@ -50,7 +66,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       try {
         // The webhook should handle this, but we also poll
         await new Promise((r) => setTimeout(r, 2000));
-        refresh();
+        await Promise.all([refresh(), refreshUser()]);
         toast('success', 'Payment received!');
       } finally {
         setVerifying(false);
@@ -59,7 +75,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
     }
 
     verifyPayment();
-  }, [reference, orderId, refresh]);
+  }, [reference, orderId, refresh, refreshUser]);
 
   async function handleCancel() {
     setIsCancelling(true);
@@ -97,6 +113,57 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
     refresh();
   }
 
+  async function handleAcceptPriceChange() {
+    setPriceActionLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/price-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'accept' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to accept price update');
+
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
+
+      toast('success', 'Price update accepted — your order will continue');
+      refresh();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to accept');
+    } finally {
+      setPriceActionLoading(false);
+    }
+  }
+
+  async function handleDiscardPriceChange() {
+    if (
+      !window.confirm(
+        'Cancel this order and receive a full refund to your wallet?'
+      )
+    ) {
+      return;
+    }
+    setPriceActionLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/price-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'discard' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to cancel order');
+      toast('success', 'Order cancelled — full refund credited to your wallet');
+      refresh();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to cancel');
+    } finally {
+      setPriceActionLoading(false);
+    }
+  }
+
   if (isLoading || verifying) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -117,14 +184,23 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
     );
   }
 
-  const liveStatus = currentStatus ?? order.status;
-  const canCancel = ['pending', 'confirmed'].includes(liveStatus);
-  const canRate = liveStatus === 'delivered' && !order.rating;
+  const displayStatus = (realtimeStatus ?? fetchedStatus) as OrderStatus;
+  const canCancel = ['pending', 'confirmed'].includes(displayStatus);
+  const canRate = displayStatus === 'delivered' && !order.rating;
+  const isDeliveryTerminal = ['failed', 'rejected'].includes(displayStatus);
+  const latestAttempt = (
+    order as {
+      delivery_attempts?: Array<{
+        failure_reason: string | null;
+        notes: string | null;
+      }>;
+    }
+  ).delivery_attempts?.[0];
 
   return (
     <div>
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:top-[6.5rem]">
         <Link href="/orders" className="rounded-button p-1 hover:bg-slate-100">
           <ArrowLeft className="h-5 w-5 text-slate-600" />
         </Link>
@@ -134,14 +210,74 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
         <OrderStatusLive
           orderId={orderId}
           initialStatus={order.status as OrderStatus}
+          onStatusChange={handleLiveStatusChange}
         />
       </div>
 
       <div className="space-y-4 p-4">
+        {isDeliveryTerminal && (
+          <div className="rounded-card border border-red-200 bg-red-50 p-4">
+            <h3 className="text-sm font-semibold text-red-900">
+              {displayStatus === 'rejected'
+                ? 'Delivery was refused'
+                : 'Delivery could not be completed'}
+            </h3>
+            <p className="mt-1 text-sm text-red-800">
+              {latestAttempt?.failure_reason
+                ? formatDeliveryFailureReason(latestAttempt.failure_reason)
+                : 'Our team has been notified.'}
+            </p>
+            {latestAttempt?.notes && (
+              <p className="mt-2 text-xs text-red-700">{latestAttempt.notes}</p>
+            )}
+          </div>
+        )}
+
+        <DeliverySettlementSummary
+          settlementStatus={
+            (order as { settlement_status?: string | null }).settlement_status ?? null
+          }
+          settlementRefundAmount={
+            (order as { settlement_refund_amount?: number | null }).settlement_refund_amount ??
+            null
+          }
+          settlementBreakdown={
+            (order as { settlement_breakdown?: Record<string, unknown> | null })
+              .settlement_breakdown ?? null
+          }
+          paymentStatus={order.payment_status}
+        />
+
+        {(order as { delivery_resolution?: string }).delivery_resolution ===
+          'admin_review' && (
+          <div className="rounded-card border border-amber-200 bg-amber-50 p-4">
+            <h3 className="text-sm font-semibold text-amber-900">
+              Delivery issue under review
+            </h3>
+            <p className="mt-1 text-sm text-amber-800">
+              Our team is reviewing a delivery problem and will contact you shortly.
+            </p>
+          </div>
+        )}
+
+        {order.price_review_status === 'awaiting_customer' && (
+          <PriceChangeBanner
+            orderNumber={order.order_number}
+            originalTotal={order.original_total ?? order.total}
+            revisedTotal={order.revised_total ?? order.total}
+            topUpAmount={order.price_topup_amount ?? 0}
+            paymentMethod={order.payment_method}
+            walletBalance={wallet?.balance}
+            isSubmitting={priceActionLoading}
+            onAccept={handleAcceptPriceChange}
+            onDiscard={handleDiscardPriceChange}
+          />
+        )}
+
         {/* Timeline */}
         <div className="rounded-card border border-slate-200 bg-white p-4">
           <OrderTimeline
-            currentStatus={liveStatus}
+            currentStatus={displayStatus}
             timestamps={{
               created_at: order.created_at,
               confirmed_at: order.confirmed_at,
@@ -167,10 +303,18 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
                   <p className="text-sm font-medium text-slate-900">
                     {item.description}
                   </p>
-                  <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
+                  <p className="text-xs text-slate-500">
+                    Qty: {item.quantity} ·{' '}
+                    {formatCurrency(
+                      catalogUnitPrice(item, order.subtotal, order.markup_amount)
+                    )}{' '}
+                    each
+                  </p>
                 </div>
                 <p className="text-sm font-medium text-slate-900">
-                  {formatCurrency(item.selling_price * item.quantity)}
+                  {formatCurrency(
+                    catalogLineTotal(item, order.subtotal, order.markup_amount)
+                  )}
                 </p>
               </div>
             ))}
@@ -186,7 +330,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
               markupAmount: order.markup_amount,
               deliveryFee: order.delivery_fee,
               discountAmount: order.discount_amount,
-              total: order.total,
+              total: order.revised_total ?? order.total,
             }}
           />
           <div className="mt-3 border-t border-slate-100 pt-2">

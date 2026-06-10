@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils/cn';
 const navItems = [
   { href: '/rider/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/rider/history', icon: Clock, label: 'History' },
-  { href: '/account', icon: User, label: 'Account' },
+  { href: '/rider/account', icon: User, label: 'Account' },
 ];
 
 export function RiderBottomNav() {
@@ -20,7 +20,8 @@ export function RiderBottomNav() {
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href ||
-            (href === '/rider/dashboard' && pathname.startsWith('/rider/delivery/'));
+            (href === '/rider/dashboard' && pathname.startsWith('/rider/delivery/')) ||
+            (href === '/rider/account' && pathname.startsWith('/rider/account'));
 
           return (
             <Link

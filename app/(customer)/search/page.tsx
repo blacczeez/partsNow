@@ -62,7 +62,7 @@ function SearchContent() {
   return (
     <div>
       {/* Search Header */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 pb-3 pt-4">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 pb-3 pt-4 lg:top-[6.5rem]">
         <SearchInput
           value={query}
           onChange={setQuery}

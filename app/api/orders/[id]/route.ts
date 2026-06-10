@@ -26,5 +26,17 @@ export async function GET(
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ order });
+  const { data: deliveryAttempts } = await supabase
+    .from('delivery_attempts')
+    .select('attempt_number, status, failure_reason, notes, attempted_at')
+    .eq('order_id', id)
+    .order('attempt_number', { ascending: false })
+    .limit(5);
+
+  return NextResponse.json({
+    order: {
+      ...order,
+      delivery_attempts: deliveryAttempts ?? [],
+    },
+  });
 }

@@ -60,6 +60,7 @@ export default function RunnerDashboardPage() {
       <ShiftStatusCard
         shift={shift}
         float={float}
+        activeOrderCount={orders.length}
         isStarting={isStarting}
         onStartShift={handleStartShift}
       />

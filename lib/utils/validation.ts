@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+/** UUID-shaped id (allows dev seed ids that fail z.string().uuid()). */
+export const uuidIdSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    'Invalid UUID'
+  );
+
 export const phoneSchema = z
   .string()
   .min(10, 'Phone number is too short')

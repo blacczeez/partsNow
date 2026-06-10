@@ -8,6 +8,7 @@ import {
   Wallet,
   Settings,
   LayoutDashboard,
+  UserCircle,
 } from 'lucide-react';
 
 const sidebarItems = [
@@ -50,6 +51,15 @@ export default function AdminLayout({
               </li>
             ))}
           </ul>
+          <div className="mt-8 border-t border-slate-200 pt-4">
+            <Link
+              href="/admin/account"
+              className="flex items-center gap-3 rounded-button px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            >
+              <UserCircle className="h-5 w-5" />
+              Account &amp; log out
+            </Link>
+          </div>
         </nav>
       </aside>
       <main className="flex-1 overflow-auto">{children}</main>

@@ -3,6 +3,7 @@
 import { CheckCircle, XCircle, Camera, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils/format';
+import { runnerLineExpectedBudget } from '@/lib/utils/order-pricing-display';
 import { cn } from '@/lib/utils/cn';
 import type { OrderItem } from '@/lib/types/database';
 
@@ -36,9 +37,15 @@ export function OrderItemCard({
           {item.oem_code && (
             <p className="mt-0.5 text-xs text-slate-500">OEM: {item.oem_code}</p>
           )}
-          <p className="mt-1 text-sm text-slate-600">
-            Qty: {item.quantity} &middot; Target: {formatCurrency(item.selling_price)}
-          </p>
+          <p className="mt-1 text-sm text-slate-600">Qty: {item.quantity}</p>
+          {!isResolved && (
+            <p className="mt-1 text-sm font-medium text-success">
+              Target: {formatCurrency(runnerLineExpectedBudget(item))}
+              <span className="ml-1 font-normal text-slate-500">
+                (negotiate at or below — above triggers price review)
+              </span>
+            </p>
+          )}
         </div>
 
         {item.is_found && (
@@ -66,6 +73,26 @@ export function OrderItemCard({
           <p className="text-sm text-slate-600">
             Vendor price: {item.vendor_price != null ? formatCurrency(item.vendor_price) : '---'}
           </p>
+          {item.price_review_status === 'pending' && (
+            <p className="text-xs font-medium text-warning">
+              Submitted above target — waiting for admin review
+            </p>
+          )}
+          {item.price_review_status === 'awaiting_customer' && (
+            <p className="text-xs font-medium text-warning">
+              Admin notified customer — waiting for accept or cancel
+            </p>
+          )}
+          {item.price_review_status === 'customer_approved' && (
+            <p className="text-xs font-medium text-success">
+              Customer accepted — OK to hand off
+            </p>
+          )}
+          {item.price_review_status === 'rejected' && (
+            <p className="text-xs font-medium text-error">
+              Price rejected by admin — check with ops
+            </p>
+          )}
           {item.qc_image_url && (
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
               <Camera className="h-3.5 w-3.5" />

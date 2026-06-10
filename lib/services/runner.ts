@@ -1,7 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { config } from '@/lib/config';
+import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
+import {
+  handleVendorPriceEntry,
+  assertNoPendingPriceReview,
+  type PriceEscalationResult,
+} from './price-review';
 import { calculateDistance } from './orders';
-import { assignRunner, assignRider } from './dispatch';
+import { assignRunner, assignRider, assignUnassignedOrdersInCluster } from './dispatch';
 import {
   notifyOrderSourcing,
   notifyOrderPicked,
@@ -84,7 +90,7 @@ export async function startShift(
     .eq('id', runner.cluster_id)
     .single();
 
-  if (cluster) {
+  if (cluster && !config.runner.skipClockInGeoCheck) {
     const distanceKm = calculateDistance(
       latitude,
       longitude,
@@ -92,9 +98,12 @@ export async function startShift(
       cluster.longitude
     );
     const distanceMeters = distanceKm * 1000;
+    const maxMeters = config.runner.clockInRadiusMeters;
 
-    if (distanceMeters > 500) {
-      throw new Error('You must be within 500m of the market to start your shift');
+    if (distanceMeters > maxMeters) {
+      throw new Error(
+        `You must be within ${maxMeters}m of the market to start your shift`
+      );
     }
   }
 
@@ -110,6 +119,13 @@ export async function startShift(
     .single();
 
   if (error) throw new Error(error.message);
+
+  try {
+    await assignUnassignedOrdersInCluster(runner.cluster_id);
+  } catch {
+    // Backlog assignment should not block shift start
+  }
+
   return shift as RunnerShift;
 }
 
@@ -166,6 +182,10 @@ export interface RunnerOrderSummary {
   item_count: number;
   assignment_status: string;
   assigned_at: string;
+  price_review_status: string;
+  price_topup_amount: number;
+  original_total: number | null;
+  revised_total: number | null;
   order_items: OrderItem[];
 }
 
@@ -186,7 +206,9 @@ export async function getRunnerOrders(runnerId: string): Promise<RunnerOrderSumm
 
   const { data: orders, error: ordersError } = await supabase
     .from('orders')
-    .select('id, order_number, status, total, delivery_address, created_at, order_items(*)')
+    .select(
+      'id, order_number, status, total, delivery_address, created_at, price_review_status, price_topup_amount, original_total, revised_total, order_items(*)'
+    )
     .in('id', orderIds)
     .order('created_at', { ascending: false });
 
@@ -218,14 +240,17 @@ export async function getRunnerOrderDetail(
 ): Promise<RunnerOrderDetail> {
   const supabase = await createClient();
 
-  // Verify assignment exists
+  // Include failed assignments so runner can see cancellation after price decline
   const { data: assignment, error: assignError } = await supabase
     .from('order_assignments')
     .select('*')
     .eq('assignee_id', runnerId)
     .eq('order_id', orderId)
     .eq('role', 'runner')
-    .single();
+    .in('status', ['assigned', 'accepted', 'in_progress', 'failed'])
+    .order('assigned_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (assignError || !assignment) {
     throw new Error('Order not assigned to you');
@@ -292,23 +317,23 @@ export async function acceptOrder(runnerId: string, orderId: string): Promise<vo
     throw new Error('Insufficient float to accept order');
   }
 
-  // Accept assignment
-  await supabase
+  const { error: acceptAssignmentError } = await supabase
     .from('order_assignments')
     .update({
       status: 'accepted',
       accepted_at: new Date().toISOString(),
     })
     .eq('id', assignment.id);
+  throwIfSupabaseError(acceptAssignmentError, 'Failed to accept assignment');
 
-  // Update order status to sourcing
-  await supabase
+  const { error: sourcingError } = await supabase
     .from('orders')
     .update({
       status: 'sourcing',
       sourcing_started_at: new Date().toISOString(),
     })
     .eq('id', orderId);
+  throwIfSupabaseError(sourcingError, 'Failed to update order to sourcing');
 
   // Fire-and-forget notification
   notifyOrderSourcing(orderId).catch(() => {});
@@ -360,7 +385,7 @@ export async function markItemFound(
   orderId: string,
   itemId: string,
   data: { vendorId?: string; vendorPrice: number; qcImageUrl: string }
-): Promise<void> {
+): Promise<PriceEscalationResult> {
   const supabase = await createClient();
 
   // Verify assignment
@@ -375,18 +400,23 @@ export async function markItemFound(
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
 
-  // Get item to check price tolerance
+  // Get item to check vendor price against target budget
   const { data: item } = await supabase
     .from('order_items')
-    .select('selling_price')
+    .select('selling_price, description')
     .eq('id', itemId)
     .eq('order_id', orderId)
     .single();
 
   if (!item) throw new Error('Item not found');
 
-  // Update item
-  await supabase
+  if (data.vendorPrice > item.selling_price) {
+    throw new Error(
+      `Vendor price cannot exceed ${item.selling_price} (customer part price per unit)`
+    );
+  }
+
+  const { error: updateItemError } = await supabase
     .from('order_items')
     .update({
       vendor_id: data.vendorId || null,
@@ -396,38 +426,28 @@ export async function markItemFound(
       is_unavailable: false,
     })
     .eq('id', itemId);
+  throwIfSupabaseError(updateItemError, 'Failed to mark item as found');
 
-  // Check price tolerance
-  const tolerance = config.sourcing.priceTolerancePercentage / 100;
-  const expectedVendorPrice = item.selling_price / (1 + config.business.defaultMarkupPercentage / 100);
+  const escalation = await handleVendorPriceEntry(supabase, {
+    orderId,
+    itemId,
+    sellingPrice: item.selling_price,
+    vendorPrice: data.vendorPrice,
+    vendorId: data.vendorId,
+    description: item.description,
+  });
 
-  if (data.vendorPrice > expectedVendorPrice * (1 + tolerance)) {
-    // Flag price escalation in internal notes
-    const { data: order } = await supabase
-      .from('orders')
-      .select('internal_notes')
-      .eq('id', orderId)
-      .single();
-
-    const existingNotes = order?.internal_notes || '';
-    const priceNote = `[PRICE ESCALATION] Item ${itemId}: expected ~₦${Math.round(expectedVendorPrice)}, actual ₦${data.vendorPrice}`;
-    const updatedNotes = existingNotes ? `${existingNotes}\n${priceNote}` : priceNote;
-
-    await supabase
-      .from('orders')
-      .update({ internal_notes: updatedNotes })
-      .eq('id', orderId);
-  }
-
-  // Update assignment to in_progress if it was just accepted
   if (assignment.status === 'accepted') {
-    await supabase
+    const { error: progressError } = await supabase
       .from('order_assignments')
       .update({ status: 'in_progress' })
       .eq('assignee_id', runnerId)
       .eq('order_id', orderId)
       .eq('role', 'runner');
+    throwIfSupabaseError(progressError, 'Failed to update assignment progress');
   }
+
+  return escalation;
 }
 
 export async function markItemUnavailable(
@@ -549,6 +569,12 @@ export async function completeOrder(runnerId: string, orderId: string): Promise<
     throw new Error(`${unresolvedItems.length} item(s) still need to be resolved`);
   }
 
+  await assertNoPendingPriceReview(
+    supabase,
+    orderId,
+    'Cannot complete order'
+  );
+
   // Calculate total vendor cost for found items
   const totalVendorCost = items
     .filter((i) => i.is_found && i.vendor_price)
@@ -582,14 +608,14 @@ export async function completeOrder(runnerId: string, orderId: string): Promise<
     })
     .eq('id', assignment.id);
 
-  // Update order status to picked
-  await supabase
+  const { error: pickedError } = await supabase
     .from('orders')
     .update({
       status: 'picked',
       picked_at: new Date().toISOString(),
     })
     .eq('id', orderId);
+  throwIfSupabaseError(pickedError, 'Failed to update order to picked');
 
   // Fire-and-forget notification
   notifyOrderPicked(orderId).catch(() => {});

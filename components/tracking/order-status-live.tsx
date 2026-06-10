@@ -1,8 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRealtimeOrder } from '@/lib/hooks/use-realtime-order';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { ORDER_STATUS_CONFIG } from '@/lib/constants/order-status';
 import { cn } from '@/lib/utils/cn';
 import type { OrderStatus } from '@/lib/types/database';
 
@@ -19,15 +19,16 @@ export function OrderStatusLive({
 }: OrderStatusLiveProps) {
   const { order, isConnected } = useRealtimeOrder(orderId);
 
-  const currentStatus = order?.status ?? initialStatus;
+  const currentStatus = (order?.status ?? initialStatus) as OrderStatus;
   const isActive = !['delivered', 'cancelled', 'rejected', 'failed'].includes(
     currentStatus
   );
 
-  // Notify parent of status changes
-  if (order?.status && order.status !== initialStatus && onStatusChange) {
-    onStatusChange(order.status);
-  }
+  useEffect(() => {
+    if (order?.status && onStatusChange) {
+      onStatusChange(order.status as OrderStatus);
+    }
+  }, [order?.status, onStatusChange]);
 
   return (
     <div className="flex items-center gap-3">

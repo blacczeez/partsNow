@@ -8,7 +8,6 @@ import {
   CheckCircle,
   XCircle,
   MessageSquare,
-  AlertTriangle,
   Phone,
   MapPin,
   Package,
@@ -16,11 +15,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { OrderItemCard } from '@/components/runner/order-item-card';
+import { RunnerPriceStatusBanner } from '@/components/runner/runner-price-status-banner';
 import { MarkFoundSheet } from '@/components/runner/mark-found-sheet';
 import { MarkUnavailableSheet } from '@/components/runner/mark-unavailable-sheet';
 import { ClarificationSheet } from '@/components/runner/clarification-sheet';
 import { useRunnerOrderDetail } from '@/lib/hooks/use-runner-order-detail';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import { runnerSourcingTargetTotal } from '@/lib/utils/order-pricing-display';
+import {
+  getRunnerPriceReviewPhase,
+  runnerPriceReviewBlocksHandoff,
+} from '@/lib/utils/runner-price-review';
 import { toast } from '@/components/ui/toast';
 import Link from 'next/link';
 
@@ -73,11 +78,12 @@ export default function RunnerOrderPage() {
   const isAssigned = order.assignment.status === 'assigned';
   const canAct = ['accepted', 'in_progress'].includes(order.assignment.status);
   const items = order.order_items || [];
+  const sourcingTarget = runnerSourcingTargetTotal(items);
   const unresolvedCount = items.filter((i) => !i.is_found && !i.is_unavailable).length;
   const allResolved = unresolvedCount === 0 && items.length > 0;
-
-  // Check for price escalation warnings
-  const hasEscalation = order.internal_notes?.includes('[PRICE ESCALATION]');
+  const priceReviewPhase = getRunnerPriceReviewPhase(order);
+  const hasPendingPriceReview = runnerPriceReviewBlocksHandoff(priceReviewPhase);
+  const isCancelled = priceReviewPhase === 'cancelled' || order.status === 'cancelled';
 
   const handleAccept = async () => {
     setIsAccepting(true);
@@ -123,8 +129,15 @@ export default function RunnerOrderPage() {
 
   const handleMarkFound = async (data: { vendorPrice: number; qcImageUrl: string }) => {
     if (activeSheet?.type !== 'found') return;
-    await markItemFound(activeSheet.itemId, data);
-    toast('success', 'Item marked as found');
+    const result = await markItemFound(activeSheet.itemId, data);
+    if (result.priceReviewPending) {
+      toast(
+        'warning',
+        'Price above target — admin will notify customer to pay the difference or cancel'
+      );
+    } else {
+      toast('success', 'Item marked as found');
+    }
   };
 
   const handleMarkUnavailable = async (reason: string) => {
@@ -157,15 +170,20 @@ export default function RunnerOrderPage() {
           <h1 className="text-lg font-bold text-slate-900">{order.order_number}</h1>
           <p className="text-sm text-slate-500">{formatRelativeTime(order.created_at)}</p>
         </div>
-        <StatusBadge status={order.status as any} />
+        <StatusBadge status={order.status} />
       </div>
 
       {/* Order Info */}
       <div className="mb-4 space-y-2 rounded-card border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-500">Total</span>
-          <span className="font-semibold text-slate-900">{formatCurrency(order.total)}</span>
+          <span className="text-sm text-slate-500">Target budget</span>
+          <span className="font-semibold text-slate-900">
+            {formatCurrency(sourcingTarget)}
+          </span>
         </div>
+        <p className="text-xs text-slate-500">
+          Negotiate at or below — paying above target triggers admin and customer approval
+        </p>
         <div className="flex items-start gap-1.5 text-sm text-slate-600">
           <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>{order.delivery_address}</span>
@@ -228,11 +246,13 @@ export default function RunnerOrderPage() {
         </div>
       )}
 
-      {/* Price escalation warning */}
-      {hasEscalation && (
-        <div className="mb-4 flex items-center gap-2 rounded-card border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          <span>Price discrepancy flagged for admin review</span>
+      <RunnerPriceStatusBanner order={order} className="mb-4" />
+
+      {isCancelled && (
+        <div className="mb-4">
+          <Button variant="secondary" fullWidth onClick={() => router.push('/runner/dashboard')}>
+            Back to dashboard
+          </Button>
         </div>
       )}
 
@@ -313,19 +333,25 @@ export default function RunnerOrderPage() {
       )}
 
       {/* Complete button */}
-      {canAct && (
-        <div className="fixed bottom-20 left-0 right-0 border-t border-slate-200 bg-white p-4 lg:bottom-0 lg:left-64">
+      {canAct && !isCancelled && (
+        <div className="fixed bottom-20 left-0 right-0 border-t border-slate-200 bg-white p-4 lg:bottom-0 lg:left-0">
           <Button
             fullWidth
             size="lg"
             onClick={handleComplete}
             isLoading={isCompleting}
-            disabled={!allResolved}
+            disabled={!allResolved || hasPendingPriceReview}
           >
             <Package className="mr-2 h-5 w-5" />
-            {allResolved
-              ? 'Complete & Hand to Rider'
-              : `${unresolvedCount} item${unresolvedCount !== 1 ? 's' : ''} remaining`}
+            {hasPendingPriceReview
+              ? priceReviewPhase === 'customer_decision'
+                ? 'Waiting for customer price decision'
+                : 'Waiting for admin price review'
+              : priceReviewPhase === 'approved'
+                ? 'Complete & Hand to Rider'
+                : allResolved
+                  ? 'Complete & Hand to Rider'
+                  : `${unresolvedCount} item${unresolvedCount !== 1 ? 's' : ''} remaining`}
           </Button>
         </div>
       )}
@@ -336,6 +362,16 @@ export default function RunnerOrderPage() {
         onClose={() => setActiveSheet(null)}
         itemDescription={
           activeSheet?.type === 'found' ? activeSheet.itemDescription : ''
+        }
+        targetVendorPrice={
+          activeSheet?.type === 'found'
+            ? items.find((i) => i.id === activeSheet.itemId)?.expected_vendor_price
+            : null
+        }
+        customerUnitCap={
+          activeSheet?.type === 'found'
+            ? items.find((i) => i.id === activeSheet.itemId)?.selling_price
+            : null
         }
         onSubmit={handleMarkFound}
       />

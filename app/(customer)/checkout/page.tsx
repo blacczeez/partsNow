@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
@@ -9,34 +9,36 @@ import { VehicleSelect } from '@/components/forms/vehicle-select';
 import { AddressInput } from '@/components/forms/address-input';
 import { PricingSummary } from '@/components/orders/pricing-summary';
 import { PaymentMethodSelect } from '@/components/orders/payment-method-select';
+import { MarketPriceNotice } from '@/components/orders/price-change-notice';
 import { useCart } from '@/lib/hooks/use-cart';
 import { useUser } from '@/lib/hooks/use-user';
-import { calculatePricing, isCodAllowed } from '@/lib/utils/pricing';
+import { calculatePricing, isCodAllowedForCustomer } from '@/lib/utils/pricing';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
 import type { LoyaltyTier } from '@/lib/types/database';
 
+function getSavedDeliveryAddress(
+  profile: Record<string, unknown> | null | undefined
+): string {
+  const saved = profile?.delivery_address;
+  return typeof saved === 'string' ? saved : '';
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const cart = useCart();
-  const { user, wallet } = useUser();
+  const { user, wallet, refresh } = useUser();
 
   const [vehicleId, setVehicleId] = useState<string | undefined>(cart.vehicleId);
-  const [address, setAddress] = useState('');
+  const savedAddress = getSavedDeliveryAddress(
+    user?.profile as Record<string, unknown> | undefined
+  );
+  const [addressOverride, setAddressOverride] = useState<string | null>(null);
+  const address = addressOverride ?? savedAddress;
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'cod'>('card');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showItems, setShowItems] = useState(false);
-
-  // Load saved address
-  useEffect(() => {
-    if (user) {
-      const saved = (user.profile as Record<string, unknown>)?.delivery_address as string;
-      if (saved && !address) {
-        setAddress(saved);
-      }
-    }
-  }, [user, address]);
 
   // Redirect if cart is empty
   if (cart.items.length === 0) {
@@ -54,7 +56,10 @@ export default function CheckoutPage() {
   const loyaltyTier = (user?.loyalty_tier || 'new') as LoyaltyTier;
   const pricingItems = cart.items.map((i) => ({ price: i.price, quantity: i.quantity }));
   const pricing = calculatePricing(pricingItems, loyaltyTier);
-  const codAllowed = isCodAllowed(pricing.total);
+  const codAllowed = isCodAllowedForCustomer(
+    pricing.total,
+    user?.profile as Record<string, unknown> | undefined
+  );
 
   async function handlePlaceOrder() {
     if (!address || address.length < 10) {
@@ -91,6 +96,7 @@ export default function CheckoutPage() {
       }
 
       cart.clearCart();
+      await refresh();
 
       if (data.paymentUrl) {
         // Card payment — redirect to Paystack
@@ -110,7 +116,7 @@ export default function CheckoutPage() {
   return (
     <div>
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:top-[6.5rem]">
         <Link href="/cart" className="rounded-button p-1 hover:bg-slate-100">
           <ArrowLeft className="h-5 w-5 text-slate-600" />
         </Link>
@@ -118,6 +124,8 @@ export default function CheckoutPage() {
       </div>
 
       <div className="space-y-4 p-4">
+        <MarketPriceNotice />
+
         {/* Vehicle Selection */}
         <div>
           <p className="mb-2 text-sm font-medium text-slate-700">Vehicle</p>
@@ -130,7 +138,7 @@ export default function CheckoutPage() {
         {/* Delivery Address */}
         <AddressInput
           value={address}
-          onChange={setAddress}
+          onChange={setAddressOverride}
           error={address.length > 0 && address.length < 10 ? 'Address is too short' : undefined}
         />
 

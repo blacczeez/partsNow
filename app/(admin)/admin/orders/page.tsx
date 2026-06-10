@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { DataTable } from '@/components/admin/data-table';
 import { FilterBar } from '@/components/admin/filter-bar';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -12,8 +14,15 @@ import { ORDER_STATUSES } from '@/lib/constants/order-status';
 import type { OrderStatus } from '@/lib/types/database';
 
 export default function AdminOrdersPage() {
+  const searchParams = useSearchParams();
   const { orders, pagination, isLoading, filters, setFilters } = useAdminOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('priceReview') === 'pending') {
+      setFilters({ page: 1, priceReview: 'pending' });
+    }
+  }, [searchParams, setFilters]);
 
   const columns = [
     {
@@ -29,7 +38,12 @@ export default function AdminOrdersPage() {
     {
       header: 'Status',
       render: (row: (typeof orders)[0]) => (
-        <StatusBadge status={row.status as OrderStatus} />
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusBadge status={row.status as OrderStatus} />
+          {row.price_review_status === 'pending' && (
+            <Badge variant="warning">Price review</Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -60,6 +74,15 @@ export default function AdminOrdersPage() {
 
   const filterFields = [
     {
+      key: 'priceReview',
+      label: 'Price review',
+      type: 'select' as const,
+      options: [
+        { value: '', label: 'All orders' },
+        { value: 'pending', label: 'Price review pending' },
+      ],
+    },
+    {
       key: 'status',
       label: 'Status',
       type: 'select' as const,
@@ -82,10 +105,15 @@ export default function AdminOrdersPage() {
       <div className="mb-4">
         <FilterBar
           fields={filterFields}
-          values={{ status: filters.status || '', search: filters.search || '' }}
+          values={{
+            priceReview: filters.priceReview || '',
+            status: filters.status || '',
+            search: filters.search || '',
+          }}
           onApply={(vals) =>
             setFilters({
               page: 1,
+              priceReview: vals.priceReview === 'pending' ? 'pending' : undefined,
               status: (vals.status as OrderStatus) || undefined,
               search: vals.search || undefined,
             })

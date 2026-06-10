@@ -1,0 +1,481 @@
+DELIVERY FAILURE SETTLEMENT POLICY
+PartsNow — v1.0 (design)
+Fee name: Return & handling fee
+
+================================================================================
+1. PURPOSE
+================================================================================
+
+This policy defines what money moves when a delivery fails after parts have been
+sourced and handed to a rider. It replaces the idea that "refund" always means
+returning the full order total.
+
+Goals:
+  - Protect margin when the customer (not the platform) caused the failure
+  - Recover real costs: sourcing, dispatch, return trip, hub handling
+  - Keep refunds fair, predictable, and line-item based
+  - Give ops a clear fault model before any settlement runs
+
+Scope:
+  Orders in dispatched or later, where runner handoff has occurred and at least
+  one delivery attempt is logged.
+
+Out of scope:
+  Cancellations before sourcing (pending / confirmed) — separate cancellation
+  policy (typically full refund if paid).
+
+
+================================================================================
+2. DEFINITIONS
+================================================================================
+
+Order components (customer-facing names)
+
+  Internal field          Customer label              Refundable by default?
+  ----------------        --------------              ----------------------
+  subtotal                Parts (market cost)         Partially — if recoverable
+  markup_amount           Service fee                 NO — after sourcing complete
+  delivery_fee            Delivery fee                NO — after delivery attempt
+  return_handling_fee     Return & handling fee       N/A — charged to customer
+                                                      on customer-fault terminal
+                                                      failures
+
+Settlement = the financial close-out of a failed delivery (not necessarily a
+"full refund").
+
+Refund (in product copy) = amount returned to the customer after settlement —
+NOT the original order total unless platform is at fault.
+
+Failure reasons (rider-reported)
+
+  Code                    Label
+  ----                    -----
+  customer_unavailable    Customer unavailable
+  customer_refused        Customer refused delivery
+  wrong_address           Wrong address
+  other                   Other issue
+
+Fault classification
+
+  Every terminal failure gets a fault before settlement:
+
+  Fault               Meaning
+  -----               -------
+  Customer fault      No-show, refused, wrong address they provided, unreachable,
+                      COD not ready
+  Platform fault      Wrong part, damaged part, runner QC fail, ops/rider error,
+                      bad address on our side
+  Shared / unclear    Needs admin review before settlement
+
+Rule: Rider reason alone does NOT determine fault. Ops confirms fault (auto
+rules below are defaults; admin can override).
+
+Lifecycle stages
+
+  1. Retry        — attempts remain; no settlement
+  2. Escalation   — admin review (e.g. wrong address); no auto settlement
+  3. Terminal     — order closed as failed or rejected; settlement runs after
+                    fault + parts custody resolved
+
+
+================================================================================
+3. PRINCIPLES
+================================================================================
+
+  1. Sourcing completed → service fee is earned.
+  2. Delivery attempted → delivery fee is earned.
+  3. Parts are physical inventory — refund depends on recoverability.
+  4. Return & handling fee covers extra cost of failed delivery.
+  5. No automatic full refund on customer-fault failures.
+  6. Platform fault → full refund of everything the customer paid.
+  7. COD orders — no wallet/card refund; settlement may block future COD.
+  8. Transparency — customer sees a settlement breakdown.
+
+
+================================================================================
+4. WHEN SETTLEMENT RUNS (VS RETRY)
+================================================================================
+
+  Situation                              Order state           Settlement?
+  ---------                              -----------           -----------
+  Customer unavailable, attempts < max    dispatched, retry     NO
+  Customer unavailable, max reached       failed                YES (customer fault)
+  Customer refused (with evidence)        rejected              YES (customer fault)
+  Wrong address / other                   admin_review          NO until ops sets fault
+  Ops confirms platform error             failed / cancelled    YES (full refund)
+  Parts confirmed at hub                  custody = at_hub      Required before parts
+                                                                portion settles
+
+Max attempts / wait (existing ops config):
+  - RIDER_MAX_CALL_ATTEMPTS = 2
+  - RIDER_WAIT_TIME_MINUTES = 10 between attempts
+
+
+================================================================================
+5. FAULT MATRIX (DEFAULT RULES)
+================================================================================
+
+  Rider reason                              Default fault    Next step
+  ------------                              -------------    ---------
+  Customer unavailable (after max attempts) Customer         Terminal + settlement
+  Customer unavailable (before max)           —                Retry only
+  Customer refused                          Customer         Terminal + settlement
+  Wrong address                             Unclear          Admin review
+  Other                                     Unclear          Admin review
+
+Admin overrides: Ops can set fault to platform (e.g. rider went to wrong gate).
+
+
+================================================================================
+6. RETURN & HANDLING FEE
+================================================================================
+
+What it is
+
+  A single customer-visible fee for the operational cost of a failed delivery:
+  rider return, hub handling, vendor restocking coordination, and inventory risk.
+
+  NOT the same as service fee or delivery fee — those stay on customer-fault
+  failures.
+
+When it applies
+
+  Charged on customer-fault terminal failures where:
+    - Parts were sourced (picked or later), AND
+    - At least one delivery attempt was logged, AND
+    - Parts require return to hub (always true once handoff occurred)
+
+Waived when:
+    - Fault = platform
+    - First-ever order for account (optional — one waiver per customer lifetime)
+    - Loyalty tier partner (optional — configurable)
+
+Does not apply when:
+    - Order cancelled before sourcing
+    - Retry in progress
+    - Admin review not concluded
+
+How it is calculated (recommended v1)
+
+  return_handling_fee = max(
+    RETURN_HANDLING_FEE_MIN,
+    min(
+      RETURN_HANDLING_FEE_MAX,
+      RETURN_HANDLING_FEE_FLAT + (subtotal × RETURN_HANDLING_PARTS_PERCENTAGE)
+    )
+  )
+
+Suggested defaults (configurable):
+
+  Parameter                         Default    Meaning
+  ---------                         -------    -------
+  RETURN_HANDLING_FEE_FLAT          ₦2,000     Base return trip + hub
+  RETURN_HANDLING_PARTS_PERCENTAGE  10%        Of parts subtotal
+  RETURN_HANDLING_FEE_MIN           ₦2,000     Floor
+  RETURN_HANDLING_FEE_MAX           ₦15,000    Cap
+
+Customer-facing label: always "Return & handling fee".
+
+
+================================================================================
+7. PARTS RECOVERABILITY
+================================================================================
+
+  recoverable_parts = subtotal × parts_recovery_rate
+
+  Parts outcome                         Recovery rate    Who decides
+  -------------                         -------------    -----------
+  Returned to vendor, full credit       100%             Admin
+  Returned, partial vendor credit       50–90%           Admin
+  Cannot return (opened, used, etc.)    0%               Admin
+  Default at terminal (not yet at hub)  0%               System holds settlement
+
+Rule: Customer-fault settlement for the parts portion should not finalize until
+admin marks Parts returned to hub (or sets recovery rate with notes).
+
+
+================================================================================
+8. SETTLEMENT FORMULAS
+================================================================================
+
+Let:
+  T = amount customer paid (revised_total ?? total)
+  S = service fee (markup_amount)
+  D = delivery fee (delivery_fee)
+  P = parts subtotal (subtotal)
+  R = Return & handling fee
+  V = recoverable parts
+
+A. Customer fault (terminal)
+
+  amount_returned_to_customer = max(0, V − R)
+  amount_retained_by_platform = T − amount_returned_to_customer
+
+  Typically retains: service fee + delivery fee + unrecoverable parts +
+  Return & handling fee (up to recoverable parts).
+
+  If V = 0: refund = ₦0 (customer gets no refund on prepaid).
+
+  If prepaid and V − R is negative: refund = ₦0 (no extra charge on top of
+  prepaid for v1).
+
+B. Platform fault (terminal)
+
+  amount_returned_to_customer = T (full refund)
+  Return & handling fee = waived
+
+C. COD + customer fault
+
+  amount_collected = 0
+  cod_refusal_count += 1
+  Return & handling fee = recorded as informational liability for v1
+  Optional: block COD after COD_REFUSAL_LIMIT_BEFORE_DISABLE
+
+
+================================================================================
+9. WORKED EXAMPLES
+================================================================================
+
+Assumptions:
+  Parts ₦40,000 · Service fee ₦6,000 (15%) · Delivery ₦1,500 · Total ₦47,500
+  Return & handling fee = ₦2,000 + 10% × ₦40,000 = ₦6,000
+
+Example 1 — Customer unavailable (2 attempts), parts 80% recoverable
+
+  Fault: customer
+  V = ₦32,000
+  Refund = max(0, 32,000 − 6,000) = ₦26,000
+
+  Customer sees:
+    Parts (recoverable)              ₦32,000
+    Less: Return & handling fee      −₦6,000
+    Refund to you                    ₦26,000
+    Service fee (non-refundable)     ₦6,000
+    Delivery fee (non-refundable)    ₦1,500
+
+Example 2 — Customer refused, parts not recoverable
+
+  Fault: customer
+  V = ₦0
+  Refund = ₦0
+  Customer prepaid ₦47,500 — platform retains all (minus internal vendor
+  write-off decisions)
+
+Example 3 — Wrong address, customer typo (admin confirms)
+
+  Same as Example 1 or 2 depending on recovery.
+
+  Recommended: First wrong-address (customer fault) → ops may reassign rider +
+  corrected address with additional delivery fee on second attempt. Terminal only
+  if second attempt fails.
+
+Example 4 — Platform sent wrong part
+
+  Fault: platform
+  Refund = ₦47,500 full
+  Return & handling fee: waived
+
+
+================================================================================
+10. PAYMENT METHOD BEHAVIOR
+================================================================================
+
+  Method          Settlement execution
+  ------          ----------------------
+  Wallet          Credit amount_returned_to_customer to wallet
+  Card            Paystack partial refund for amount_returned_to_customer only
+  COD             No refund; refusal tracking; settlement informational
+  Bank transfer   Treat like wallet credit
+
+Important: Notifications must say "₦X refund", not "full refund", unless
+amount_returned_to_customer = T.
+
+
+================================================================================
+11. ADMIN WORKFLOW (OPS CHECKLIST)
+================================================================================
+
+  1. Review rider attempts (reason, photos, calls, GPS)
+  2. Set fault (customer / platform / waived)
+  3. Confirm parts custody (with_rider → at_hub)
+  4. Set parts recovery rate (vendor confirmation)
+  5. System calculates Return & handling fee + refund
+  6. Ops approves settlement (auto for clear customer-fault refused; manual for
+     high-value > ₦100k)
+  7. Notify customer with settlement breakdown
+  8. Log audit_log + payment_events type delivery_failure_settlement
+
+High-value orders (≥ ₦100,000): manual settlement approval always.
+
+
+================================================================================
+12. CUSTOMER COMMUNICATION (COPY GUIDELINES)
+================================================================================
+
+On retry (unavailable, attempt 1):
+  "We tried to deliver your order but couldn't reach you. We'll try again
+  shortly. Service and delivery fees apply once sourcing and dispatch have
+  started."
+
+On terminal customer-fault settlement:
+  "Your order could not be completed. Based on our Delivery Failure Policy:
+  service and delivery fees are not refundable after dispatch. A Return &
+  handling fee of ₦X applies. You will receive ₦Y back to your wallet/card."
+
+On platform fault:
+  "We're sorry — this was our mistake. You will receive a full refund of ₦T."
+
+Link to full policy from checkout and order confirmation (required before
+go-live).
+
+
+================================================================================
+13. CONFIG SUMMARY (FOR FUTURE IMPLEMENTATION)
+================================================================================
+
+  Config key                          Purpose                    Default
+  ----------                          -------                    -------
+  RETURN_HANDLING_FEE_FLAT            Base fee                   ₦2,000
+  RETURN_HANDLING_PARTS_PERCENTAGE    % of parts subtotal        10%
+  RETURN_HANDLING_FEE_MIN / _MAX      Bounds                     ₦2k / ₦15k
+  PARTS_RECOVERY_RATE_DEFAULT         Until admin sets           0%
+  RETURN_HANDLING_WAIVE_FIRST_ORDER   Grace                      true
+  RETURN_HANDLING_WAIVE_TIER_PARTNER  Loyalty                    true
+  SETTLEMENT_REQUIRES_PARTS_AT_HUB    Gate                       true
+  HIGH_VALUE_MANUAL_SETTLEMENT        Threshold                  ₦100,000
+  FREE_RESCHEDULE_WINDOW_HOURS        Wrong-address redelivery   24h
+  RIDER_MAX_CALL_ATTEMPTS             Retries                    2
+  RIDER_WAIT_TIME_MINUTES             Between attempts           10
+
+
+================================================================================
+14. POLICY DECISIONS FOR SIGN-OFF
+================================================================================
+
+  1. Unavailable after max attempts: partial refund only (not full)? — recommended YES
+  2. Return & handling fee: ₦2,000 + 10% of parts, cap ₦15,000 — ok?
+  3. Zero refund when parts unrecoverable on customer refused — ok for prepaid?
+  4. One free wrong-address redelivery within 24h before terminal — yes/no?
+  5. Partner tier waiver of Return & handling fee — yes/no?
+
+
+================================================================================
+15. SUMMARY
+================================================================================
+
+  Question                          Answer
+  --------                          ------
+  Refund on customer unavailable?   Not full. Retry first; then parts
+                                    recoverable − Return & handling fee only.
+  What does "refund" mean?          Amount returned after settlement — not
+                                    necessarily total paid.
+  Service + delivery fees?          Kept on customer-fault failures after dispatch.
+  Return & handling fee?          Charged on customer-fault terminal failures.
+  Full refund?                      Only platform fault.
+
+================================================================================
+END OF POLICY — v1.0 design (no implementation)
+================================================================================
+
+
+What “parts recovery” means (simple)
+
+================================================================================
+
+Parts recovery = how much of the ₦12,000 you paid for the parts the business can get back after a failed delivery.
+
+================================================================================
+
+It is not about refunding the customer directly at first. It is: “We already bought this part at the market. If delivery fails, can we return it to the vendor and get our money back (or some of it)?”
+
+================================================================================
+
+Why it matters
+When a runner sources a part at Ladipo:
+
+They pay the vendor cash from runner float (e.g. ₦12,000).
+The customer paid you ₦14,800 (parts + service + delivery).
+Delivery fails — customer wasn’t home, refused, etc.
+The part is still a physical object — with the rider or back at the hub.
+The question is: Can that part go back to the vendor?
+
+If yes → you recover some or all of that ₦12,000.
+If no → that ₦12,000 is mostly lost (opened, used, wrong spec, vendor won’t take it back).
+Recovery % is ops’ estimate of that:
+“Of the ₦12,000 we spent on parts, what % can we get back from the vendor?”
+
+================================================================================
+
+Scenario 1 — Brand‑new brake pad, box unopened
+Order: Brake pads ₦12,000 + service ₦1,300 + delivery ₦1,500 = ₦14,800
+
+What happened: Customer wasn’t home twice. Rider brings the sealed box back to the hub. Runner takes it to the vendor next day; vendor takes it back at full price.
+
+Logged: Customer Unavilable
+
+Recovery: 100% → recoverable parts = ₦12,000
+
+Meaning: We got the full parts cost back from the vendor (or expect to).
+
+Then settlement uses that ₦12,000 minus Return & handling fee (₦3,200) → customer might get ₦8,800 back (before other rules). Service and delivery fees still stay with the platform.
+
+================================================================================
+
+Scenario 2 — Same pad, vendor only gives 80%
+What happened: Customer refused at the door. Part is fine but vendor says “market policy — 20% restocking loss.”
+
+Logged: Customer Refused
+
+Recovery: 80% → recoverable parts = ₦9,600
+(80% of ₦12,000)
+
+Meaning: Of the ₦12,000 we spent, we only expect ₦9,600 back. ₦2,400 is gone.
+
+Customer refund is based on ₦9,600, not ₦12,000, minus Return & handling fee.
+
+================================================================================
+
+Scenario 3 — Part opened or can’t go back
+What happened: Customer opened the package, or it’s a special order, or vendor won’t accept returns.
+
+Recovery: 0% → recoverable parts = ₦0
+
+Meaning: We’re not getting any of the ₦12,000 back from the vendor.
+
+Then (customer fault):
+Refund to customer = max(0, ₦0 − Return & handling fee) = ₦0
+
+Customer who prepaid does not get the parts money back — platform already spent it at the market and can’t recover it.
+
+
+================================================================================
+
+Scenario 4 — Wrong part (platform fault)
+What happened: Runner brought the wrong pad. Not the customer’s fault.
+
+Recovery doesn’t really apply the same way — admin sets fault to platform.
+
+Customer gets full ₦14,800 refund. The business tries to return the wrong part to the vendor separately.
+
+Simple analogy
+Think of it like ordering food:
+
+Restaurant already cooked your meal (runner sourced the part).
+Driver already drove to your house (delivery attempted).
+You didn’t show up (customer unavailable).
+Recovery = Can the restaurant sell that meal to someone else or throw it away and lose the ingredient cost?
+
+If they can resell → high recovery.
+If it’s wasted → 0% recovery → they don’t refund you the full meal price.
+Your platform is the same, but with physical car parts instead of food.
+
+Who decides recovery %?
+Admin/ops, after parts are back at the hub, talking to the vendor:
+
+“Did they take it back?”
+“Full price or partial?”
+“Not at all?”
+They enter that as parts recovery % (0–100%) in the admin settlement panel. That drives how much the customer can get back on a customer-fault failure.
+
+One sentence
+Parts recovery = how much of the parts money (₦12,000 in your example) the business can get back from the vendor after a failed delivery — and only that recovered amount (minus Return & handling fee) can go back to the customer on customer-fault cases.

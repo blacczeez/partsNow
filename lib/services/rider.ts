@@ -1,11 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { config } from '@/lib/config';
+import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
 import {
   notifyOrderDispatched,
   notifyOrderDelivered,
-  notifyDeliveryFailed,
   notifyOrderNearby,
 } from './notifications';
+import {
+  reportDeliveryFailure as reportDeliveryFailureCore,
+  type ReportDeliveryFailureInput,
+} from './delivery-failure';
 import type {
   OrderWithItems,
   OrderAssignment,
@@ -161,12 +165,11 @@ export async function getRiderDeliveryDetail(
     .eq('rider_id', riderId)
     .single();
 
-  // Get delivery attempts
+  // Get delivery attempts (all riders on this order)
   const { data: attempts } = await supabase
     .from('delivery_attempts')
     .select('*')
     .eq('order_id', orderId)
-    .eq('rider_id', riderId)
     .order('attempt_number', { ascending: true });
 
   return {
@@ -201,22 +204,29 @@ export async function confirmPickup(
   if (!assignment) throw new Error('Delivery not assigned to you');
   if (assignment.status !== 'assigned') throw new Error('Pickup already confirmed');
 
-  // Get order to check high-value requirement
+  // Get order to check high-value requirement and price review
   const { data: order } = await supabase
     .from('orders')
-    .select('total')
+    .select('total, price_review_status')
     .eq('id', orderId)
     .single();
 
   if (!order) throw new Error('Order not found');
+
+  if (order.price_review_status === 'pending') {
+    throw new Error('Order has items pending admin price approval — pickup blocked');
+  }
+
+  if (order.price_review_status === 'awaiting_customer') {
+    throw new Error('Customer has not accepted the updated price — pickup blocked');
+  }
 
   const isHighValue = order.total >= config.dispatch.highValueThreshold;
   if (isHighValue && config.dispatch.highValueRequiresPhoto && !pickupPhotoUrl) {
     throw new Error('Photo confirmation required for high-value orders');
   }
 
-  // Update assignment
-  await supabase
+  const { error: assignmentUpdateError } = await supabase
     .from('order_assignments')
     .update({
       status: 'in_progress',
@@ -224,15 +234,17 @@ export async function confirmPickup(
       pickup_photo_url: pickupPhotoUrl || null,
     })
     .eq('id', assignment.id);
+  throwIfSupabaseError(assignmentUpdateError, 'Failed to update rider assignment');
 
   // Update order status to dispatched
-  await supabase
+  const { error: orderUpdateError } = await supabase
     .from('orders')
     .update({
       status: 'dispatched',
       dispatched_at: new Date().toISOString(),
     })
     .eq('id', orderId);
+  throwIfSupabaseError(orderUpdateError, 'Failed to update order to dispatched');
 
   // Create initial delivery tracking record
   const { error: trackingError } = await supabase
@@ -326,10 +338,11 @@ export async function confirmDelivery(
 
   // If COD, update payment status
   if (order.payment_method === 'cod' && order.payment_status !== 'paid') {
-    await supabase
+    const { error: codError } = await supabase
       .from('orders')
       .update({ payment_status: 'paid' })
       .eq('id', orderId);
+    throwIfSupabaseError(codError, 'Failed to update COD payment status');
 
     // Update customer lifetime spend
     await supabase.rpc('increment_lifetime_spend', {
@@ -358,38 +371,36 @@ export async function confirmDelivery(
     });
   }
 
-  // Count existing attempts to determine attempt number
   const { count } = await supabase
     .from('delivery_attempts')
     .select('id', { count: 'exact', head: true })
-    .eq('order_id', orderId)
-    .eq('rider_id', riderId);
+    .eq('order_id', orderId);
 
-  // Create delivery attempt record
-  await supabase.from('delivery_attempts').insert({
+  const { error: attemptError } = await supabase.from('delivery_attempts').insert({
     order_id: orderId,
     rider_id: riderId,
     attempt_number: (count ?? 0) + 1,
     status: 'completed',
     photo_url: data.photoUrl || null,
   });
+  throwIfSupabaseError(attemptError, 'Failed to record delivery attempt');
 
   // Update assignment to completed
-  await supabase
+  const { error: assignmentCompleteError } = await supabase
     .from('order_assignments')
     .update({
       status: 'completed',
       completed_at: new Date().toISOString(),
     })
     .eq('id', assignment.id);
+  throwIfSupabaseError(assignmentCompleteError, 'Failed to complete rider assignment');
 
   // Calculate actual delivery minutes
   const createdAt = new Date(order.created_at);
   const now = new Date();
   const actualMinutes = Math.round((now.getTime() - createdAt.getTime()) / 60000);
 
-  // Update order to delivered
-  await supabase
+  const { error: deliveredError } = await supabase
     .from('orders')
     .update({
       status: 'delivered',
@@ -397,6 +408,7 @@ export async function confirmDelivery(
       actual_delivery_minutes: actualMinutes,
     })
     .eq('id', orderId);
+  throwIfSupabaseError(deliveredError, 'Failed to mark order as delivered');
 
   // Fire-and-forget notification
   notifyOrderDelivered(orderId).catch(() => {});
@@ -423,81 +435,9 @@ export async function confirmDelivery(
 export async function reportDeliveryFailure(
   riderId: string,
   orderId: string,
-  data: { reason: string; notes?: string; photoUrl?: string }
-): Promise<void> {
-  const supabase = await createClient();
-
-  // Verify assignment
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('id, status')
-    .eq('assignee_id', riderId)
-    .eq('order_id', orderId)
-    .eq('role', 'rider')
-    .in('status', ['assigned', 'in_progress'])
-    .single();
-
-  if (!assignment) throw new Error('No active delivery for this order');
-
-  // Count existing attempts
-  const { count } = await supabase
-    .from('delivery_attempts')
-    .select('id', { count: 'exact', head: true })
-    .eq('order_id', orderId)
-    .eq('rider_id', riderId);
-
-  const attemptNumber = (count ?? 0) + 1;
-
-  // Map reason to delivery attempt status
-  const statusMap: Record<string, string> = {
-    customer_unavailable: 'failed_no_answer',
-    customer_refused: 'failed_customer_refused',
-    wrong_address: 'failed_wrong_address',
-    other: 'failed_no_answer',
-  };
-
-  // Insert delivery attempt
-  await supabase.from('delivery_attempts').insert({
-    order_id: orderId,
-    rider_id: riderId,
-    attempt_number: attemptNumber,
-    status: statusMap[data.reason] || 'failed_no_answer',
-    failure_reason: data.reason,
-    notes: data.notes || null,
-    photo_url: data.photoUrl || null,
-  });
-
-  // Determine outcome based on reason and attempt count
-  if (data.reason === 'customer_refused') {
-    // Customer refused - order is rejected
-    await supabase
-      .from('order_assignments')
-      .update({ status: 'failed', completed_at: new Date().toISOString() })
-      .eq('id', assignment.id);
-
-    await supabase
-      .from('orders')
-      .update({ status: 'rejected' })
-      .eq('id', orderId);
-
-    notifyDeliveryFailed(orderId, 'Customer refused delivery').catch(() => {});
-  } else if (data.reason === 'customer_unavailable' && attemptNumber < config.dispatch.riderMaxCallAttempts) {
-    // Still have attempts remaining - keep assignment active
-    // No status change needed
-  } else {
-    // Max attempts reached or other failure - mark as failed
-    await supabase
-      .from('order_assignments')
-      .update({ status: 'failed', completed_at: new Date().toISOString() })
-      .eq('id', assignment.id);
-
-    await supabase
-      .from('orders')
-      .update({ status: 'failed' })
-      .eq('id', orderId);
-
-    notifyDeliveryFailed(orderId, data.reason).catch(() => {});
-  }
+  data: ReportDeliveryFailureInput
+): Promise<{ outcome: 'retry' | 'admin_review' | 'terminal' }> {
+  return reportDeliveryFailureCore(riderId, orderId, data);
 }
 
 // ===== History =====

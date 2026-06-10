@@ -69,7 +69,8 @@ describe('GET /api/orders/[id]', () => {
     const { status, body } = await readResponse(response);
 
     expect(status).toBe(200);
-    expect(body.order).toEqual(fakeOrder);
+    expect(body.order).toMatchObject(fakeOrder);
+    expect(body.order.delivery_attempts).toBeDefined();
   });
 
   it('queries with customer_id filter for ownership', async () => {

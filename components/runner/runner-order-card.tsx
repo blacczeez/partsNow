@@ -1,8 +1,9 @@
 'use client';
 
 import { Package, ChevronRight, Clock, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import { runnerSourcingTargetTotal } from '@/lib/utils/order-pricing-display';
+import { runnerPriceReviewBadgeLabel } from '@/components/runner/runner-price-status-banner';
 import { cn } from '@/lib/utils/cn';
 import Link from 'next/link';
 import type { RunnerOrderSummary } from '@/lib/services/runner';
@@ -22,6 +23,8 @@ export function RunnerOrderCard({ order }: RunnerOrderCardProps) {
     label: order.assignment_status,
     color: 'bg-slate-100 text-slate-800',
   };
+  const sourcingTarget = runnerSourcingTargetTotal(order.order_items ?? []);
+  const priceBadge = runnerPriceReviewBadgeLabel(order);
 
   return (
     <Link href={`/runner/order/${order.id}`}>
@@ -35,17 +38,34 @@ export function RunnerOrderCard({ order }: RunnerOrderCardProps) {
           <div>
             <p className="text-sm text-slate-500">{order.order_number}</p>
             <p className="mt-0.5 font-semibold text-slate-900">
-              {formatCurrency(order.total)}
+              {formatCurrency(sourcingTarget)}
             </p>
+            <p className="text-xs text-slate-500">Target budget — negotiate at or below</p>
           </div>
-          <span
-            className={cn(
-              'rounded-pill px-2.5 py-0.5 text-xs font-medium',
-              statusInfo.color
+          <div className="flex flex-col items-end gap-1">
+            <span
+              className={cn(
+                'rounded-pill px-2.5 py-0.5 text-xs font-medium',
+                statusInfo.color
+              )}
+            >
+              {statusInfo.label}
+            </span>
+            {priceBadge && (
+              <span
+                className={cn(
+                  'rounded-pill px-2.5 py-0.5 text-xs font-medium',
+                  priceBadge === 'Price accepted'
+                    ? 'bg-success-light text-success'
+                    : priceBadge === 'Cancelled'
+                      ? 'bg-error-light text-error'
+                      : 'bg-warning-light text-warning'
+                )}
+              >
+                {priceBadge}
+              </span>
             )}
-          >
-            {statusInfo.label}
-          </span>
+          </div>
         </div>
 
         <div className="mb-3 flex items-center gap-1.5 text-sm text-slate-600">

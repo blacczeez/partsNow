@@ -23,8 +23,8 @@ export async function POST(
       );
     }
 
-    await reportDeliveryFailure(auth.user.id, id, parsed.data);
-    return NextResponse.json({ success: true });
+    const result = await reportDeliveryFailure(auth.user.id, id, parsed.data);
+    return NextResponse.json({ success: true, outcome: result.outcome });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to report delivery failure';
     return NextResponse.json({ error: message }, { status: 500 });

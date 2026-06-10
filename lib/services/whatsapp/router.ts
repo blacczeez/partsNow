@@ -7,6 +7,7 @@ import { handleOrdering, handleVoiceNote, startOrdering } from './flows/ordering
 import { handleWallet, isWalletCommand } from './flows/wallet';
 import { handleRating } from './flows/rating';
 import { handleClarification } from './flows/clarification';
+import { handlePriceChangeButton } from './flows/price-change';
 import type { User } from '@/lib/types/database';
 
 export interface WatiWebhookPayload {
@@ -131,6 +132,12 @@ async function handleIdleMessage(
   }
 
   const lowerText = text.toLowerCase().trim();
+
+  // Price change buttons (mechanics / any WhatsApp customer)
+  if (user && (text.startsWith('price_accept_') || text.startsWith('price_discard_'))) {
+    const handled = await handlePriceChangeButton(phone, text, user);
+    if (handled) return;
+  }
 
   // Check wallet commands first
   if (isWalletCommand(text)) {

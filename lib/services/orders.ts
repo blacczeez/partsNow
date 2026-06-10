@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { config } from '@/lib/config';
-import { getMarkupPercentage, calculatePricing, isCodAllowed } from '@/lib/utils/pricing';
+import {
+  getMarkupPercentage,
+  calculatePricing,
+  isCodAllowedForCustomer,
+} from '@/lib/utils/pricing';
+import { computeVendorBudget } from '@/lib/utils/vendor-budget';
 import { initializePayment } from '@/lib/integrations/paystack';
 import { debitWallet } from './wallet';
 import { assignRunner } from './dispatch';
@@ -54,7 +59,14 @@ export async function createOrder(
   const pricing = calculatePricing(input.items, loyaltyTier);
 
   // Validate COD
-  if (input.paymentMethod === 'cod' && !isCodAllowed(pricing.total)) {
+  if (
+    input.paymentMethod === 'cod' &&
+    !isCodAllowedForCustomer(pricing.total, customer.profile as Record<string, unknown>)
+  ) {
+    const profile = customer.profile as Record<string, unknown> | null;
+    if (profile?.cod_disabled === true) {
+      throw new Error('COD is not available on your account due to previous delivery refusals');
+    }
     throw new Error(
       `COD is not available for orders above ${config.payments.codMaxOrderValue}`
     );
@@ -82,6 +94,7 @@ export async function createOrder(
       delivery_fee: pricing.deliveryFee,
       discount_amount: pricing.discountAmount,
       total: pricing.total,
+      original_total: pricing.total,
       payment_method: input.paymentMethod,
       payment_status: 'pending' as const,
       source_channel: input.sourceChannel || 'web',
@@ -96,15 +109,21 @@ export async function createOrder(
   if (orderError) throw new Error(orderError.message);
 
   // Insert order items
-  const orderItems = input.items.map((item) => ({
-    order_id: order.id,
-    part_id: item.partId || null,
-    description: item.description,
-    quantity: item.quantity,
-    selling_price: Math.round(item.price * (1 + markupPercentage / 100)),
-    vendor_price: null,
-    customer_image_url: item.imageUrl || null,
-  }));
+  const orderItems = input.items.map((item) => {
+    const sellingPrice = Math.round(item.price * (1 + markupPercentage / 100));
+    const budget = computeVendorBudget(sellingPrice, markupPercentage);
+    return {
+      order_id: order.id,
+      part_id: item.partId || null,
+      description: item.description,
+      quantity: item.quantity,
+      selling_price: sellingPrice,
+      expected_vendor_price: budget.expectedVendorPrice,
+      max_vendor_price: budget.maxVendorPrice,
+      vendor_price: null,
+      customer_image_url: item.imageUrl || null,
+    };
+  });
 
   const { error: itemsError } = await supabase
     .from('order_items')
@@ -125,7 +144,15 @@ export async function createOrder(
       // Clean up the order
       await supabase.from('order_items').delete().eq('order_id', order.id);
       await supabase.from('orders').delete().eq('id', order.id);
-      throw new Error('Insufficient wallet balance');
+      const { data: walletRow } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', customerId)
+        .single();
+      const available = walletRow?.balance ?? 0;
+      throw new Error(
+        `Insufficient wallet balance. Available: ₦${Number(available).toLocaleString('en-NG')}, required: ₦${pricing.total.toLocaleString('en-NG')}`
+      );
     }
 
     // Confirm order

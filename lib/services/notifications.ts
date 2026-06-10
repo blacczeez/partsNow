@@ -221,16 +221,194 @@ export async function notifyClarificationRequest(
   }
 }
 
-export async function notifyDeliveryFailed(orderId: string, reason: string) {
+export async function notifyDeliveryAttempt(
+  orderId: string,
+  attemptNumber: number,
+  reasonLabel: string
+) {
+  try {
+    const data = await getOrderWithCustomerPhone(orderId);
+    if (!data) return;
+
+    const orderUrl = `${config.app.url}/order/${orderId}`;
+    await sendTextMessage(
+      data.customer.phone,
+      `Delivery attempt #${attemptNumber} for order ${data.order.order_number}:\n\n` +
+        `Our rider could not complete delivery (${reasonLabel}). We will try again shortly.\n\n` +
+        `Track your order: ${orderUrl}`
+    );
+  } catch (error) {
+    console.error('Notification error (delivery_attempt):', error);
+  }
+}
+
+export async function notifyDeliveryFailed(
+  orderId: string,
+  reasonLabel: string,
+  outcome: 'failed' | 'rejected' | 'admin_review' = 'failed'
+) {
+  try {
+    const data = await getOrderWithCustomerPhone(orderId);
+    if (!data) return;
+
+    const orderUrl = `${config.app.url}/order/${orderId}`;
+    let body: string;
+
+    if (outcome === 'admin_review') {
+      body =
+        `Delivery issue for order ${data.order.order_number}:\n\n` +
+        `${reasonLabel}. Our team is reviewing and will contact you shortly.\n\n` +
+        `View order: ${orderUrl}`;
+    } else if (outcome === 'rejected') {
+      body =
+        `Order ${data.order.order_number} could not be completed — the delivery was refused.\n\n` +
+        `Settlement will be processed per our Delivery Failure Policy once parts are returned to hub. Service and delivery fees may apply.\n\n` +
+        `View order: ${orderUrl}`;
+    } else {
+      body =
+        `Delivery failed for order ${data.order.order_number}:\n\n` +
+        `${reasonLabel}. Settlement will be processed per our Delivery Failure Policy. View the breakdown on your order page.\n\n` +
+        `View order: ${orderUrl}`;
+    }
+
+    await sendTextMessage(data.customer.phone, body);
+  } catch (error) {
+    console.error('Notification error (delivery_failed):', error);
+  }
+}
+
+export async function notifyAdminDeliveryEscalation(
+  orderId: string,
+  reasonLabel: string,
+  notes?: string
+) {
+  try {
+    const supabase = createServiceClient();
+    const { data: order } = await supabase
+      .from('orders')
+      .select('order_number, delivery_address')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) return;
+
+    const { data: admins } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('user_type', 'admin')
+      .eq('is_active', true);
+
+    const adminUrl = `${config.app.url}/admin/orders`;
+    const message =
+      `Delivery escalation — ${order.order_number}\n\n` +
+      `Reason: ${reasonLabel}\n` +
+      `Address: ${order.delivery_address}\n` +
+      (notes ? `Notes: ${notes}\n` : '') +
+      `\nReview in admin: ${adminUrl}`;
+
+    for (const admin of admins ?? []) {
+      if (admin.phone) {
+        await sendTextMessage(admin.phone, message);
+      }
+    }
+  } catch (error) {
+    console.error('Notification error (admin_delivery_escalation):', error);
+  }
+}
+
+export async function notifyDeliverySettlement(
+  orderId: string,
+  breakdown: {
+    amountReturnedToCustomer: number;
+    returnHandlingFee: number;
+    serviceFee: number;
+    deliveryFee: number;
+    recoverableParts: number;
+    isFullRefund: boolean;
+    totalPaid: number;
+  }
+) {
+  try {
+    const data = await getOrderWithCustomerPhone(orderId);
+    if (!data) return;
+
+    const orderUrl = `${config.app.url}/order/${orderId}`;
+    const lines = [
+      `Settlement for order ${data.order.order_number}:`,
+      '',
+      breakdown.isFullRefund
+        ? `Full refund: ${formatCurrency(breakdown.amountReturnedToCustomer)}`
+        : [
+            `Recoverable parts: ${formatCurrency(breakdown.recoverableParts)}`,
+            `Return & handling fee: −${formatCurrency(breakdown.returnHandlingFee)}`,
+            `Refund to you: ${formatCurrency(breakdown.amountReturnedToCustomer)}`,
+            `Service fee (non-refundable): ${formatCurrency(breakdown.serviceFee)}`,
+            `Delivery fee (non-refundable): ${formatCurrency(breakdown.deliveryFee)}`,
+          ].join('\n'),
+      '',
+      `View details: ${orderUrl}`,
+    ];
+
+    await sendTextMessage(data.customer.phone, lines.join('\n'));
+  } catch (error) {
+    console.error('Notification error (delivery_settlement):', error);
+  }
+}
+
+export async function notifyPriceChangeRequired(
+  orderId: string,
+  originalTotal: number,
+  revisedTotal: number,
+  topUpAmount: number
+) {
+  try {
+    const data = await getOrderWithCustomerPhone(orderId);
+    if (!data) return;
+
+    const orderUrl = `${config.app.url}/order/${orderId}`;
+    const message =
+      `Price update for order ${data.order.order_number}\n\n` +
+      `Quoted total: ${formatCurrency(originalTotal)}\n` +
+      `Updated total (market price): ${formatCurrency(revisedTotal)}\n` +
+      `Additional payment: ${formatCurrency(topUpAmount)}\n\n` +
+      `You must accept and pay the difference to continue, or cancel for a full refund of ${formatCurrency(originalTotal)}.\n\n` +
+      `Open: ${orderUrl}`;
+
+    await sendInteractiveButtons(data.customer.phone, message, [
+      { id: `price_accept_${orderId}`, title: 'Pay & continue' },
+      { id: `price_discard_${orderId}`, title: 'Cancel & refund' },
+    ]);
+  } catch (error) {
+    console.error('Notification error (price_change_required):', error);
+  }
+}
+
+export async function notifyPriceChangeAccepted(orderId: string) {
   try {
     const data = await getOrderWithCustomerPhone(orderId);
     if (!data) return;
 
     await sendTextMessage(
       data.customer.phone,
-      `Delivery update for order ${data.order.order_number}:\n\nWe were unable to complete the delivery. Reason: ${reason}\n\nOur team will reach out to reschedule.`
+      `Thanks! Price update accepted for order ${data.order.order_number}. We will continue sourcing and delivery.`
     );
   } catch (error) {
-    console.error('Notification error (delivery_failed):', error);
+    console.error('Notification error (price_change_accepted):', error);
+  }
+}
+
+export async function notifyPriceChangeDiscarded(orderId: string, refundAmount: number) {
+  try {
+    const data = await getOrderWithCustomerPhone(orderId);
+    if (!data) return;
+
+    await sendTextMessage(
+      data.customer.phone,
+      `Order ${data.order.order_number} has been cancelled.\n\n` +
+        `Full refund of ${formatCurrency(refundAmount)} has been credited to your wallet.\n\n` +
+        `Place a new order anytime when you are ready.`
+    );
+  } catch (error) {
+    console.error('Notification error (price_change_discarded):', error);
   }
 }

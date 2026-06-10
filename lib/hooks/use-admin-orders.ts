@@ -4,6 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { OrderStatus } from '@/lib/types/database';
 
+interface Filters {
+  page: number;
+  status?: OrderStatus;
+  search?: string;
+  priceReview?: 'pending';
+}
+
 interface AdminOrder {
   id: string;
   order_number: string;
@@ -15,6 +22,7 @@ interface AdminOrder {
   customer_id: string;
   customer_name: string;
   source_channel: string;
+  price_review_status: string;
 }
 
 interface Pagination {
@@ -24,10 +32,12 @@ interface Pagination {
   totalPages: number;
 }
 
-interface Filters {
-  page: number;
-  status?: OrderStatus;
-  search?: string;
+function buildAdminOrdersParams(filters: Filters): URLSearchParams {
+  const params = new URLSearchParams({ page: String(filters.page), limit: '20' });
+  if (filters.status) params.set('status', filters.status);
+  if (filters.search) params.set('search', filters.search);
+  if (filters.priceReview === 'pending') params.set('priceReview', 'pending');
+  return params;
 }
 
 export function useAdminOrders() {
@@ -38,30 +48,38 @@ export function useAdminOrders() {
     total: 0,
     totalPages: 0,
   });
-  const [filters, setFilters] = useState<Filters>({ page: 1 });
+  const [filters, setFiltersState] = useState<Filters>({ page: 1 });
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchOrders = useCallback(async (f: Filters) => {
+  const setFilters = useCallback((value: Filters | ((prev: Filters) => Filters)) => {
     setIsLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(f.page), limit: '20' });
-      if (f.status) params.set('status', f.status);
-      if (f.search) params.set('search', f.search);
-
-      const res = await fetch(`/api/admin/orders?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data.orders);
-        setPagination(data.pagination);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    setFiltersState(value);
   }, []);
 
   useEffect(() => {
-    fetchOrders(filters);
-  }, [filters, fetchOrders]);
+    let cancelled = false;
+
+    async function loadOrders() {
+      try {
+        const res = await fetch(`/api/admin/orders?${buildAdminOrdersParams(filters)}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setOrders(data.orders);
+          setPagination(data.pagination);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadOrders();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters]);
 
   // Realtime refresh
   useEffect(() => {
@@ -72,7 +90,14 @@ export function useAdminOrders() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
         () => {
-          fetchOrders(filters);
+          void (async () => {
+            const res = await fetch(`/api/admin/orders?${buildAdminOrdersParams(filters)}`);
+            if (res.ok) {
+              const data = await res.json();
+              setOrders(data.orders);
+              setPagination(data.pagination);
+            }
+          })();
         }
       )
       .subscribe();
@@ -80,7 +105,7 @@ export function useAdminOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [filters, fetchOrders]);
+  }, [filters]);
 
   return { orders, pagination, isLoading, filters, setFilters };
 }

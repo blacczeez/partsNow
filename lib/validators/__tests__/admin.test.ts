@@ -39,6 +39,14 @@ describe('reassignOrderSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('accepts dev seed UUIDs that are not RFC4122-variant', () => {
+    const result = reassignOrderSchema.safeParse({
+      assigneeId: 'd1000000-0000-0000-0000-000000000003',
+      role: 'runner',
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('adminCancelOrderSchema', () => {
