@@ -5,6 +5,8 @@ import {
   createVendorSchema,
   updateVendorSchema,
   updateConfigSchema,
+  createPartSchema,
+  updatePartSchema,
 } from '../admin';
 
 describe('reassignOrderSchema', () => {
@@ -177,5 +179,109 @@ describe('updateConfigSchema', () => {
     expect(updateConfigSchema.safeParse({ key: 'a', value: 42 }).success).toBe(true);
     expect(updateConfigSchema.safeParse({ key: 'a', value: true }).success).toBe(true);
     expect(updateConfigSchema.safeParse({ key: 'a', value: { nested: true } }).success).toBe(true);
+  });
+});
+
+describe('createPartSchema', () => {
+  const validPart = {
+    name: 'Brake Pad Set',
+    category: 'Brakes',
+  };
+
+  it('accepts valid input with required fields only', () => {
+    const result = createPartSchema.safeParse(validPart);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects missing name', () => {
+    const { name, ...rest } = validPart;
+    const result = createPartSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty name', () => {
+    const result = createPartSchema.safeParse({ ...validPart, name: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing category', () => {
+    const { category, ...rest } = validPart;
+    const result = createPartSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty category', () => {
+    const result = createPartSchema.safeParse({ ...validPart, category: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts all optional fields', () => {
+    const result = createPartSchema.safeParse({
+      ...validPart,
+      subcategory: 'Front Brakes',
+      oem_code: 'BP-12345',
+      average_price: 15000,
+      weight_kg: 2.5,
+      image_url: 'https://example.com/brake.jpg',
+      compatible_vehicles: [
+        { make: 'Toyota', model: 'Camry', year_start: 2015, year_end: 2020 },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects negative average_price', () => {
+    const result = createPartSchema.safeParse({ ...validPart, average_price: -100 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects zero average_price', () => {
+    const result = createPartSchema.safeParse({ ...validPart, average_price: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid image_url', () => {
+    const result = createPartSchema.safeParse({ ...validPart, image_url: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('updatePartSchema', () => {
+  it('accepts partial update', () => {
+    const result = updatePartSchema.safeParse({ name: 'Updated Brake Pad' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts empty object', () => {
+    const result = updatePartSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts is_active field', () => {
+    const result = updatePartSchema.safeParse({ is_active: false });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts all fields together', () => {
+    const result = updatePartSchema.safeParse({
+      name: 'Updated',
+      category: 'Engine',
+      subcategory: 'Oil Filter',
+      oem_code: 'OF-999',
+      average_price: 5000,
+      weight_kg: 0.5,
+      is_active: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty name when provided', () => {
+    const result = updatePartSchema.safeParse({ name: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty category when provided', () => {
+    const result = updatePartSchema.safeParse({ category: '' });
+    expect(result.success).toBe(false);
   });
 });

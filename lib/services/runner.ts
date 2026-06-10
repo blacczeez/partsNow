@@ -13,6 +13,7 @@ import {
   notifyOrderPicked,
   notifyClarificationRequest,
 } from './notifications';
+import { recordVendorPartPrice } from './vendor-parts';
 import type {
   RunnerFloat,
   RunnerShift,
@@ -403,7 +404,7 @@ export async function markItemFound(
   // Get item to check vendor price against target budget
   const { data: item } = await supabase
     .from('order_items')
-    .select('selling_price, description')
+    .select('selling_price, description, part_id')
     .eq('id', itemId)
     .eq('order_id', orderId)
     .single();
@@ -427,6 +428,12 @@ export async function markItemFound(
     })
     .eq('id', itemId);
   throwIfSupabaseError(updateItemError, 'Failed to mark item as found');
+
+  // Fire-and-forget: record vendor-part price for catalogue feedback
+  if (data.vendorId && item.part_id) {
+    recordVendorPartPrice(data.vendorId, item.part_id, data.vendorPrice)
+      .catch(err => console.error('Price feedback failed:', err));
+  }
 
   const escalation = await handleVendorPriceEntry(supabase, {
     orderId,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { PARTS_CUSTODY, canConfirmPartsAtHub } from '@/lib/constants/delivery-failure';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
@@ -198,16 +199,16 @@ export function DeliverySettlementPanel({
 
       <div className="mb-3 space-y-2">
         <label className="block text-xs font-medium text-slate-600">Fault</label>
-        <select
+        <Select
+          fieldSize="sm"
           value={fault}
           onChange={(e) => setFaultOverride(e.target.value)}
           disabled={previewLoading || actionLoading}
-          className="w-full rounded-button border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
         >
           <option value="customer">Customer fault</option>
           <option value="platform">Platform fault (full refund)</option>
           <option value="waived">Customer fault — waive Return & handling fee</option>
-        </select>
+        </Select>
       </div>
 
       {fault !== 'platform' && (

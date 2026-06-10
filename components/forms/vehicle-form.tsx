@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { createVehicleSchema, type CreateVehicleInput } from '@/lib/validators/user';
 import type { Vehicle } from '@/lib/types/database';
 
@@ -59,23 +60,18 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
         {...register('year', { valueAsNumber: true })}
       />
 
-      <div className="w-full">
-        <label htmlFor="spec" className="mb-1.5 block text-sm font-medium text-slate-700">
-          Spec (optional)
-        </label>
-        <select
-          id="spec"
-          className="flex h-11 w-full rounded-input border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          {...register('spec')}
-        >
-          <option value="">Select spec</option>
-          {specs.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Spec (optional)"
+        id="spec"
+        {...register('spec')}
+      >
+        <option value="">Select spec</option>
+        {specs.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </Select>
 
       <Input
         label="Nickname (optional)"

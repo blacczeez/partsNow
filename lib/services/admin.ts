@@ -771,6 +771,114 @@ export async function updateVendor(
 }
 
 // ============================================
+// PARTS
+// ============================================
+
+export async function getAdminParts(filters: {
+  page: number;
+  limit: number;
+  search?: string;
+  category?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, search, category } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('parts')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (category) {
+    query = query.eq('category', category);
+  }
+
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,oem_code.ilike.%${search}%`);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  const parts = data ?? [];
+  if (parts.length === 0) return { parts: [], total: 0 };
+
+  // Get vendor counts from vendor_parts
+  const partIds = parts.map((p: { id: string }) => p.id);
+  const { data: vendorPartRows } = await supabase
+    .from('vendor_parts')
+    .select('part_id')
+    .in('part_id', partIds);
+
+  const vendorCountMap: Record<string, number> = {};
+  vendorPartRows?.forEach((vp: { part_id: string }) => {
+    vendorCountMap[vp.part_id] = (vendorCountMap[vp.part_id] || 0) + 1;
+  });
+
+  const partsWithVendorCount = parts.map((p: { id: string }) => ({
+    ...p,
+    vendor_count: vendorCountMap[p.id] ?? 0,
+  }));
+
+  return { parts: partsWithVendorCount, total: count ?? 0 };
+}
+
+export async function createPart(data: {
+  name: string;
+  category: string;
+  subcategory?: string;
+  oem_code?: string;
+  average_price?: number;
+  weight_kg?: number;
+  image_url?: string;
+  compatible_vehicles?: Array<{
+    make: string;
+    model: string;
+    year_start?: number;
+    year_end?: number;
+    spec?: string;
+  }>;
+}) {
+  const supabase = await createClient();
+
+  const { data: part, error } = await supabase
+    .from('parts')
+    .insert({
+      name: data.name,
+      category: data.category,
+      subcategory: data.subcategory ?? null,
+      oem_code: data.oem_code ?? null,
+      average_price: data.average_price ?? null,
+      weight_kg: data.weight_kg ?? null,
+      image_url: data.image_url ?? null,
+      compatible_vehicles: data.compatible_vehicles ?? [],
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return part;
+}
+
+export async function updatePart(
+  partId: string,
+  data: Record<string, unknown>
+) {
+  const supabase = await createClient();
+
+  const { data: part, error } = await supabase
+    .from('parts')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', partId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return part;
+}
+
+// ============================================
 // CUSTOMERS
 // ============================================
 

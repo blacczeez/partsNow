@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 
 interface FilterField {
@@ -47,17 +48,17 @@ export function FilterBar({ fields, values, onApply }: FilterBarProps) {
               <label className="mb-1 block text-xs font-medium text-slate-500">
                 {field.label}
               </label>
-              <select
+              <Select
+                fieldSize="sm"
                 value={local[field.key] || ''}
                 onChange={(e) => handleChange(field.key, e.target.value)}
-                className="h-9 w-full rounded-button border border-slate-300 bg-white px-3 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 {field.options?.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           );
         }

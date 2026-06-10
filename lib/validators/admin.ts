@@ -45,3 +45,38 @@ export const priceReviewActionSchema = z.object({
   action: z.enum(['send_to_customer', 'reject_item']),
   notes: z.string().max(500).optional(),
 });
+
+export const createPartSchema = z.object({
+  name: z.string().min(1).max(200),
+  category: z.string().min(1),
+  subcategory: z.string().max(200).optional(),
+  oem_code: z.string().max(100).optional(),
+  average_price: z.number().positive().optional(),
+  weight_kg: z.number().positive().optional(),
+  image_url: z.string().url().optional(),
+  compatible_vehicles: z.array(z.object({
+    make: z.string(),
+    model: z.string(),
+    year_start: z.number().optional(),
+    year_end: z.number().optional(),
+    spec: z.string().optional(),
+  })).optional(),
+});
+
+export const updatePartSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  category: z.string().min(1).optional(),
+  subcategory: z.string().max(200).optional(),
+  oem_code: z.string().max(100).optional(),
+  average_price: z.number().positive().optional(),
+  weight_kg: z.number().positive().optional(),
+  image_url: z.string().url().optional(),
+  compatible_vehicles: z.array(z.object({
+    make: z.string(),
+    model: z.string(),
+    year_start: z.number().optional(),
+    year_end: z.number().optional(),
+    spec: z.string().optional(),
+  })).optional(),
+  is_active: z.boolean().optional(),
+});

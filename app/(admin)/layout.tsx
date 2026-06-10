@@ -9,6 +9,7 @@ import {
   Settings,
   LayoutDashboard,
   UserCircle,
+  Wrench,
 } from 'lucide-react';
 
 const sidebarItems = [
@@ -17,6 +18,7 @@ const sidebarItems = [
   { href: '/admin/runners', icon: Users, label: 'Runners' },
   { href: '/admin/riders', icon: Bike, label: 'Riders' },
   { href: '/admin/vendors', icon: Store, label: 'Vendors' },
+  { href: '/admin/parts', icon: Wrench, label: 'Parts' },
   { href: '/admin/customers', icon: Users, label: 'Customers' },
   { href: '/admin/payments', icon: Wallet, label: 'Payments' },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Car, Check, Plus } from 'lucide-react';
+import { Car, Check, ChevronDown, Plus } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
@@ -47,6 +47,7 @@ export function VehicleSelect({ selectedId, onSelect }: VehicleSelectProps) {
             ? `${selected.year} ${selected.make} ${selected.model}`
             : 'Select a vehicle (optional)'}
         </span>
+        <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
       </button>
 
       <BottomSheet isOpen={isOpen} onClose={() => setIsOpen(false)} title="Select Vehicle">

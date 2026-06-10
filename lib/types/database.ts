@@ -341,6 +341,18 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface VendorPart {
+  id: string;
+  vendor_id: string;
+  part_id: string;
+  last_price: number;
+  price_count: number;
+  average_price: number;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Joined types for common queries
 export interface OrderWithItems extends Order {
   order_items: OrderItem[];

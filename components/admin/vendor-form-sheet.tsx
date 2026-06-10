@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 
 interface VendorData {
   id?: string;
@@ -140,20 +141,15 @@ export function VendorFormSheet({ isOpen, onClose, vendor, onSubmit, isLoading }
           onChange={(e) => setSpecializations(e.target.value)}
           placeholder="Toyota, Honda, German (comma-separated)"
         />
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
-            Payment Terms
-          </label>
-          <select
-            value={paymentTerms}
-            onChange={(e) => setPaymentTerms(e.target.value)}
-            className="flex h-11 w-full rounded-input border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="cash">Cash</option>
-            <option value="float">Float</option>
-            <option value="invoice">Invoice</option>
-          </select>
-        </div>
+        <Select
+          label="Payment Terms"
+          value={paymentTerms}
+          onChange={(e) => setPaymentTerms(e.target.value)}
+        >
+          <option value="cash">Cash</option>
+          <option value="float">Float</option>
+          <option value="invoice">Invoice</option>
+        </Select>
         {vendor?.id && (
           <label className="flex items-center gap-2">
             <input
