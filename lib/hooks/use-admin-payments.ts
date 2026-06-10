@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
 
 interface AdminPayment {
   id: string;
@@ -22,6 +23,11 @@ interface Pagination {
 }
 
 export function useAdminPayments() {
+  const { values, setUrlState } = useAdminUrlState(['type', 'status']);
+  const page = parseInt(values.page || '1', 10);
+  const type = values.type;
+  const status = values.status;
+
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -29,32 +35,58 @@ export function useAdminPayments() {
     total: 0,
     totalPages: 0,
   });
-  const [page, setPage] = useState(1);
-  const [type, setType] = useState('');
-  const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPayments = useCallback(async (p: number, t: string, s: string) => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(p), limit: '20' });
-      if (t) params.set('type', t);
-      if (s) params.set('status', s);
+  const setPage = useCallback(
+    (value: number) => {
+      setIsLoading(true);
+      setUrlState({ page: value });
+    },
+    [setUrlState]
+  );
 
-      const res = await fetch(`/api/admin/payments?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPayments(data.payments);
-        setPagination(data.pagination);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const setType = useCallback(
+    (value: string) => {
+      setIsLoading(true);
+      setUrlState({ type: value || undefined, page: 1 });
+    },
+    [setUrlState]
+  );
+
+  const setStatus = useCallback(
+    (value: string) => {
+      setIsLoading(true);
+      setUrlState({ status: value || undefined, page: 1 });
+    },
+    [setUrlState]
+  );
 
   useEffect(() => {
-    fetchPayments(page, type, status);
-  }, [page, type, status, fetchPayments]);
+    let cancelled = false;
+
+    async function fetchPayments() {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({ page: String(page), limit: '20' });
+        if (type) params.set('type', type);
+        if (status) params.set('status', status);
+
+        const res = await fetch(`/api/admin/payments?${params}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setPayments(data.payments);
+          setPagination(data.pagination);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void fetchPayments();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, type, status]);
 
   return { payments, pagination, isLoading, page, setPage, type, setType, status, setStatus };
 }

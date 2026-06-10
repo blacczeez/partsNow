@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,10 +11,20 @@ interface ModalProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
+  closeOnBackdropClick?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className,
+  closeOnBackdropClick = true,
+}: ModalProps) {
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -47,11 +58,12 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
     >
       <button
         type="button"
-        aria-label="Close dialog"
+        aria-label={closeOnBackdropClick ? 'Close dialog' : 'Dismiss dialog blocked'}
         className="absolute inset-0 bg-black/50"
-        onClick={onClose}
+        onClick={closeOnBackdropClick ? onClose : undefined}
       />
       <div
+        ref={panelRef}
         className={cn(
           'relative z-10 w-full max-w-md max-h-[85vh] overflow-y-auto rounded-card bg-white p-6 shadow-xl scrollbar-subtle',
           className

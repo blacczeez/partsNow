@@ -42,6 +42,7 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
   const [reassignRole, setReassignRole] = useState<'runner' | 'rider'>('runner');
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelForm, setShowCancelForm] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   if (!isOpen) return null;
 
@@ -56,14 +57,18 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
   };
 
   const handleCancel = async () => {
-    if (!cancelReason.trim()) return;
+    if (!cancelReason.trim()) {
+      setCancelError('Please provide a reason for cancellation.');
+      return;
+    }
+    setCancelError('');
     const success = await cancel(cancelReason);
     if (success) {
       toast('success', 'Order cancelled');
       setShowCancelForm(false);
       setCancelReason('');
     } else {
-      toast('error', 'Failed to cancel order');
+      setCancelError('Failed to cancel order. Try again.');
     }
   };
 
@@ -97,7 +102,12 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
 
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose} title={order?.order_number || 'Order Details'}>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title={order?.order_number || 'Order Details'}
+        closeOnBackdropClick={!showCancelForm}
+      >
         {isLoading || !order ? (
           <div className="animate-pulse space-y-4">
             <div className="h-6 w-32 rounded bg-slate-200" />
@@ -409,11 +419,15 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                   <div className="space-y-2">
                     <textarea
                       value={cancelReason}
-                      onChange={(e) => setCancelReason(e.target.value)}
+                      onChange={(e) => {
+                        setCancelReason(e.target.value);
+                        if (cancelError) setCancelError('');
+                      }}
                       placeholder="Reason for cancellation..."
                       className="w-full rounded-button border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       rows={2}
                     />
+                    {cancelError && <p className="text-sm text-error">{cancelError}</p>}
                     <div className="flex gap-2">
                       <Button variant="secondary" size="sm" className="flex-1" onClick={() => { setShowCancelForm(false); setCancelReason(''); }}>
                         Back

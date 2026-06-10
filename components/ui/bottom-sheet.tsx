@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -10,10 +11,20 @@ interface BottomSheetProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
+  closeOnBackdropClick?: boolean;
 }
 
-export function BottomSheet({ isOpen, onClose, title, children, className }: BottomSheetProps) {
+export function BottomSheet({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className,
+  closeOnBackdropClick = true,
+}: BottomSheetProps) {
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -46,11 +57,12 @@ export function BottomSheet({ isOpen, onClose, title, children, className }: Bot
     >
       <button
         type="button"
-        aria-label="Close dialog"
+        aria-label={closeOnBackdropClick ? 'Close dialog' : 'Dismiss dialog blocked'}
         className="absolute inset-0 bg-black/50"
-        onClick={onClose}
+        onClick={closeOnBackdropClick ? onClose : undefined}
       />
       <div
+        ref={panelRef}
         className={cn(
           'relative z-10 w-full rounded-t-2xl bg-white px-4 pb-8 pt-4 shadow-xl',
           'max-h-[85vh] overflow-y-auto scrollbar-subtle',

@@ -1,6 +1,7 @@
 'use client';
 
 import { DataTable } from '@/components/admin/data-table';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { FilterBar } from '@/components/admin/filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { useAdminPayments } from '@/lib/hooks/use-admin-payments';
@@ -91,19 +92,19 @@ export default function AdminPaymentsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Payments</h1>
-
-      <div className="mb-4">
-        <FilterBar
-          fields={filterFields}
-          values={{ type, status }}
-          onApply={(vals) => {
-            setType(vals.type || '');
-            setStatus(vals.status || '');
-            setPage(1);
-          }}
-        />
-      </div>
+      <AdminPageHeader
+        title="Payments"
+        filters={
+          <FilterBar
+            fields={filterFields}
+            values={{ type, status }}
+            onApply={(vals) => {
+              setType(vals.type || '');
+              setStatus(vals.status || '');
+            }}
+          />
+        }
+      />
 
       <DataTable
         columns={columns}

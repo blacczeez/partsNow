@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Package, DollarSign, AlertTriangle, Users, Bike, TrendingUp, Scale } from 'lucide-react';
 import { StatCard } from '@/components/admin/stat-card';
 import { DataTable } from '@/components/admin/data-table';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { useAdminDashboard } from '@/lib/hooks/use-admin-dashboard';
@@ -39,16 +41,7 @@ export default function AdminDashboardPage() {
   const { stats, isLoading } = useAdminDashboard();
 
   if (isLoading || !stats) {
-    return (
-      <div className="p-6">
-        <h1 className="mb-6 text-2xl font-bold text-slate-900">Dashboard</h1>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-card bg-slate-100" />
-          ))}
-        </div>
-      </div>
-    );
+    return <AdminPageSkeleton statCards={4} tableColumns={5} />;
   }
 
   const recentOrderColumns = [
@@ -84,7 +77,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Dashboard</h1>
+      <AdminPageHeader title="Dashboard" />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

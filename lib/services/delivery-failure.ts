@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { config } from '@/lib/config';
 import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import {
   DELIVERY_RESOLUTION,
   PARTS_CUSTODY,
@@ -142,10 +143,11 @@ async function finalizeTerminalDeliveryFailure(
   const noteLine = `Rider reported: ${label}${notes ? ` — ${notes}` : ''}. Status → ${terminalStatus}.`;
   await appendOrderNote(orderId, noteLine);
 
-  await writeAuditLog(riderId, orderId, 'delivery_failure_terminal', {
+  await writeAuditLog(riderId, orderId, AUDIT_ACTIONS.ORDER_DELIVERY_CLOSED, {
     terminalStatus,
     reason,
     notes: notes ?? null,
+    summary: `Rider closed delivery — ${label} (${terminalStatus})`,
   });
 
   if (reason === 'customer_refused' && order.payment_method === 'cod') {
@@ -288,9 +290,10 @@ export async function reportDeliveryFailure(
     throwIfSupabaseError(escalateError, 'Failed to escalate for admin review');
 
     await clearDeliveryTracking(orderId);
-    await writeAuditLog(riderId, orderId, 'delivery_failure_admin_review', {
+    await writeAuditLog(riderId, orderId, AUDIT_ACTIONS.ORDER_DELIVERY_ESCALATED, {
       reason: data.reason,
       notes: data.notes ?? null,
+      summary: `Rider escalated delivery — ${label} (admin review)`,
     });
 
     notifyAdminDeliveryEscalation(orderId, label, data.notes).catch(() => {});

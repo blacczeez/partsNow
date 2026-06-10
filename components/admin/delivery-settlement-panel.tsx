@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { PARTS_CUSTODY, canConfirmPartsAtHub } from '@/lib/constants/delivery-failure';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
@@ -55,6 +56,7 @@ export function DeliverySettlementPanel({
   const [actionLoading, setActionLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [draftSynced, setDraftSynced] = useState(false);
+  const [confirmExecuteOpen, setConfirmExecuteOpen] = useState(false);
 
   if (settlementFault !== prevSettlementFault) {
     setPrevSettlementFault(settlementFault);
@@ -276,7 +278,7 @@ export function DeliverySettlementPanel({
           size="sm"
           fullWidth
           isLoading={actionLoading}
-          onClick={handleExecute}
+          onClick={() => setConfirmExecuteOpen(true)}
           disabled={!canExecute}
         >
           Execute settlement
@@ -287,6 +289,30 @@ export function DeliverySettlementPanel({
           </p>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmExecuteOpen}
+        onClose={() => setConfirmExecuteOpen(false)}
+        onConfirm={async () => {
+          await handleExecute();
+          setConfirmExecuteOpen(false);
+        }}
+        title="Execute settlement"
+        description={
+          breakdown ? (
+            <>
+              This will refund{' '}
+              <strong>{formatCurrency(breakdown.amountReturnedToCustomer)}</strong> to the
+              customer and finalize the failed delivery. This cannot be undone.
+            </>
+          ) : (
+            'This will finalize the failed delivery settlement. This cannot be undone.'
+          )
+        }
+        confirmLabel="Execute settlement"
+        destructive
+        isLoading={actionLoading}
+      />
     </div>
   );
 }

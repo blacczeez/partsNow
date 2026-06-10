@@ -7,7 +7,19 @@ import {
   rejectPriceReviewItem,
 } from './price-review';
 import { canAdminReassignRider } from '@/lib/constants/order-status';
+import {
+  AUDIT_ACTIONS,
+  formatAuditEntityDetail,
+  formatAuditEntityLabel,
+  getAuditEntityHref,
+  type AuditEntityContext,
+} from '@/lib/constants/audit-log';
 import type { OrderStatus } from '@/lib/types/database';
+
+const AUDIT_ACTION_LEGACY_ALIASES: Record<string, string[]> = {
+  [AUDIT_ACTIONS.ORDER_DELIVERY_CLOSED]: ['delivery_failure_terminal'],
+  [AUDIT_ACTIONS.ORDER_DELIVERY_ESCALATED]: ['delivery_failure_admin_review'],
+};
 
 // ============================================
 // DASHBOARD
@@ -1258,4 +1270,241 @@ export async function getAvailableRiders(clusterId?: string) {
 
   const { data } = await query;
   return data ?? [];
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+export async function getAuditLog(filters: {
+  page: number;
+  limit: number;
+  entityType?: string;
+  action?: string;
+  search?: string;
+}) {
+  const supabase = await createClient();
+  const { page, limit, entityType, action, search } = filters;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('audit_log')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (entityType) {
+    query = query.eq('entity_type', entityType);
+  }
+
+  if (action) {
+    const legacy = AUDIT_ACTION_LEGACY_ALIASES[action] ?? [];
+    if (legacy.length > 0) {
+      query = query.or(`action.eq.${action},action.in.(${legacy.join(',')})`);
+    } else {
+      query = query.eq('action', action);
+    }
+  }
+
+  if (search) {
+    query = query.or(`action.ilike.%${search}%,entity_type.ilike.%${search}%`);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  const entries = data ?? [];
+  if (entries.length === 0) return { entries: [], total: count ?? 0 };
+
+  const userIds = [...new Set(entries.map((e) => e.user_id).filter(Boolean))] as string[];
+  const { data: users } = userIds.length
+    ? await supabase.from('users').select('id, full_name').in('id', userIds)
+    : { data: [] as Array<{ id: string; full_name: string }> };
+
+  const nameMap: Record<string, string> = {};
+  users?.forEach((u) => {
+    nameMap[u.id] = u.full_name;
+  });
+
+  const orderIds = [
+    ...new Set(
+      entries
+        .filter((e) => e.entity_type === 'order' && e.entity_id)
+        .map((e) => e.entity_id as string)
+    ),
+  ];
+  const userEntityIds = [
+    ...new Set(
+      entries
+        .filter((e) => e.entity_type === 'user' && e.entity_id)
+        .map((e) => e.entity_id as string)
+    ),
+  ];
+
+  const { data: orders } = orderIds.length
+    ? await supabase
+        .from('orders')
+        .select('id, order_number, status')
+        .in('id', orderIds)
+    : { data: [] as Array<{ id: string; order_number: string; status: string }> };
+
+  const { data: entityUsers } = userEntityIds.length
+    ? await supabase
+        .from('users')
+        .select('id, full_name, phone')
+        .in('id', userEntityIds)
+    : { data: [] as Array<{ id: string; full_name: string; phone: string }> };
+
+  const orderMap: Record<string, AuditEntityContext> = {};
+  orders?.forEach((o) => {
+    orderMap[o.id] = { orderNumber: o.order_number, orderStatus: o.status };
+  });
+
+  const userEntityMap: Record<string, AuditEntityContext> = {};
+  entityUsers?.forEach((u) => {
+    userEntityMap[u.id] = { userName: u.full_name, userPhone: u.phone };
+  });
+
+  return {
+    entries: entries.map((entry) => {
+      const entityContext: AuditEntityContext | undefined =
+        entry.entity_type === 'order' && entry.entity_id
+          ? orderMap[entry.entity_id]
+          : entry.entity_type === 'user' && entry.entity_id
+            ? userEntityMap[entry.entity_id]
+            : undefined;
+
+      return {
+        ...entry,
+        user_name: entry.user_id ? nameMap[entry.user_id] ?? 'Unknown' : 'System',
+        entity_label: formatAuditEntityLabel(
+          entry.entity_type,
+          entry.entity_id,
+          entityContext
+        ),
+        entity_detail: formatAuditEntityDetail(entry.entity_type, entityContext),
+        entity_href: getAuditEntityHref(entry.entity_type, entityContext),
+      };
+    }),
+    total: count ?? 0,
+  };
+}
+
+// ============================================
+// CLUSTERS (MARKETS)
+// ============================================
+
+export async function getAdminClusters() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('clusters')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function createCluster(data: {
+  name: string;
+  city: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  delivery_radius_km: number;
+  is_active?: boolean;
+}) {
+  const supabase = await createClient();
+
+  const { data: cluster, error } = await supabase
+    .from('clusters')
+    .insert({
+      name: data.name,
+      city: data.city,
+      state: data.state,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      delivery_radius_km: data.delivery_radius_km,
+      is_active: data.is_active ?? true,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return cluster;
+}
+
+export async function updateCluster(
+  clusterId: string,
+  data: Record<string, unknown>
+) {
+  const supabase = await createClient();
+
+  const { data: cluster, error } = await supabase
+    .from('clusters')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', clusterId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return cluster;
+}
+
+// ============================================
+// PART VENDORS
+// ============================================
+
+export async function getPartVendors(partId: string) {
+  const supabase = await createClient();
+
+  const { data: part, error: partError } = await supabase
+    .from('parts')
+    .select('id, name')
+    .eq('id', partId)
+    .single();
+
+  if (partError || !part) throw new Error('Part not found');
+
+  const { data, error } = await supabase
+    .from('vendor_parts')
+    .select(
+      'id, last_price, average_price, price_count, last_seen_at, vendors(id, name, contact_phone, location_in_market, cluster_id, clusters(name))'
+    )
+    .eq('part_id', partId)
+    .order('last_seen_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return {
+    part,
+    vendors: (data ?? []).map((row) => {
+      const rawVendor = row.vendors as unknown;
+      const vendor = (Array.isArray(rawVendor) ? rawVendor[0] : rawVendor) as {
+        id: string;
+        name: string;
+        contact_phone: string;
+        location_in_market: string | null;
+        cluster_id: string;
+        clusters: { name: string } | { name: string }[] | null;
+      } | null;
+
+      const cluster = vendor?.clusters;
+      const clusterName = Array.isArray(cluster) ? cluster[0]?.name : cluster?.name;
+
+      return {
+        id: row.id,
+        last_price: row.last_price,
+        average_price: row.average_price,
+        price_count: row.price_count,
+        last_seen_at: row.last_seen_at,
+        vendor_id: vendor?.id ?? '',
+        vendor_name: vendor?.name ?? 'Unknown',
+        contact_phone: vendor?.contact_phone ?? '',
+        location_in_market: vendor?.location_in_market,
+        cluster_name: clusterName ?? '',
+      };
+    }),
+  };
 }

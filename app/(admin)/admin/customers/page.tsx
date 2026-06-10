@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DataTable } from '@/components/admin/data-table';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { FilterBar } from '@/components/admin/filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { CustomerDetailSheet } from '@/components/admin/customer-detail-sheet';
@@ -80,19 +81,19 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Customers</h1>
-
-      <div className="mb-4">
-        <FilterBar
-          fields={filterFields}
-          values={{ tier, search }}
-          onApply={(vals) => {
-            setTier(vals.tier || '');
-            setSearch(vals.search || '');
-            setPage(1);
-          }}
-        />
-      </div>
+      <AdminPageHeader
+        title="Customers"
+        filters={
+          <FilterBar
+            fields={filterFields}
+            values={{ tier, search }}
+            onApply={(vals) => {
+              setTier(vals.tier || '');
+              setSearch(vals.search || '');
+            }}
+          />
+        }
+      />
 
       <DataTable
         columns={columns}

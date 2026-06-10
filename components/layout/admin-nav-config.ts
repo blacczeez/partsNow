@@ -9,6 +9,9 @@ import {
   LayoutDashboard,
   UserCircle,
   Wrench,
+  Scale,
+  MapPin,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -27,6 +30,9 @@ export const adminNavItems: AdminNavItem[] = [
   { href: '/admin/parts', icon: Wrench, label: 'Parts' },
   { href: '/admin/customers', icon: UserCircle, label: 'Customers' },
   { href: '/admin/payments', icon: Wallet, label: 'Payments' },
+  { href: '/admin/reconciliation', icon: Scale, label: 'Reconciliation' },
+  { href: '/admin/markets', icon: MapPin, label: 'Markets' },
+  { href: '/admin/audit-log', icon: ScrollText, label: 'Audit Log' },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];

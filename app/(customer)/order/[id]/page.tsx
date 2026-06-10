@@ -400,6 +400,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
         isOpen={showCancelModal}
         onClose={() => setShowCancelModal(false)}
         title="Cancel Order"
+        closeOnBackdropClick={false}
       >
         <p className="mb-4 text-sm text-slate-600">
           Are you sure you want to cancel this order? This action cannot be

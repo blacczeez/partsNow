@@ -53,9 +53,11 @@ function PartFormFields({ part, onClose, onSubmit, isLoading }: PartFormFieldsPr
       : ''
   );
   const [isActive, setIsActive] = useState(part?.is_active ?? true);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
 
     const data: Record<string, unknown> = {
       name,
@@ -72,7 +74,8 @@ function PartFormFields({ part, onClose, onSubmit, isLoading }: PartFormFieldsPr
       try {
         data.compatible_vehicles = JSON.parse(compatibleVehicles);
       } catch {
-        // Invalid JSON — skip
+        setSubmitError('Compatible vehicles must be valid JSON.');
+        return;
       }
     }
 
@@ -83,6 +86,8 @@ function PartFormFields({ part, onClose, onSubmit, isLoading }: PartFormFieldsPr
     const success = await onSubmit(data);
     if (success) {
       onClose();
+    } else {
+      setSubmitError('Could not save part. Check the fields and try again.');
     }
   };
 
@@ -166,6 +171,7 @@ function PartFormFields({ part, onClose, onSubmit, isLoading }: PartFormFieldsPr
             <span className="text-sm text-slate-700">Active</span>
           </label>
         )}
+        {submitError && <p className="text-sm text-error">{submitError}</p>}
         <Button type="submit" fullWidth isLoading={isLoading}>
           {part?.id ? 'Update Part' : 'Add Part'}
         </Button>

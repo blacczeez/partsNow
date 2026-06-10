@@ -3,14 +3,50 @@
 import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { PartFormSheet } from '@/components/admin/part-form-sheet';
+import { PartVendorsSheet } from '@/components/admin/part-vendors-sheet';
 import { useAdminParts } from '@/lib/hooks/use-admin-parts';
 import { CATEGORIES, CATEGORY_MAP } from '@/lib/constants/categories';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
+
+function PartsSearchForm({
+  appliedSearch,
+  onApply,
+}: {
+  appliedSearch: string;
+  onApply: (value: string) => void;
+}) {
+  const [searchInput, setSearchInput] = useState(appliedSearch);
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onApply(searchInput);
+      }}
+      className="flex items-center gap-2"
+    >
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search name or OEM code..."
+          className="h-9 rounded-input border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <Button type="submit" size="sm" variant="secondary">
+        Search
+      </Button>
+    </form>
+  );
+}
 
 export default function AdminPartsPage() {
   const {
@@ -29,7 +65,7 @@ export default function AdminPartsPage() {
   } = useAdminParts();
   const [formOpen, setFormOpen] = useState(false);
   const [editingPart, setEditingPart] = useState<(typeof parts)[0] | null>(null);
-  const [searchInput, setSearchInput] = useState('');
+  const [vendorsPartId, setVendorsPartId] = useState<string | null>(null);
 
   const handleRowClick = (row: (typeof parts)[0]) => {
     setEditingPart(row);
@@ -43,32 +79,24 @@ export default function AdminPartsPage() {
         toast('success', 'Part updated');
         return true;
       }
-      toast('error', 'Failed to update part');
-      return false;
-    } else {
-      const success = await createPart(data as {
-        name: string;
-        category: string;
-        subcategory?: string;
-        oem_code?: string;
-        average_price?: number;
-        weight_kg?: number;
-        image_url?: string;
-        compatible_vehicles?: unknown[];
-      });
-      if (success) {
-        toast('success', 'Part created');
-        return true;
-      }
-      toast('error', 'Failed to create part');
       return false;
     }
-  };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    setSearch(searchInput);
+    const success = await createPart(data as {
+      name: string;
+      category: string;
+      subcategory?: string;
+      oem_code?: string;
+      average_price?: number;
+      weight_kg?: number;
+      image_url?: string;
+      compatible_vehicles?: unknown[];
+    });
+    if (success) {
+      toast('success', 'Part created');
+      return true;
+    }
+    return false;
   };
 
   const columns = [
@@ -98,7 +126,19 @@ export default function AdminPartsPage() {
     },
     {
       header: 'Vendors',
-      render: (row: (typeof parts)[0]) => row.vendor_count,
+      render: (row: (typeof parts)[0]) => (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setVendorsPartId(row.id);
+          }}
+          className="font-medium text-primary hover:underline"
+          disabled={row.vendor_count === 0}
+        >
+          {row.vendor_count}
+        </button>
+      ),
     },
     {
       header: 'Status',
@@ -112,68 +152,52 @@ export default function AdminPartsPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Parts</h1>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditingPart(null);
-            setFormOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Add Part
-        </Button>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <form onSubmit={handleSearch} className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search name or OEM code..."
-              className="h-9 rounded-input border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <Button type="submit" size="sm" variant="secondary">
-            Search
-          </Button>
-        </form>
-
-        <Select
-          fieldSize="sm"
-          value={category}
-          onChange={(e) => {
-            setPage(1);
-            setCategory(e.target.value);
-          }}
-        >
-          <option value="">All Categories</option>
-          {CATEGORIES.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
-
-        {(search || category) && (
+      <AdminPageHeader
+        title="Parts"
+        actions={
           <Button
             size="sm"
-            variant="ghost"
             onClick={() => {
-              setSearchInput('');
-              setSearch('');
-              setCategory('');
-              setPage(1);
+              setEditingPart(null);
+              setFormOpen(true);
             }}
           >
-            Clear filters
+            <Plus className="mr-1 h-4 w-4" />
+            Add Part
           </Button>
-        )}
-      </div>
+        }
+        filters={
+          <div className="flex flex-wrap items-center gap-3">
+            <PartsSearchForm key={search} appliedSearch={search} onApply={setSearch} />
+
+            <Select
+              fieldSize="sm"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+
+            {(search || category) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setSearch('');
+                  setCategory('');
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       <DataTable
         columns={columns}
@@ -205,6 +229,12 @@ export default function AdminPartsPage() {
         } : null}
         onSubmit={handleSubmit}
         isLoading={actionLoading}
+      />
+
+      <PartVendorsSheet
+        partId={vendorsPartId}
+        isOpen={!!vendorsPartId}
+        onClose={() => setVendorsPartId(null)}
       />
     </div>
   );

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from 'react';
 import { DataTable } from '@/components/admin/data-table';
+import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { FilterBar } from '@/components/admin/filter-bar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -14,15 +13,8 @@ import { ORDER_STATUSES } from '@/lib/constants/order-status';
 import type { OrderStatus } from '@/lib/types/database';
 
 export default function AdminOrdersPage() {
-  const searchParams = useSearchParams();
   const { orders, pagination, isLoading, filters, setFilters } = useAdminOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (searchParams.get('priceReview') === 'pending') {
-      setFilters({ page: 1, priceReview: 'pending' });
-    }
-  }, [searchParams, setFilters]);
 
   const columns = [
     {
@@ -100,26 +92,27 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Orders</h1>
-
-      <div className="mb-4">
-        <FilterBar
-          fields={filterFields}
-          values={{
-            priceReview: filters.priceReview || '',
-            status: filters.status || '',
-            search: filters.search || '',
-          }}
-          onApply={(vals) =>
-            setFilters({
-              page: 1,
-              priceReview: vals.priceReview === 'pending' ? 'pending' : undefined,
-              status: (vals.status as OrderStatus) || undefined,
-              search: vals.search || undefined,
-            })
-          }
-        />
-      </div>
+      <AdminPageHeader
+        title="Orders"
+        filters={
+          <FilterBar
+            fields={filterFields}
+            values={{
+              priceReview: filters.priceReview || '',
+              status: filters.status || '',
+              search: filters.search || '',
+            }}
+            onApply={(vals) =>
+              setFilters({
+                page: 1,
+                priceReview: vals.priceReview === 'pending' ? 'pending' : undefined,
+                status: (vals.status as OrderStatus) || undefined,
+                search: vals.search || undefined,
+              })
+            }
+          />
+        }
+      />
 
       <DataTable
         columns={columns}

@@ -51,7 +51,7 @@ export function ShiftSummaryModal({
   const floatDiff = currentFloat - shift.starting_float;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="End Shift">
+    <Modal isOpen={isOpen} onClose={onClose} title="End Shift" closeOnBackdropClick={false}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-button bg-slate-50 p-3 text-center">

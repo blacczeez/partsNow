@@ -31,60 +31,52 @@ interface Cluster {
   name: string;
 }
 
-export function VendorFormSheet({ isOpen, onClose, vendor, onSubmit, isLoading }: VendorFormSheetProps) {
-  const [name, setName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [clusterId, setClusterId] = useState('');
-  const [locationInMarket, setLocationInMarket] = useState('');
-  const [specializations, setSpecializations] = useState('');
-  const [paymentTerms, setPaymentTerms] = useState('cash');
-  const [isActive, setIsActive] = useState(true);
+interface VendorFormFieldsProps {
+  vendor?: VendorData | null;
+  onClose: () => void;
+  onSubmit: (data: Record<string, unknown>) => Promise<boolean>;
+  isLoading?: boolean;
+}
+
+function VendorFormFields({ vendor, onClose, onSubmit, isLoading }: VendorFormFieldsProps) {
+  const [name, setName] = useState(vendor?.name ?? '');
+  const [contactPhone, setContactPhone] = useState(vendor?.contact_phone ?? '');
+  const [contactName, setContactName] = useState(vendor?.contact_name ?? '');
+  const [clusterId, setClusterId] = useState(vendor?.cluster_id ?? '');
+  const [locationInMarket, setLocationInMarket] = useState(vendor?.location_in_market ?? '');
+  const [specializations, setSpecializations] = useState(
+    vendor?.specializations?.join(', ') ?? ''
+  );
+  const [paymentTerms, setPaymentTerms] = useState(vendor?.payment_terms ?? 'cash');
+  const [isActive, setIsActive] = useState(vendor?.is_active ?? true);
   const [clusters, setClusters] = useState<Cluster[]>([]);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
-    if (isOpen) {
-      // Fetch clusters
-      fetch('/api/admin/settings')
-        .then(() => {
-          // Use a simple approach - we can't easily fetch clusters from a separate endpoint
-          // For now, we'll just allow free-text cluster ID input
-        })
-        .catch(() => {});
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (vendor) {
-      setName(vendor.name);
-      setContactPhone(vendor.contact_phone);
-      setContactName(vendor.contact_name || '');
-      setClusterId(vendor.cluster_id);
-      setLocationInMarket(vendor.location_in_market || '');
-      setSpecializations(vendor.specializations?.join(', ') || '');
-      setPaymentTerms(vendor.payment_terms || 'cash');
-      setIsActive(vendor.is_active ?? true);
-    } else {
-      setName('');
-      setContactPhone('');
-      setContactName('');
-      setClusterId('');
-      setLocationInMarket('');
-      setSpecializations('');
-      setPaymentTerms('cash');
-      setIsActive(true);
-    }
-  }, [vendor, isOpen]);
+    fetch('/api/admin/clusters')
+      .then((res) => res.json())
+      .then((data) => setClusters(data.clusters ?? []))
+      .catch(() => setClusters([]));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
+
+    if (!clusterId) {
+      setSubmitError('Please select a market.');
+      return;
+    }
+
     const data: Record<string, unknown> = {
       name,
       contact_phone: contactPhone,
       contact_name: contactName || undefined,
       cluster_id: clusterId,
       location_in_market: locationInMarket || undefined,
-      specializations: specializations ? specializations.split(',').map((s) => s.trim()).filter(Boolean) : [],
+      specializations: specializations
+        ? specializations.split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
       payment_terms: paymentTerms,
     };
 
@@ -95,76 +87,99 @@ export function VendorFormSheet({ isOpen, onClose, vendor, onSubmit, isLoading }
     const success = await onSubmit(data);
     if (success) {
       onClose();
+    } else {
+      setSubmitError('Could not save vendor. Check the fields and try again.');
     }
   };
 
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Input
+        label="Vendor Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <Input
+        label="Contact Phone"
+        value={contactPhone}
+        onChange={(e) => setContactPhone(e.target.value)}
+        required
+      />
+      <Input
+        label="Contact Name"
+        value={contactName}
+        onChange={(e) => setContactName(e.target.value)}
+      />
+      <Select
+        label="Market"
+        value={clusterId}
+        onChange={(e) => setClusterId(e.target.value)}
+        required
+      >
+        <option value="">Select market</option>
+        {clusters.map((cluster) => (
+          <option key={cluster.id} value={cluster.id}>
+            {cluster.name}
+          </option>
+        ))}
+      </Select>
+      <Input
+        label="Location in Market"
+        value={locationInMarket}
+        onChange={(e) => setLocationInMarket(e.target.value)}
+        placeholder="e.g. Line 5, Shop 23"
+      />
+      <Input
+        label="Specializations"
+        value={specializations}
+        onChange={(e) => setSpecializations(e.target.value)}
+        placeholder="Toyota, Honda, German (comma-separated)"
+      />
+      <Select
+        label="Payment Terms"
+        value={paymentTerms}
+        onChange={(e) => setPaymentTerms(e.target.value)}
+      >
+        <option value="cash">Cash</option>
+        <option value="float">Float</option>
+        <option value="invoice">Invoice</option>
+      </Select>
+      {vendor?.id && (
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+          />
+          <span className="text-sm text-slate-700">Active</span>
+        </label>
+      )}
+      {submitError && <p className="text-sm text-error">{submitError}</p>}
+      <Button type="submit" fullWidth isLoading={isLoading}>
+        {vendor?.id ? 'Update Vendor' : 'Add Vendor'}
+      </Button>
+    </form>
+  );
+}
+
+export function VendorFormSheet({ isOpen, onClose, vendor, onSubmit, isLoading }: VendorFormSheetProps) {
   return (
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
       title={vendor?.id ? 'Edit Vendor' : 'Add Vendor'}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Vendor Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
+      {isOpen && (
+        <VendorFormFields
+          key={vendor?.id ?? 'new'}
+          vendor={vendor}
+          onClose={onClose}
+          onSubmit={onSubmit}
+          isLoading={isLoading}
         />
-        <Input
-          label="Contact Phone"
-          value={contactPhone}
-          onChange={(e) => setContactPhone(e.target.value)}
-          required
-        />
-        <Input
-          label="Contact Name"
-          value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
-        />
-        <Input
-          label="Cluster ID"
-          value={clusterId}
-          onChange={(e) => setClusterId(e.target.value)}
-          required
-          placeholder="UUID of the cluster"
-        />
-        <Input
-          label="Location in Market"
-          value={locationInMarket}
-          onChange={(e) => setLocationInMarket(e.target.value)}
-          placeholder="e.g. Line 5, Shop 23"
-        />
-        <Input
-          label="Specializations"
-          value={specializations}
-          onChange={(e) => setSpecializations(e.target.value)}
-          placeholder="Toyota, Honda, German (comma-separated)"
-        />
-        <Select
-          label="Payment Terms"
-          value={paymentTerms}
-          onChange={(e) => setPaymentTerms(e.target.value)}
-        >
-          <option value="cash">Cash</option>
-          <option value="float">Float</option>
-          <option value="invoice">Invoice</option>
-        </Select>
-        {vendor?.id && (
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-            />
-            <span className="text-sm text-slate-700">Active</span>
-          </label>
-        )}
-        <Button type="submit" fullWidth isLoading={isLoading}>
-          {vendor?.id ? 'Update Vendor' : 'Add Vendor'}
-        </Button>
-      </form>
+      )}
     </BottomSheet>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
 
 interface AdminPart {
   id: string;
@@ -37,6 +38,11 @@ async function fetchPartsPage(page: number, search: string, category: string) {
 }
 
 export function useAdminParts() {
+  const { values, setUrlState } = useAdminUrlState(['search', 'category']);
+  const page = parseInt(values.page || '1', 10);
+  const search = values.search;
+  const category = values.category;
+
   const [parts, setParts] = useState<AdminPart[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -44,26 +50,33 @@ export function useAdminParts() {
     total: 0,
     totalPages: 0,
   });
-  const [page, setPageState] = useState(1);
-  const [search, setSearchState] = useState('');
-  const [category, setCategoryState] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const setPage = useCallback((value: number | ((prev: number) => number)) => {
-    setIsLoading(true);
-    setPageState(value);
-  }, []);
+  const setPage = useCallback(
+    (value: number | ((prev: number) => number)) => {
+      const next = typeof value === 'function' ? value(page) : value;
+      setIsLoading(true);
+      setUrlState({ page: next });
+    },
+    [page, setUrlState]
+  );
 
-  const setSearch = useCallback((value: string | ((prev: string) => string)) => {
-    setIsLoading(true);
-    setSearchState(value);
-  }, []);
+  const setSearch = useCallback(
+    (value: string) => {
+      setIsLoading(true);
+      setUrlState({ search: value || undefined, page: 1 });
+    },
+    [setUrlState]
+  );
 
-  const setCategory = useCallback((value: string | ((prev: string) => string)) => {
-    setIsLoading(true);
-    setCategoryState(value);
-  }, []);
+  const setCategory = useCallback(
+    (value: string) => {
+      setIsLoading(true);
+      setUrlState({ category: value || undefined, page: 1 });
+    },
+    [setUrlState]
+  );
 
   const refreshParts = useCallback(async (p: number, s: string, c: string) => {
     setIsLoading(true);

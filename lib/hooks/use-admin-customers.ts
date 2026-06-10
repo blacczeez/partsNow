@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
 
 interface AdminCustomer {
   id: string;
@@ -22,6 +23,11 @@ interface Pagination {
 }
 
 export function useAdminCustomers() {
+  const { values, setUrlState } = useAdminUrlState(['search', 'tier']);
+  const page = parseInt(values.page || '1', 10);
+  const search = values.search;
+  const tier = values.tier;
+
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -29,32 +35,58 @@ export function useAdminCustomers() {
     total: 0,
     totalPages: 0,
   });
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [tier, setTier] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchCustomers = useCallback(async (p: number, s: string, t: string) => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(p), limit: '20' });
-      if (s) params.set('search', s);
-      if (t) params.set('tier', t);
+  const setPage = useCallback(
+    (value: number) => {
+      setIsLoading(true);
+      setUrlState({ page: value });
+    },
+    [setUrlState]
+  );
 
-      const res = await fetch(`/api/admin/customers?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCustomers(data.customers);
-        setPagination(data.pagination);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const setSearch = useCallback(
+    (value: string) => {
+      setIsLoading(true);
+      setUrlState({ search: value || undefined, page: 1 });
+    },
+    [setUrlState]
+  );
+
+  const setTier = useCallback(
+    (value: string) => {
+      setIsLoading(true);
+      setUrlState({ tier: value || undefined, page: 1 });
+    },
+    [setUrlState]
+  );
 
   useEffect(() => {
-    fetchCustomers(page, search, tier);
-  }, [page, search, tier, fetchCustomers]);
+    let cancelled = false;
+
+    async function fetchCustomers() {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({ page: String(page), limit: '20' });
+        if (search) params.set('search', search);
+        if (tier) params.set('tier', tier);
+
+        const res = await fetch(`/api/admin/customers?${params}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setCustomers(data.customers);
+          setPagination(data.pagination);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void fetchCustomers();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, search, tier]);
 
   return { customers, pagination, isLoading, page, setPage, search, setSearch, tier, setTier };
 }
