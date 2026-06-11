@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const vendor = await createVendor(result.data);
+    const vendor = await createVendor(result.data, auth.user.id);
     return NextResponse.json(vendor, { status: 201 });
   } catch (error) {
     console.error('Create vendor error:', error);

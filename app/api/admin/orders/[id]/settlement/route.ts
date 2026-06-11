@@ -39,15 +39,16 @@ export async function POST(
       partsRecoveryPercent !== undefined ? partsRecoveryPercent / 100 : undefined;
 
     if (action === 'execute') {
-      const breakdown = await executeDeliverySettlement(id);
+      const breakdown = await executeDeliverySettlement(id, auth.user.id);
       return NextResponse.json({ success: true, breakdown });
     }
 
     if (action === 'update' || action === 'preview') {
-      const breakdown = await updateSettlementDraft(id, {
-        fault,
-        partsRecoveryRate,
-      });
+      const breakdown = await updateSettlementDraft(
+        id,
+        { fault, partsRecoveryRate },
+        auth.user.id
+      );
       return NextResponse.json({ breakdown });
     }
 

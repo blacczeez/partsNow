@@ -13,6 +13,8 @@ import {
   notifyPriceChangeAccepted,
   notifyPriceChangeDiscarded,
 } from './notifications';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 
 type DbClient = SupabaseClient;
 
@@ -117,6 +119,7 @@ export async function handleVendorPriceEntry(
     vendorPrice: number;
     vendorId?: string | null;
     description: string;
+    actorId?: string;
   }
 ): Promise<PriceEscalationResult> {
   const budget = computeVendorBudget(params.sellingPrice);
@@ -185,6 +188,22 @@ export async function handleVendorPriceEntry(
   });
 
   throwIfSupabaseError(incidentError, 'Failed to record price discrepancy incident');
+
+  await writeAuditLog({
+    userId: params.actorId ?? null,
+    action: AUDIT_ACTIONS.PRICE_REVIEW_ESCALATED,
+    entityType: 'order',
+    entityId: params.orderId,
+    newValues: auditDetails(
+      `Price review escalated — vendor ₦${params.vendorPrice} over budget`,
+      {
+        itemId: params.itemId,
+        vendorPrice: params.vendorPrice,
+        expectedVendorPrice: budget.expectedVendorPrice,
+        description: params.description,
+      }
+    ),
+  });
 
   return { escalated: true, ...budget };
 }
@@ -328,6 +347,20 @@ export async function sendPriceChangeToCustomer(
     () => {}
   );
 
+  await writeAuditLog({
+    userId: adminId,
+    action: AUDIT_ACTIONS.PRICE_REVIEW_APPROVED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Admin approved market price — sent to customer', {
+      itemId,
+      originalTotal,
+      revisedTotal: repriced.total,
+      topUpAmount,
+      notes: notes ?? null,
+    }),
+  });
+
   return { originalTotal, revisedTotal: repriced.total, topUpAmount };
 }
 
@@ -376,6 +409,17 @@ export async function rejectPriceReviewItem(
     .is('resolution', null);
 
   await syncOrderPriceReviewStatus(supabase, orderId);
+
+  await writeAuditLog({
+    userId: adminId,
+    action: AUDIT_ACTIONS.PRICE_REVIEW_REJECTED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Admin rejected price review item', {
+      itemId,
+      reason: rejectReason,
+    }),
+  });
 }
 
 export async function acceptCustomerPriceChange(

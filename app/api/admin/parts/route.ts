@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const part = await createPart(result.data);
+    const part = await createPart(result.data, auth.user.id);
     return NextResponse.json(part, { status: 201 });
   } catch (error) {
     console.error('Create part error:', error);

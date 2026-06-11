@@ -10,6 +10,8 @@ import {
   reportDeliveryFailure as reportDeliveryFailureCore,
   type ReportDeliveryFailureInput,
 } from './delivery-failure';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import type {
   OrderWithItems,
   OrderAssignment,
@@ -264,6 +266,16 @@ export async function confirmPickup(
 
   // Fire-and-forget notification
   notifyOrderDispatched(orderId).catch(() => {});
+
+  await writeAuditLog({
+    userId: riderId,
+    action: AUDIT_ACTIONS.RIDER_PICKUP_CONFIRMED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Rider confirmed pickup — order dispatched', {
+      pickupPhotoUrl: pickupPhotoUrl ?? null,
+    }),
+  });
 }
 
 export async function updateLocation(
@@ -430,6 +442,18 @@ export async function confirmDelivery(
         .eq('id', order.customer_id);
     }
   }
+
+  await writeAuditLog({
+    userId: riderId,
+    action: AUDIT_ACTIONS.RIDER_DELIVERY_COMPLETED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Rider confirmed delivery — order delivered', {
+      paymentMethod: order.payment_method,
+      codAmountCollected: data.codAmountCollected ?? null,
+      actualDeliveryMinutes: actualMinutes,
+    }),
+  });
 }
 
 export async function reportDeliveryFailure(

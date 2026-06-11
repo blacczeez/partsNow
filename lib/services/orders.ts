@@ -10,6 +10,8 @@ import { initializePayment } from '@/lib/integrations/paystack';
 import { debitWallet } from './wallet';
 import { assignRunner } from './dispatch';
 import { notifyOrderConfirmed } from './notifications';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import type { Order, OrderWithItems, LoyaltyTier } from '@/lib/types/database';
 
 interface CreateOrderInput {
@@ -130,6 +132,20 @@ export async function createOrder(
     .insert(orderItems);
 
   if (itemsError) throw new Error(itemsError.message);
+
+  await writeAuditLog({
+    userId: customerId,
+    action: AUDIT_ACTIONS.ORDER_CREATED,
+    entityType: 'order',
+    entityId: order.id,
+    newValues: auditDetails(`Order ${orderNumber} placed`, {
+      orderNumber,
+      paymentMethod: input.paymentMethod,
+      total: pricing.total,
+      sourceChannel: input.sourceChannel || 'web',
+      itemCount: input.items.length,
+    }),
+  });
 
   // Process payment
   if (input.paymentMethod === 'wallet') {

@@ -2,24 +2,22 @@ import { createClient } from '@/lib/supabase/server';
 import { refundOrderPayment } from './order-refund';
 import { clearDeliveryEscalation, markPartsReturnedToHub } from './delivery-failure';
 import { notifyOrderCancelled } from './notifications';
+import { writeAuditLog, auditDetails } from './audit-log';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import {
   sendPriceChangeToCustomer,
   rejectPriceReviewItem,
 } from './price-review';
 import { canAdminReassignRider } from '@/lib/constants/order-status';
 import {
-  AUDIT_ACTIONS,
+  AUDIT_ACTION_LEGACY_ALIASES,
   formatAuditEntityDetail,
   formatAuditEntityLabel,
   getAuditEntityHref,
+  isAuditActionPrefixFilter,
   type AuditEntityContext,
 } from '@/lib/constants/audit-log';
 import type { OrderStatus } from '@/lib/types/database';
-
-const AUDIT_ACTION_LEGACY_ALIASES: Record<string, string[]> = {
-  [AUDIT_ACTIONS.ORDER_DELIVERY_CLOSED]: ['delivery_failure_terminal'],
-  [AUDIT_ACTIONS.ORDER_DELIVERY_ESCALATED]: ['delivery_failure_admin_review'],
-};
 
 // ============================================
 // DASHBOARD
@@ -321,7 +319,8 @@ export async function resolvePriceReview(
 export async function reassignOrder(
   orderId: string,
   role: 'runner' | 'rider',
-  newAssigneeId: string
+  newAssigneeId: string,
+  adminId?: string
 ) {
   const supabase = await createClient();
 
@@ -361,8 +360,20 @@ export async function reassignOrder(
 
   if (error) throw new Error(error.message);
 
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.ASSIGNMENT_REASSIGNED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails(`Admin reassigned ${role} on order`, {
+      role,
+      newAssigneeId,
+      assignmentId: data.id,
+    }),
+  });
+
   if (role === 'rider') {
-    await clearDeliveryEscalation(orderId);
+    await clearDeliveryEscalation(orderId, adminId);
   }
 
   return data;
@@ -370,19 +381,24 @@ export async function reassignOrder(
 
 export async function adminMarkPartsReturned(
   orderId: string,
-  partsRecoveryRate?: number
+  partsRecoveryRate?: number,
+  adminId?: string
 ) {
-  await markPartsReturnedToHub(orderId, partsRecoveryRate);
+  await markPartsReturnedToHub(orderId, partsRecoveryRate, adminId);
   return { success: true };
 }
 
-export async function adminCancelOrder(orderId: string, reason: string) {
+export async function adminCancelOrder(
+  orderId: string,
+  reason: string,
+  adminId?: string
+) {
   const supabase = await createClient();
 
   // Get order
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('id, customer_id, total, payment_status, status')
+    .select('id, customer_id, total, payment_status, status, order_number')
     .eq('id', orderId)
     .single();
 
@@ -411,8 +427,21 @@ export async function adminCancelOrder(orderId: string, reason: string) {
 
   // Auto-refund if paid
   if (order.payment_status === 'paid') {
-    await processRefund(orderId);
+    await processRefund(orderId, adminId);
   }
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.ORDER_CANCELLED_ADMIN,
+    entityType: 'order',
+    entityId: orderId,
+    oldValues: { status: order.status, paymentStatus: order.payment_status },
+    newValues: auditDetails(`Admin cancelled ${order.order_number}`, {
+      orderNumber: order.order_number,
+      reason,
+      refunded: order.payment_status === 'paid',
+    }),
+  });
 
   // Fire-and-forget notification
   notifyOrderCancelled(orderId, reason).catch(() => {});
@@ -420,8 +449,8 @@ export async function adminCancelOrder(orderId: string, reason: string) {
   return { success: true };
 }
 
-export async function processRefund(orderId: string) {
-  const result = await refundOrderPayment(orderId);
+export async function processRefund(orderId: string, adminId?: string) {
+  const result = await refundOrderPayment(orderId, undefined, adminId);
   if (!result.refunded) {
     throw new Error('Order is not eligible for refund');
   }
@@ -560,7 +589,11 @@ export async function getAdminRunnerDetail(runnerId: string) {
   };
 }
 
-export async function topUpRunnerFloat(runnerId: string, amount: number) {
+export async function topUpRunnerFloat(
+  runnerId: string,
+  amount: number,
+  adminId?: string
+) {
   const supabase = await createClient();
 
   // Upsert float record
@@ -587,7 +620,20 @@ export async function topUpRunnerFloat(runnerId: string, amount: number) {
     });
   }
 
-  return { success: true, newBalance: (existing?.balance ?? 0) + amount };
+  const newBalance = (existing?.balance ?? 0) + amount;
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.RUNNER_FLOAT_TOPPED_UP,
+    entityType: 'user',
+    entityId: runnerId,
+    newValues: auditDetails(`Runner float topped up by ₦${amount.toLocaleString('en-NG')}`, {
+      amount,
+      newBalance,
+    }),
+  });
+
+  return { success: true, newBalance };
 }
 
 // ============================================
@@ -736,15 +782,18 @@ export async function getAdminVendors(filters: {
   return { vendors: [], total: 0 };
 }
 
-export async function createVendor(data: {
-  name: string;
-  contact_phone: string;
-  contact_name?: string;
-  cluster_id: string;
-  location_in_market?: string;
-  specializations?: string[];
-  payment_terms?: string;
-}) {
+export async function createVendor(
+  data: {
+    name: string;
+    contact_phone: string;
+    contact_name?: string;
+    cluster_id: string;
+    location_in_market?: string;
+    specializations?: string[];
+    payment_terms?: string;
+  },
+  adminId?: string
+) {
   const supabase = await createClient();
 
   const { data: vendor, error } = await supabase
@@ -762,14 +811,33 @@ export async function createVendor(data: {
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.VENDOR_CREATED,
+    entityType: 'vendor',
+    entityId: vendor.id,
+    newValues: auditDetails(`Vendor created — ${vendor.name}`, {
+      name: vendor.name,
+      clusterId: vendor.cluster_id,
+    }),
+  });
+
   return vendor;
 }
 
 export async function updateVendor(
   vendorId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  adminId?: string
 ) {
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('id', vendorId)
+    .single();
 
   const { data: vendor, error } = await supabase
     .from('vendors')
@@ -779,12 +847,18 @@ export async function updateVendor(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.VENDOR_UPDATED,
+    entityType: 'vendor',
+    entityId: vendorId,
+    oldValues: existing ? (existing as Record<string, unknown>) : null,
+    newValues: auditDetails(`Vendor updated — ${vendor.name}`, { changes: data }),
+  });
+
   return vendor;
 }
-
-// ============================================
-// PARTS
-// ============================================
 
 export async function getAdminParts(filters: {
   page: number;
@@ -836,22 +910,25 @@ export async function getAdminParts(filters: {
   return { parts: partsWithVendorCount, total: count ?? 0 };
 }
 
-export async function createPart(data: {
-  name: string;
-  category: string;
-  subcategory?: string;
-  oem_code?: string;
-  average_price?: number;
-  weight_kg?: number;
-  image_url?: string;
-  compatible_vehicles?: Array<{
-    make: string;
-    model: string;
-    year_start?: number;
-    year_end?: number;
-    spec?: string;
-  }>;
-}) {
+export async function createPart(
+  data: {
+    name: string;
+    category: string;
+    subcategory?: string;
+    oem_code?: string;
+    average_price?: number;
+    weight_kg?: number;
+    image_url?: string;
+    compatible_vehicles?: Array<{
+      make: string;
+      model: string;
+      year_start?: number;
+      year_end?: number;
+      spec?: string;
+    }>;
+  },
+  adminId?: string
+) {
   const supabase = await createClient();
 
   const { data: part, error } = await supabase
@@ -870,14 +947,33 @@ export async function createPart(data: {
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.PART_CREATED,
+    entityType: 'part',
+    entityId: part.id,
+    newValues: auditDetails(`Part created — ${part.name}`, {
+      name: part.name,
+      category: part.category,
+    }),
+  });
+
   return part;
 }
 
 export async function updatePart(
   partId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  adminId?: string
 ) {
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from('parts')
+    .select('*')
+    .eq('id', partId)
+    .single();
 
   const { data: part, error } = await supabase
     .from('parts')
@@ -887,6 +983,16 @@ export async function updatePart(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.PART_UPDATED,
+    entityType: 'part',
+    entityId: partId,
+    oldValues: existing ? (existing as Record<string, unknown>) : null,
+    newValues: auditDetails(`Part updated — ${part.name}`, { changes: data }),
+  });
+
   return part;
 }
 
@@ -1216,6 +1322,12 @@ export async function updateSystemConfig(
 ) {
   const supabase = await createClient();
 
+  const { data: previous } = await supabase
+    .from('system_config')
+    .select('value')
+    .eq('key', key)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from('system_config')
     .upsert(
@@ -1231,6 +1343,16 @@ export async function updateSystemConfig(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId,
+    action: AUDIT_ACTIONS.SYSTEM_CONFIG_UPDATED,
+    entityType: 'system_config',
+    entityId: null,
+    oldValues: previous ? { key, value: previous.value } : { key, value: null },
+    newValues: auditDetails(`Config updated — ${key}`, { key, value }),
+  });
+
   return data;
 }
 
@@ -1298,11 +1420,15 @@ export async function getAuditLog(filters: {
   }
 
   if (action) {
-    const legacy = AUDIT_ACTION_LEGACY_ALIASES[action] ?? [];
-    if (legacy.length > 0) {
-      query = query.or(`action.eq.${action},action.in.(${legacy.join(',')})`);
+    if (isAuditActionPrefixFilter(action)) {
+      query = query.ilike('action', `${action}%`);
     } else {
-      query = query.eq('action', action);
+      const legacy = AUDIT_ACTION_LEGACY_ALIASES[action] ?? [];
+      if (legacy.length > 0) {
+        query = query.or(`action.eq.${action},action.in.(${legacy.join(',')})`);
+      } else {
+        query = query.eq('action', action);
+      }
     }
   }
 
@@ -1365,14 +1491,81 @@ export async function getAuditLog(filters: {
     userEntityMap[u.id] = { userName: u.full_name, userPhone: u.phone };
   });
 
+  const vendorIds = [
+    ...new Set(
+      entries
+        .filter((e) => e.entity_type === 'vendor' && e.entity_id)
+        .map((e) => e.entity_id as string)
+    ),
+  ];
+  const partIds = [
+    ...new Set(
+      entries
+        .filter((e) => e.entity_type === 'part' && e.entity_id)
+        .map((e) => e.entity_id as string)
+    ),
+  ];
+  const clusterIds = [
+    ...new Set(
+      entries
+        .filter((e) => e.entity_type === 'cluster' && e.entity_id)
+        .map((e) => e.entity_id as string)
+    ),
+  ];
+
+  const { data: vendors } = vendorIds.length
+    ? await supabase.from('vendors').select('id, name').in('id', vendorIds)
+    : { data: [] as Array<{ id: string; name: string }> };
+
+  const { data: parts } = partIds.length
+    ? await supabase.from('parts').select('id, name').in('id', partIds)
+    : { data: [] as Array<{ id: string; name: string }> };
+
+  const { data: clusters } = clusterIds.length
+    ? await supabase.from('clusters').select('id, name').in('id', clusterIds)
+    : { data: [] as Array<{ id: string; name: string }> };
+
+  const vendorMap: Record<string, AuditEntityContext> = {};
+  vendors?.forEach((v) => {
+    vendorMap[v.id] = { vendorName: v.name };
+  });
+
+  const partMap: Record<string, AuditEntityContext> = {};
+  parts?.forEach((p) => {
+    partMap[p.id] = { partName: p.name };
+  });
+
+  const clusterMap: Record<string, AuditEntityContext> = {};
+  clusters?.forEach((c) => {
+    clusterMap[c.id] = { clusterName: c.name };
+  });
+
   return {
     entries: entries.map((entry) => {
-      const entityContext: AuditEntityContext | undefined =
-        entry.entity_type === 'order' && entry.entity_id
-          ? orderMap[entry.entity_id]
-          : entry.entity_type === 'user' && entry.entity_id
-            ? userEntityMap[entry.entity_id]
-            : undefined;
+      const newValues = entry.new_values as Record<string, unknown> | null;
+      let entityContext: AuditEntityContext | undefined;
+
+      if (entry.entity_type === 'order' && entry.entity_id) {
+        entityContext = orderMap[entry.entity_id];
+      } else if (entry.entity_type === 'user' && entry.entity_id) {
+        entityContext = userEntityMap[entry.entity_id];
+      } else if (entry.entity_type === 'vendor' && entry.entity_id) {
+        entityContext = vendorMap[entry.entity_id];
+      } else if (entry.entity_type === 'part' && entry.entity_id) {
+        entityContext = partMap[entry.entity_id];
+      } else if (entry.entity_type === 'cluster' && entry.entity_id) {
+        entityContext = clusterMap[entry.entity_id];
+      } else if (entry.entity_type === 'system_config') {
+        const configKey =
+          typeof newValues?.key === 'string'
+            ? newValues.key
+            : typeof entry.old_values === 'object' &&
+                entry.old_values &&
+                typeof (entry.old_values as Record<string, unknown>).key === 'string'
+              ? ((entry.old_values as Record<string, unknown>).key as string)
+              : undefined;
+        entityContext = configKey ? { configKey } : undefined;
+      }
 
       return {
         ...entry,
@@ -1406,15 +1599,18 @@ export async function getAdminClusters() {
   return data ?? [];
 }
 
-export async function createCluster(data: {
-  name: string;
-  city: string;
-  state: string;
-  latitude: number;
-  longitude: number;
-  delivery_radius_km: number;
-  is_active?: boolean;
-}) {
+export async function createCluster(
+  data: {
+    name: string;
+    city: string;
+    state: string;
+    latitude: number;
+    longitude: number;
+    delivery_radius_km: number;
+    is_active?: boolean;
+  },
+  adminId?: string
+) {
   const supabase = await createClient();
 
   const { data: cluster, error } = await supabase
@@ -1432,14 +1628,34 @@ export async function createCluster(data: {
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.CLUSTER_CREATED,
+    entityType: 'cluster',
+    entityId: cluster.id,
+    newValues: auditDetails(`Market created — ${cluster.name}`, {
+      name: cluster.name,
+      city: cluster.city,
+      state: cluster.state,
+    }),
+  });
+
   return cluster;
 }
 
 export async function updateCluster(
   clusterId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  adminId?: string
 ) {
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from('clusters')
+    .select('*')
+    .eq('id', clusterId)
+    .single();
 
   const { data: cluster, error } = await supabase
     .from('clusters')
@@ -1449,12 +1665,18 @@ export async function updateCluster(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.CLUSTER_UPDATED,
+    entityType: 'cluster',
+    entityId: clusterId,
+    oldValues: existing ? (existing as Record<string, unknown>) : null,
+    newValues: auditDetails(`Market updated — ${cluster.name}`, { changes: data }),
+  });
+
   return cluster;
 }
-
-// ============================================
-// PART VENDORS
-// ============================================
 
 export async function getPartVendors(partId: string) {
   const supabase = await createClient();

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cluster = await createCluster(result.data);
+    const cluster = await createCluster(result.data, auth.user.id);
     return NextResponse.json(cluster, { status: 201 });
   } catch (error) {
     console.error('Create cluster error:', error);

@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { config } from '@/lib/config';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 
 export async function assignRunner(
   orderId: string,
@@ -105,6 +107,17 @@ export async function assignRunner(
     return null;
   }
 
+  await writeAuditLog({
+    userId: selectedRunnerId,
+    action: AUDIT_ACTIONS.ASSIGNMENT_RUNNER_ASSIGNED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Runner auto-assigned to order', {
+      runnerId: selectedRunnerId,
+      assignmentId: assignment.id,
+    }),
+  });
+
   return assignment.id as string;
 }
 
@@ -206,6 +219,17 @@ export async function assignRider(
     console.error('Failed to create rider assignment:', error.message);
     return null;
   }
+
+  await writeAuditLog({
+    userId: selectedRiderId,
+    action: AUDIT_ACTIONS.ASSIGNMENT_RIDER_ASSIGNED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Rider auto-assigned to order', {
+      riderId: selectedRiderId,
+      assignmentId: assignment.id,
+    }),
+  });
 
   return assignment.id as string;
 }

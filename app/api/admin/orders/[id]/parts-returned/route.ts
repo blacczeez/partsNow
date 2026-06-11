@@ -24,7 +24,7 @@ export async function POST(
         ? parsed.data.partsRecoveryPercent / 100
         : undefined;
 
-    await adminMarkPartsReturned(id, partsRecoveryRate);
+    await adminMarkPartsReturned(id, partsRecoveryRate, auth.user.id);
     return NextResponse.json({ success: true });
   } catch (err) {
     const message =

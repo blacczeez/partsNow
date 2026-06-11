@@ -22,7 +22,7 @@ export async function PATCH(
       );
     }
 
-    const cluster = await updateCluster(id, result.data);
+    const cluster = await updateCluster(id, result.data, auth.user.id);
     return NextResponse.json(cluster);
   } catch (error) {
     console.error('Update cluster error:', error);

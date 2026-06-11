@@ -22,7 +22,7 @@ export async function POST(
       );
     }
 
-    const topUp = await topUpRunnerFloat(id, result.data.amount);
+    const topUp = await topUpRunnerFloat(id, result.data.amount, auth.user.id);
     return NextResponse.json(topUp);
   } catch (error) {
     console.error('Float top-up error:', error);

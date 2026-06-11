@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { creditWallet } from '@/lib/services/wallet';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 
 export async function POST(
   request: NextRequest,
@@ -68,6 +70,19 @@ export async function POST(
       .update({ payment_status: 'refunded' })
       .eq('id', id);
   }
+
+  await writeAuditLog({
+    userId: user.id,
+    action: AUDIT_ACTIONS.ORDER_CANCELLED,
+    entityType: 'order',
+    entityId: id,
+    oldValues: { status: order.status, paymentStatus: order.payment_status },
+    newValues: auditDetails(`Customer cancelled ${order.order_number}`, {
+      orderNumber: order.order_number,
+      reason: body.reason ?? null,
+      refunded: order.payment_status === 'paid' && order.payment_method === 'wallet',
+    }),
+  });
 
   return NextResponse.json({ success: true });
 }

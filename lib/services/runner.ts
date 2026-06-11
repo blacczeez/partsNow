@@ -14,6 +14,8 @@ import {
   notifyClarificationRequest,
 } from './notifications';
 import { recordVendorPartPrice } from './vendor-parts';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import type {
   RunnerFloat,
   RunnerShift,
@@ -127,6 +129,18 @@ export async function startShift(
     // Backlog assignment should not block shift start
   }
 
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_SHIFT_STARTED,
+    entityType: 'user',
+    entityId: runnerId,
+    newValues: auditDetails('Runner clocked in', {
+      shiftId: shift.id,
+      startingFloat: float.balance,
+      clusterId: runner.cluster_id,
+    }),
+  });
+
   return shift as RunnerShift;
 }
 
@@ -168,6 +182,19 @@ export async function endShift(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_SHIFT_ENDED,
+    entityType: 'user',
+    entityId: runnerId,
+    newValues: auditDetails('Runner clocked out', {
+      shiftId: shift.id,
+      endingFloat: float?.balance ?? 0,
+      notes: notes ?? null,
+    }),
+  });
+
   return updated as RunnerShift;
 }
 
@@ -336,6 +363,14 @@ export async function acceptOrder(runnerId: string, orderId: string): Promise<vo
     .eq('id', orderId);
   throwIfSupabaseError(sourcingError, 'Failed to update order to sourcing');
 
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_ORDER_ACCEPTED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Runner accepted order — sourcing started'),
+  });
+
   // Fire-and-forget notification
   notifyOrderSourcing(orderId).catch(() => {});
 }
@@ -379,6 +414,14 @@ export async function rejectOrder(
       await assignRunner(orderId, order.cluster_id);
     }
   }
+
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_ORDER_REJECTED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Runner rejected order assignment', { reason }),
+  });
 }
 
 export async function markItemFound(
@@ -431,7 +474,7 @@ export async function markItemFound(
 
   // Fire-and-forget: record vendor-part price for catalogue feedback
   if (data.vendorId && item.part_id) {
-    recordVendorPartPrice(data.vendorId, item.part_id, data.vendorPrice)
+    recordVendorPartPrice(data.vendorId, item.part_id, data.vendorPrice, runnerId)
       .catch(err => console.error('Price feedback failed:', err));
   }
 
@@ -442,6 +485,7 @@ export async function markItemFound(
     vendorPrice: data.vendorPrice,
     vendorId: data.vendorId,
     description: item.description,
+    actorId: runnerId,
   });
 
   if (assignment.status === 'accepted') {
@@ -654,4 +698,15 @@ export async function completeOrder(runnerId: string, orderId: string): Promise<
       })
       .eq('id', shift.id);
   }
+
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_ORDER_COMPLETED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Runner completed sourcing — parts at gate', {
+      totalVendorCost,
+      status: 'picked',
+    }),
+  });
 }

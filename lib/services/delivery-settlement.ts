@@ -11,6 +11,8 @@ import {
   type SettlementFault,
 } from '@/lib/utils/delivery-settlement';
 import { PARTS_CUSTODY } from '@/lib/constants/delivery-failure';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import { refundOrderPartial, refundOrderPayment } from './order-refund';
 import { notifyDeliverySettlement } from './notifications';
 
@@ -116,6 +118,18 @@ export async function initiateDeliverySettlement(
     .eq('id', orderId);
 
   throwIfSupabaseError(error, 'Failed to initiate settlement');
+
+  await writeAuditLog({
+    action: AUDIT_ACTIONS.ORDER_SETTLEMENT_INITIATED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails(`Settlement initiated — ${fault} fault`, {
+      orderNumber: order.order_number,
+      fault,
+      failureReason,
+      returnHandlingFee: breakdown.returnHandlingFee,
+    }),
+  });
 }
 
 export async function updateSettlementDraft(
@@ -123,7 +137,8 @@ export async function updateSettlementDraft(
   updates: {
     fault?: SettlementFault;
     partsRecoveryRate?: number;
-  }
+  },
+  actorId?: string
 ): Promise<SettlementBreakdown> {
   const db = createServiceClient();
   const order = await loadSettlementOrder(orderId);
@@ -171,6 +186,20 @@ export async function updateSettlementDraft(
     .eq('id', orderId);
 
   throwIfSupabaseError(error, 'Failed to update settlement draft');
+
+  await writeAuditLog({
+    userId: actorId ?? null,
+    action: AUDIT_ACTIONS.ORDER_SETTLEMENT_UPDATED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails(`Settlement draft updated — ${fault} fault`, {
+      orderNumber: order.order_number,
+      fault,
+      partsRecoveryRate,
+      refundToCustomer: breakdown.amountReturnedToCustomer,
+    }),
+  });
+
   return breakdown;
 }
 
@@ -213,7 +242,8 @@ export async function onPartsReturnedForSettlement(
 
 /** Execute settlement — moves money per policy. */
 export async function executeDeliverySettlement(
-  orderId: string
+  orderId: string,
+  actorId?: string
 ): Promise<SettlementBreakdown> {
   const db = createServiceClient();
   const order = await loadSettlementOrder(orderId);
@@ -254,13 +284,15 @@ export async function executeDeliverySettlement(
     if (breakdown.isFullRefund) {
       await refundOrderPayment(
         orderId,
-        `Full refund — delivery settlement for ${order.order_number}`
+        `Full refund — delivery settlement for ${order.order_number}`,
+        actorId
       );
     } else if (refundAmount > 0) {
       await refundOrderPartial(
         orderId,
         refundAmount,
-        `Partial refund — delivery settlement for ${order.order_number}`
+        `Partial refund — delivery settlement for ${order.order_number}`,
+        actorId
       );
     }
   }
@@ -297,6 +329,23 @@ export async function executeDeliverySettlement(
   });
 
   notifyDeliverySettlement(orderId, breakdown).catch(() => {});
+
+  await writeAuditLog({
+    userId: actorId ?? null,
+    action: AUDIT_ACTIONS.ORDER_SETTLEMENT_EXECUTED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails(
+      `Settlement executed — refund ₦${refundAmount.toLocaleString('en-NG')}`,
+      {
+        orderNumber: order.order_number,
+        fault,
+        refundAmount,
+        returnHandlingFee: breakdown.returnHandlingFee,
+        isFullRefund: breakdown.isFullRefund,
+      }
+    ),
+  });
 
   return breakdown;
 }

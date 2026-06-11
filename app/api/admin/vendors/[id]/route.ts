@@ -22,7 +22,7 @@ export async function PATCH(
       );
     }
 
-    const vendor = await updateVendor(id, result.data);
+    const vendor = await updateVendor(id, result.data, auth.user.id);
     return NextResponse.json(vendor);
   } catch (error) {
     console.error('Update vendor error:', error);

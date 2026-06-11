@@ -11,7 +11,7 @@ export async function POST(
 
   try {
     const { id } = await params;
-    await processRefund(id);
+    await processRefund(id, auth.user.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Refund error:', error);

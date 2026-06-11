@@ -2,6 +2,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { refundTransaction } from '@/lib/integrations/paystack';
 import { creditWalletAsService } from './wallet';
 import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
+import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 
 interface RefundableOrder {
   id: string;
@@ -26,7 +28,8 @@ export function getOrderRefundAmount(order: {
  */
 export async function refundOrderPayment(
   orderId: string,
-  description?: string
+  description?: string,
+  actorId?: string
 ): Promise<{ refunded: boolean; amount: number }> {
   const db = createServiceClient();
 
@@ -88,6 +91,23 @@ export async function refundOrderPayment(
     status: 'success',
   });
 
+  await writeAuditLog({
+    userId: actorId ?? null,
+    action: AUDIT_ACTIONS.PAYMENT_REFUNDED,
+    entityType: 'order',
+    entityId: orderId,
+    oldValues: { paymentStatus: 'paid' },
+    newValues: auditDetails(
+      `Full refund ₦${amount.toLocaleString('en-NG')} for ${typed.order_number}`,
+      {
+        orderNumber: typed.order_number,
+        amount,
+        paymentMethod: typed.payment_method,
+        provider,
+      }
+    ),
+  });
+
   return { refunded: true, amount };
 }
 
@@ -97,7 +117,8 @@ export async function refundOrderPayment(
 export async function refundOrderPartial(
   orderId: string,
   amount: number,
-  description?: string
+  description?: string,
+  actorId?: string
 ): Promise<{ refunded: boolean; amount: number }> {
   if (amount <= 0) {
     return { refunded: false, amount: 0 };
@@ -157,6 +178,22 @@ export async function refundOrderPartial(
     provider,
     provider_reference: typed.payment_reference,
     status: 'success',
+  });
+
+  await writeAuditLog({
+    userId: actorId ?? null,
+    action: AUDIT_ACTIONS.PAYMENT_REFUNDED_PARTIAL,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails(
+      `Partial refund ₦${amount.toLocaleString('en-NG')} for ${typed.order_number}`,
+      {
+        orderNumber: typed.order_number,
+        amount,
+        paymentMethod: typed.payment_method,
+        provider,
+      }
+    ),
   });
 
   return { refunded: true, amount };

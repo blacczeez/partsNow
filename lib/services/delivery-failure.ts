@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { config } from '@/lib/config';
 import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
+import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import {
   DELIVERY_RESOLUTION,
   PARTS_CUSTODY,
@@ -48,22 +49,6 @@ async function appendOrderNote(orderId: string, line: string): Promise<void> {
   await db.from('orders').update({ internal_notes: next }).eq('id', orderId);
 }
 
-async function writeAuditLog(
-  riderId: string,
-  orderId: string,
-  action: string,
-  details: Record<string, unknown>
-): Promise<void> {
-  const db = createServiceClient();
-  await db.from('audit_log').insert({
-    user_id: riderId,
-    action,
-    entity_type: 'order',
-    entity_id: orderId,
-    new_values: details,
-  });
-}
-
 async function clearDeliveryTracking(orderId: string): Promise<void> {
   const db = createServiceClient();
   await db
@@ -77,7 +62,7 @@ async function clearDeliveryTracking(orderId: string): Promise<void> {
     .eq('order_id', orderId);
 }
 
-async function recordCodRefusal(customerId: string): Promise<void> {
+async function recordCodRefusal(customerId: string, riderId?: string): Promise<void> {
   const db = createServiceClient();
   const { data: user } = await db
     .from('users')
@@ -96,6 +81,15 @@ async function recordCodRefusal(customerId: string): Promise<void> {
 
   if (count >= config.payments.codRefusalLimitBeforeDisable) {
     nextProfile.cod_disabled = true;
+    await writeAuditLog({
+      userId: riderId ?? null,
+      action: AUDIT_ACTIONS.USER_COD_DISABLED,
+      entityType: 'user',
+      entityId: customerId,
+      newValues: auditDetails(`COD disabled after ${count} delivery refusals`, {
+        codRefusalCount: count,
+      }),
+    });
   }
 
   await db.from('users').update({ profile: nextProfile }).eq('id', customerId);
@@ -143,15 +137,20 @@ async function finalizeTerminalDeliveryFailure(
   const noteLine = `Rider reported: ${label}${notes ? ` — ${notes}` : ''}. Status → ${terminalStatus}.`;
   await appendOrderNote(orderId, noteLine);
 
-  await writeAuditLog(riderId, orderId, AUDIT_ACTIONS.ORDER_DELIVERY_CLOSED, {
-    terminalStatus,
-    reason,
-    notes: notes ?? null,
-    summary: `Rider closed delivery — ${label} (${terminalStatus})`,
+  await writeAuditLog({
+    userId: riderId,
+    action: AUDIT_ACTIONS.ORDER_DELIVERY_CLOSED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails(`Rider closed delivery — ${label} (${terminalStatus})`, {
+      terminalStatus,
+      reason,
+      notes: notes ?? null,
+    }),
   });
 
   if (reason === 'customer_refused' && order.payment_method === 'cod') {
-    await recordCodRefusal(order.customer_id);
+    await recordCodRefusal(order.customer_id, riderId);
   }
 
   await initiateDeliverySettlement(orderId, 'customer', reason);
@@ -290,10 +289,15 @@ export async function reportDeliveryFailure(
     throwIfSupabaseError(escalateError, 'Failed to escalate for admin review');
 
     await clearDeliveryTracking(orderId);
-    await writeAuditLog(riderId, orderId, AUDIT_ACTIONS.ORDER_DELIVERY_ESCALATED, {
-      reason: data.reason,
-      notes: data.notes ?? null,
-      summary: `Rider escalated delivery — ${label} (admin review)`,
+    await writeAuditLog({
+      userId: riderId,
+      action: AUDIT_ACTIONS.ORDER_DELIVERY_ESCALATED,
+      entityType: 'order',
+      entityId: orderId,
+      newValues: auditDetails(`Rider escalated delivery — ${label} (admin review)`, {
+        reason: data.reason,
+        notes: data.notes ?? null,
+      }),
     });
 
     notifyAdminDeliveryEscalation(orderId, label, data.notes).catch(() => {});
@@ -319,6 +323,18 @@ export async function reportDeliveryFailure(
       .eq('id', orderId);
     throwIfSupabaseError(retryError, 'Failed to schedule delivery retry');
 
+    await writeAuditLog({
+      userId: riderId,
+      action: AUDIT_ACTIONS.ORDER_DELIVERY_RETRY,
+      entityType: 'order',
+      entityId: orderId,
+      newValues: auditDetails(`Delivery retry #${attemptNumber} — ${label}`, {
+        attemptNumber,
+        reason: data.reason,
+        retryAfter,
+      }),
+    });
+
     notifyDeliveryAttempt(orderId, attemptNumber, label).catch(() => {});
     return { outcome: 'retry' };
   }
@@ -342,7 +358,8 @@ export async function reportDeliveryFailure(
 /** Admin marks parts returned to hub after a failed delivery. */
 export async function markPartsReturnedToHub(
   orderId: string,
-  partsRecoveryRate?: number
+  partsRecoveryRate?: number,
+  actorId?: string
 ): Promise<void> {
   const db = createServiceClient();
 
@@ -383,6 +400,16 @@ export async function markPartsReturnedToHub(
   throwIfSupabaseError(error, 'Failed to mark parts returned');
   await appendOrderNote(orderId, 'Parts returned to hub (admin confirmed).');
 
+  await writeAuditLog({
+    userId: actorId ?? null,
+    action: AUDIT_ACTIONS.ORDER_PARTS_RETURNED_HUB,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Parts confirmed returned to hub', {
+      partsRecoveryRate: partsRecoveryRate ?? null,
+    }),
+  });
+
   const { onPartsReturnedForSettlement } = await import('./delivery-settlement');
   try {
     await onPartsReturnedForSettlement(orderId, partsRecoveryRate);
@@ -395,7 +422,10 @@ export async function markPartsReturnedToHub(
 }
 
 /** Clear admin review after ops resolves (reassign rider / update address). */
-export async function clearDeliveryEscalation(orderId: string): Promise<void> {
+export async function clearDeliveryEscalation(
+  orderId: string,
+  actorId?: string
+): Promise<void> {
   const db = createServiceClient();
   await db
     .from('orders')
@@ -404,4 +434,12 @@ export async function clearDeliveryEscalation(orderId: string): Promise<void> {
       delivery_retry_after: null,
     })
     .eq('id', orderId);
+
+  await writeAuditLog({
+    userId: actorId ?? null,
+    action: AUDIT_ACTIONS.ORDER_DELIVERY_ESCALATION_CLEARED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Delivery escalation cleared — order can proceed'),
+  });
 }

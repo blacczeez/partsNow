@@ -25,7 +25,8 @@ export async function POST(
     const assignment = await reassignOrder(
       id,
       result.data.role,
-      result.data.assigneeId
+      result.data.assigneeId,
+      auth.user.id
     );
     return NextResponse.json(assignment);
   } catch (error) {

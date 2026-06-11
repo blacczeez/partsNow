@@ -32,7 +32,7 @@ export async function PATCH(
       );
     }
 
-    const part = await updatePart(id, result.data);
+    const part = await updatePart(id, result.data, auth.user.id);
     return NextResponse.json(part);
   } catch (error) {
     console.error('Update part error:', error);

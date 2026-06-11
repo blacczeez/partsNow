@@ -22,7 +22,7 @@ export async function POST(
       );
     }
 
-    await adminCancelOrder(id, result.data.reason);
+    await adminCancelOrder(id, result.data.reason, auth.user.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Cancel order error:', error);
