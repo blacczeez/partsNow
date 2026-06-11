@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
@@ -10,9 +10,9 @@ import { Select } from '@/components/ui/select';
 import { PartFormSheet } from '@/components/admin/part-form-sheet';
 import { PartVendorsSheet } from '@/components/admin/part-vendors-sheet';
 import { useAdminParts } from '@/lib/hooks/use-admin-parts';
-import { CATEGORIES, CATEGORY_MAP } from '@/lib/constants/categories';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
+import type { PartCategory } from '@/lib/types/database';
 
 function PartsSearchForm({
   appliedSearch,
@@ -58,14 +58,31 @@ export default function AdminPartsPage() {
     setPage,
     search,
     setSearch,
-    category,
-    setCategory,
+    categoryId,
+    setCategoryId,
     createPart,
     updatePart,
   } = useAdminParts();
+  const [categories, setCategories] = useState<PartCategory[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingPart, setEditingPart] = useState<(typeof parts)[0] | null>(null);
   const [vendorsPartId, setVendorsPartId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/categories')
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        if (!cancelled) setCategories(data.categories ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleRowClick = (row: (typeof parts)[0]) => {
     setEditingPart(row);
@@ -84,7 +101,7 @@ export default function AdminPartsPage() {
 
     const success = await createPart(data as {
       name: string;
-      category: string;
+      category_id: string;
       subcategory?: string;
       oem_code?: string;
       average_price?: number;
@@ -108,8 +125,7 @@ export default function AdminPartsPage() {
     },
     {
       header: 'Category',
-      render: (row: (typeof parts)[0]) =>
-        CATEGORY_MAP[row.category]?.name ?? row.category,
+      render: (row: (typeof parts)[0]) => row.category_name,
     },
     {
       header: 'OEM Code',
@@ -172,24 +188,24 @@ export default function AdminPartsPage() {
 
             <Select
               fieldSize="sm"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
             >
               <option value="">All Categories</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.slug} value={c.slug}>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </Select>
 
-            {(search || category) && (
+            {(search || categoryId) && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => {
                   setSearch('');
-                  setCategory('');
+                  setCategoryId('');
                 }}
               >
                 Clear filters
@@ -218,7 +234,7 @@ export default function AdminPartsPage() {
         part={editingPart ? {
           id: editingPart.id,
           name: editingPart.name,
-          category: editingPart.category,
+          category_id: editingPart.category_id,
           subcategory: editingPart.subcategory || '',
           oem_code: editingPart.oem_code || '',
           average_price: editingPart.average_price,

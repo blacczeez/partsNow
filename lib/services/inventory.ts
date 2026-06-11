@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { flattenPartRow } from '@/lib/utils/part-category';
 import type { Part } from '@/lib/types/database';
 
 export async function searchParts(options: {
@@ -12,9 +13,23 @@ export async function searchParts(options: {
   const limit = options.limit ?? 20;
   const offset = (page - 1) * limit;
 
+  let categoryId: string | undefined;
+  if (options.category) {
+    const { data: categoryRow } = await supabase
+      .from('part_categories')
+      .select('id')
+      .eq('slug', options.category)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (!categoryRow) {
+      return { parts: [], total: 0 };
+    }
+    categoryId = categoryRow.id;
+  }
+
   let query = supabase
     .from('parts')
-    .select('*', { count: 'exact' })
+    .select('*, part_categories(id, slug, name)', { count: 'exact' })
     .eq('is_active', true)
     .order('name')
     .range(offset, offset + limit - 1);
@@ -26,48 +41,32 @@ export async function searchParts(options: {
     });
   }
 
-  if (options.category) {
-    query = query.ilike('category', options.category);
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
   }
 
   const { data, error, count } = await query;
 
   if (error) throw new Error(error.message);
 
-  return { parts: data || [], total: count || 0 };
+  return {
+    parts: (data ?? []).map((row) => flattenPartRow(row as Record<string, unknown>)),
+    total: count || 0,
+  };
 }
 
-export async function getCategories(): Promise<
-  Array<{ category: string; count: number }>
-> {
+export async function getPartById(partId: string): Promise<Part | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('parts')
-    .select('category')
-    .eq('is_active', true);
+    .select('*, part_categories(id, slug, name)')
+    .eq('id', partId)
+    .eq('is_active', true)
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
+  if (!data) return null;
 
-  const counts: Record<string, number> = {};
-  for (const row of data || []) {
-    counts[row.category] = (counts[row.category] || 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .map(([category, count]) => ({ category, count }))
-    .sort((a, b) => a.category.localeCompare(b.category));
-}
-
-export async function getPartById(id: string): Promise<Part | null> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from('parts')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) return null;
-  return data;
+  return flattenPartRow(data as Record<string, unknown>);
 }

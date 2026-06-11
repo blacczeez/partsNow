@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || undefined;
-    const category = searchParams.get('category') || undefined;
+    const categoryId = searchParams.get('categoryId') || undefined;
 
-    const result = await getAdminParts({ page, limit, search, category });
+    const result = await getAdminParts({ page, limit, search, categoryId });
 
     return NextResponse.json({
       parts: result.parts,

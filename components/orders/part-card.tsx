@@ -39,7 +39,7 @@ export function PartCard({ part, onClick }: PartCardProps) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-slate-900">{part.name}</p>
         <div className="mt-1 flex items-center gap-2">
-          <Badge variant="default">{part.category}</Badge>
+          <Badge variant="default">{part.category_name}</Badge>
           {part.oem_code && (
             <span className="text-xs text-slate-400">{part.oem_code}</span>
           )}

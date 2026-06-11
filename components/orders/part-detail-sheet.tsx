@@ -51,7 +51,7 @@ export function PartDetailSheet({
         <div>
           <h3 className="text-lg font-semibold text-slate-900">{part.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Badge variant="default">{part.category}</Badge>
+            <Badge variant="default">{part.category_name}</Badge>
             {part.subcategory && <Badge variant="info">{part.subcategory}</Badge>}
             {part.oem_code && (
               <span className="text-xs text-slate-400">OEM: {part.oem_code}</span>

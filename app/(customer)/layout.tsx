@@ -7,6 +7,7 @@ import { SetupRedirect } from '@/components/auth/setup-redirect';
 import { UserProvider, useUser } from '@/lib/hooks/use-user';
 import { CartProvider } from '@/lib/contexts/cart-context';
 import { useCart } from '@/lib/hooks/use-cart';
+import { AppFontShell } from '@/components/layout/app-font-shell';
 
 const navItems = [
   { href: '/', icon: Home, label: 'Home' },
@@ -33,7 +34,7 @@ function CustomerTopNav() {
 }
 
 function CustomerShell({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, needsSetup } = useUser();
 
   if (isLoading) {
     return (
@@ -43,7 +44,8 @@ function CustomerShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
+  // Unauthenticated — landing page, no app chrome
+  if (!user && !needsSetup) {
     return <>{children}</>;
   }
 
@@ -65,10 +67,12 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <UserProvider>
-      <CartProvider>
-        <CustomerShell>{children}</CustomerShell>
-      </CartProvider>
-    </UserProvider>
+    <AppFontShell className="flex min-h-full flex-col">
+      <UserProvider>
+        <CartProvider>
+          <CustomerShell>{children}</CustomerShell>
+        </CartProvider>
+      </UserProvider>
+    </AppFontShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { Search, Zap, Truck, Shield, Clock, Car, Wrench, Disc3, Battery, Wallet, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Search, Zap, Truck, Shield, Clock, Wrench, Wallet, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
 import { useRecentOrders } from '@/lib/hooks/use-recent-orders';
@@ -8,16 +9,27 @@ import { OrderCard } from '@/components/orders/order-card';
 import { formatCurrency } from '@/lib/utils/format';
 import { LandingPage } from '@/components/landing/landing-page';
 
-const categories = [
-  { name: 'Brakes', icon: Disc3, href: '/search?category=brakes' },
-  { name: 'Engine', icon: Wrench, href: '/search?category=engine' },
-  { name: 'Battery', icon: Battery, href: '/search?category=battery' },
-  { name: 'Suspension', icon: Car, href: '/search?category=suspension' },
-];
-
 function Dashboard() {
   const { user, wallet } = useUser();
   const { orders, isLoading: ordersLoading } = useRecentOrders(3);
+  const [categories, setCategories] = useState<
+    Array<{ slug: string; name: string; part_count: number }>
+  >([]);
+
+  useEffect(() => {
+    fetch('/api/inventory/categories')
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) {
+          setCategories(
+            (data.categories ?? []).filter(
+              (c: { part_count: number }) => c.part_count > 0
+            )
+          );
+        }
+      })
+      .catch(() => setCategories([]));
+  }, []);
 
   const firstName = user?.full_name?.split(' ')[0];
 
@@ -88,16 +100,16 @@ function Dashboard() {
       <div className="px-4 py-4">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Categories</h2>
         <div className="grid grid-cols-4 gap-3 md:grid-cols-6 xl:grid-cols-8">
-          {categories.map(({ name, icon: Icon, href }) => (
+          {categories.map(({ name, slug }) => (
             <Link
-              key={name}
-              href={href}
+              key={slug}
+              href={`/search?category=${slug}`}
               className="flex flex-col items-center gap-2 rounded-card border border-slate-200 bg-white p-3 shadow-sm hover:border-primary/30 hover:shadow-md"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Icon className="h-5 w-5 text-primary" />
+                <Wrench className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-xs font-medium text-slate-700">{name}</span>
+              <span className="text-center text-xs font-medium text-slate-700">{name}</span>
             </Link>
           ))}
         </div>

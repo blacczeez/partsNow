@@ -4,6 +4,7 @@ import { Home, Clock, User } from 'lucide-react';
 import { UserProvider } from '@/lib/hooks/use-user';
 import { RunnerBottomNav } from '@/components/runner/runner-bottom-nav';
 import { TopNav } from '@/components/layout/top-nav';
+import { AppFontShell } from '@/components/layout/app-font-shell';
 
 const navItems = [
   { href: '/runner/dashboard', icon: Home, label: 'Dashboard' },
@@ -17,7 +18,8 @@ export default function RunnerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <UserProvider>
+    <AppFontShell className="flex min-h-full flex-col">
+      <UserProvider>
       <TopNav
         items={navItems}
         accountHref="/runner/account"
@@ -33,6 +35,7 @@ export default function RunnerLayout({
         <div className="mx-auto w-full lg:max-w-3xl">{children}</div>
       </main>
       <RunnerBottomNav />
-    </UserProvider>
+      </UserProvider>
+    </AppFontShell>
   );
 }

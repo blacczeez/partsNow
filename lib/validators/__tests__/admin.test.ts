@@ -182,10 +182,18 @@ describe('updateConfigSchema', () => {
   });
 });
 
+describe('createPartCategorySchema', () => {
+  it('accepts valid category', async () => {
+    const { createPartCategorySchema } = await import('../admin');
+    const result = createPartCategorySchema.safeParse({ name: 'Brakes' });
+    expect(result.success).toBe(true);
+  });
+});
+
 describe('createPartSchema', () => {
   const validPart = {
     name: 'Brake Pad Set',
-    category: 'Brakes',
+    category_id: '00000000-0000-0000-0000-000000000001',
   };
 
   it('accepts valid input with required fields only', () => {
@@ -204,14 +212,14 @@ describe('createPartSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects missing category', () => {
-    const { category, ...rest } = validPart;
+  it('rejects missing category_id', () => {
+    const { category_id, ...rest } = validPart;
     const result = createPartSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty category', () => {
-    const result = createPartSchema.safeParse({ ...validPart, category: '' });
+  it('rejects invalid category_id', () => {
+    const result = createPartSchema.safeParse({ ...validPart, category_id: 'not-uuid' });
     expect(result.success).toBe(false);
   });
 
@@ -265,7 +273,7 @@ describe('updatePartSchema', () => {
   it('accepts all fields together', () => {
     const result = updatePartSchema.safeParse({
       name: 'Updated',
-      category: 'Engine',
+      category_id: '00000000-0000-0000-0000-000000000002',
       subcategory: 'Oil Filter',
       oem_code: 'OF-999',
       average_price: 5000,
@@ -280,8 +288,8 @@ describe('updatePartSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty category when provided', () => {
-    const result = updatePartSchema.safeParse({ category: '' });
+  it('rejects invalid category_id when provided', () => {
+    const result = updatePartSchema.safeParse({ category_id: 'not-uuid' });
     expect(result.success).toBe(false);
   });
 });

@@ -7,10 +7,9 @@ import { PartCard } from '@/components/orders/part-card';
 import { PartDetailSheet } from '@/components/orders/part-detail-sheet';
 import { usePartsSearch } from '@/lib/hooks/use-parts-search';
 import { useCart } from '@/lib/hooks/use-cart';
-import { CATEGORIES } from '@/lib/constants/categories';
 import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils/cn';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import type { Part } from '@/lib/types/database';
 
 function SearchContent() {
@@ -31,15 +30,27 @@ function SearchContent() {
   } = usePartsSearch({ initialCategory });
 
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; slug: string; name: string; part_count: number }>
+  >([]);
 
   const cart = useCart();
+
+  useEffect(() => {
+    fetch('/api/inventory/categories')
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok) setCategories(data.categories ?? []);
+      })
+      .catch(() => setCategories([]));
+  }, []);
 
   function addToCart(part: Part, quantity: number) {
     if (!part.average_price) return;
     cart.addItem({
       partId: part.id,
       name: part.name,
-      category: part.category,
+      category: part.category_name,
       price: part.average_price,
       quantity,
       imageUrl: part.image_url || undefined,
@@ -71,9 +82,9 @@ function SearchContent() {
 
         {/* Category Chips */}
         <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <button
-              key={cat.slug}
+              key={cat.id}
               type="button"
               onClick={() => handleCategorySelect(cat.slug)}
               className={cn(

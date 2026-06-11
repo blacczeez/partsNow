@@ -1,25 +1,28 @@
 import { NextResponse } from 'next/server';
-import { getCategories } from '@/lib/services/inventory';
-import { CATEGORIES } from '@/lib/constants/categories';
+import { getPartCategoriesWithCounts } from '@/lib/services/part-categories';
 
 export async function GET() {
   try {
-    const dbCategories = await getCategories();
-
-    // Merge with static category definitions
-    const categories = CATEGORIES.map((cat) => {
-      const dbCat = dbCategories.find(
-        (c) => c.category.toLowerCase() === cat.slug
-      );
-      return {
-        ...cat,
-        count: dbCat?.count ?? 0,
-      };
-    });
-
+    const categories = await getPartCategoriesWithCounts();
     return NextResponse.json({ categories });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch categories';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const isNetworkError =
+      message.includes('fetch failed') ||
+      message.includes('ENOTFOUND') ||
+      message.includes('ECONNREFUSED');
+
+    if (isNetworkError) {
+      console.error('Categories API: cannot reach Supabase — check NEXT_PUBLIC_SUPABASE_URL and network');
+    }
+
+    return NextResponse.json(
+      {
+        error: isNetworkError
+          ? 'Cannot reach database. Check your internet connection and Supabase URL in .env.local, then restart the dev server.'
+          : message,
+      },
+      { status: isNetworkError ? 503 : 500 }
+    );
   }
 }

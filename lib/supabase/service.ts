@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
+import {
+  getSupabaseServiceRoleKey,
+  getSupabaseUrl,
+} from '@/lib/supabase/env';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let serviceClient: any = null;
@@ -14,14 +18,7 @@ let serviceClient: any = null;
 export function createServiceClient(): any {
   if (serviceClient) return serviceClient;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL');
-  }
-
-  serviceClient = createClient(url, key, {
+  serviceClient = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

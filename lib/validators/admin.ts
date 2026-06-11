@@ -46,9 +46,21 @@ export const priceReviewActionSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+export const createPartCategorySchema = z.object({
+  name: z.string().min(1).max(100),
+  sort_order: z.number().int().min(0).max(9999).optional(),
+  is_active: z.boolean().optional(),
+});
+
+export const updatePartCategorySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  sort_order: z.number().int().min(0).max(9999).optional(),
+  is_active: z.boolean().optional(),
+});
+
 export const createPartSchema = z.object({
   name: z.string().min(1).max(200),
-  category: z.string().min(1),
+  category_id: uuidIdSchema,
   subcategory: z.string().max(200).optional(),
   oem_code: z.string().max(100).optional(),
   average_price: z.number().positive().optional(),
@@ -65,7 +77,7 @@ export const createPartSchema = z.object({
 
 export const updatePartSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  category: z.string().min(1).optional(),
+  category_id: uuidIdSchema.optional(),
   subcategory: z.string().max(200).optional(),
   oem_code: z.string().max(100).optional(),
   average_price: z.number().positive().optional(),

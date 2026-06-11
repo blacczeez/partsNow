@@ -142,11 +142,23 @@ export interface VendorIncident {
   created_at: string;
 }
 
+export interface PartCategory {
+  id: string;
+  slug: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Part {
   id: string;
   oem_code: string | null;
   name: string;
-  category: string;
+  category_id: string;
+  category_slug: string;
+  category_name: string;
   subcategory: string | null;
   compatible_vehicles: Array<{
     make: string;

@@ -873,20 +873,20 @@ export async function getAdminParts(filters: {
   page: number;
   limit: number;
   search?: string;
-  category?: string;
+  categoryId?: string;
 }) {
   const supabase = await createClient();
-  const { page, limit, search, category } = filters;
+  const { page, limit, search, categoryId } = filters;
   const offset = (page - 1) * limit;
 
   let query = supabase
     .from('parts')
-    .select('*', { count: 'exact' })
+    .select('*, part_categories(id, slug, name)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (category) {
-    query = query.eq('category', category);
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
   }
 
   if (search) {
@@ -911,9 +911,11 @@ export async function getAdminParts(filters: {
     vendorCountMap[vp.part_id] = (vendorCountMap[vp.part_id] || 0) + 1;
   });
 
-  const partsWithVendorCount = parts.map((p: { id: string }) => ({
-    ...p,
-    vendor_count: vendorCountMap[p.id] ?? 0,
+  const { flattenPartRow } = await import('@/lib/utils/part-category');
+
+  const partsWithVendorCount = parts.map((p: Record<string, unknown>) => ({
+    ...flattenPartRow(p),
+    vendor_count: vendorCountMap[p.id as string] ?? 0,
   }));
 
   return { parts: partsWithVendorCount, total: count ?? 0 };
@@ -922,7 +924,7 @@ export async function getAdminParts(filters: {
 export async function createPart(
   data: {
     name: string;
-    category: string;
+    category_id: string;
     subcategory?: string;
     oem_code?: string;
     average_price?: number;
@@ -939,12 +941,14 @@ export async function createPart(
   adminId?: string
 ) {
   const supabase = await createClient();
+  const { assertActiveCategoryId } = await import('@/lib/services/part-categories');
+  await assertActiveCategoryId(data.category_id);
 
   const { data: part, error } = await supabase
     .from('parts')
     .insert({
       name: data.name,
-      category: data.category,
+      category_id: data.category_id,
       subcategory: data.subcategory ?? null,
       oem_code: data.oem_code ?? null,
       average_price: data.average_price ?? null,
@@ -964,7 +968,7 @@ export async function createPart(
     entityId: part.id,
     newValues: auditDetails(`Part created — ${part.name}`, {
       name: part.name,
-      category: part.category,
+      category_id: part.category_id,
     }),
   });
 
@@ -977,6 +981,11 @@ export async function updatePart(
   adminId?: string
 ) {
   const supabase = await createClient();
+
+  if (typeof data.category_id === 'string') {
+    const { assertActiveCategoryId } = await import('@/lib/services/part-categories');
+    await assertActiveCategoryId(data.category_id);
+  }
 
   const { data: existing } = await supabase
     .from('parts')

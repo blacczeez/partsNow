@@ -6,7 +6,9 @@ import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
 interface AdminPart {
   id: string;
   name: string;
-  category: string;
+  category_id: string;
+  category_slug: string;
+  category_name: string;
   subcategory: string | null;
   oem_code: string | null;
   average_price: number | null;
@@ -25,10 +27,10 @@ interface Pagination {
   totalPages: number;
 }
 
-async function fetchPartsPage(page: number, search: string, category: string) {
+async function fetchPartsPage(page: number, search: string, categoryId: string) {
   const params = new URLSearchParams({ page: String(page), limit: '20' });
   if (search) params.set('search', search);
-  if (category) params.set('category', category);
+  if (categoryId) params.set('categoryId', categoryId);
 
   const res = await fetch(`/api/admin/parts?${params}`);
   if (res.ok) {
@@ -38,10 +40,10 @@ async function fetchPartsPage(page: number, search: string, category: string) {
 }
 
 export function useAdminParts() {
-  const { values, setUrlState } = useAdminUrlState(['search', 'category']);
+  const { values, setUrlState } = useAdminUrlState(['search', 'categoryId']);
   const page = parseInt(values.page || '1', 10);
   const search = values.search;
-  const category = values.category;
+  const categoryId = values.categoryId;
 
   const [parts, setParts] = useState<AdminPart[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -70,10 +72,10 @@ export function useAdminParts() {
     [setUrlState]
   );
 
-  const setCategory = useCallback(
+  const setCategoryId = useCallback(
     (value: string) => {
       setIsLoading(true);
-      setUrlState({ category: value || undefined, page: 1 });
+      setUrlState({ categoryId: value || undefined, page: 1 });
     },
     [setUrlState]
   );
@@ -96,7 +98,7 @@ export function useAdminParts() {
 
     async function loadParts() {
       try {
-        const data = await fetchPartsPage(page, search, category);
+        const data = await fetchPartsPage(page, search, categoryId);
         if (!cancelled && data) {
           setParts(data.parts);
           setPagination(data.pagination);
@@ -113,11 +115,11 @@ export function useAdminParts() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, category]);
+  }, [page, search, categoryId]);
 
   const createPart = async (data: {
     name: string;
-    category: string;
+    category_id: string;
     subcategory?: string;
     oem_code?: string;
     average_price?: number;
@@ -133,7 +135,7 @@ export function useAdminParts() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        await refreshParts(page, search, category);
+        await refreshParts(page, search, categoryId);
         return true;
       }
       return false;
@@ -151,7 +153,7 @@ export function useAdminParts() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        await refreshParts(page, search, category);
+        await refreshParts(page, search, categoryId);
         return true;
       }
       return false;
@@ -169,10 +171,10 @@ export function useAdminParts() {
     setPage,
     search,
     setSearch,
-    category,
-    setCategory,
+    categoryId,
+    setCategoryId,
     createPart,
     updatePart,
-    refresh: () => refreshParts(page, search, category),
+    refresh: () => refreshParts(page, search, categoryId),
   };
 }

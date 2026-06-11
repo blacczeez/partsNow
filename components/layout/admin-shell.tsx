@@ -114,7 +114,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [mobileNavOpen]);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-slate-50">
+    <div className="font-sans flex h-dvh overflow-hidden bg-slate-50">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
         <AdminBrandHeader />
