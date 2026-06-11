@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Search, Package, Wallet, User } from 'lucide-react';
+import { Home, Search, Package, Wallet, User, Loader2 } from 'lucide-react';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { TopNav } from '@/components/layout/top-nav';
 import { SetupRedirect } from '@/components/auth/setup-redirect';
@@ -32,6 +32,33 @@ function CustomerTopNav() {
   );
 }
 
+function CustomerShell({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  return (
+    <>
+      <SetupRedirect />
+      <CustomerTopNav />
+      <main className="min-h-full flex-1 pb-20 lg:pb-0">
+        <div className="mx-auto w-full lg:max-w-4xl">{children}</div>
+      </main>
+      <BottomNav />
+    </>
+  );
+}
+
 export default function CustomerLayout({
   children,
 }: {
@@ -40,12 +67,7 @@ export default function CustomerLayout({
   return (
     <UserProvider>
       <CartProvider>
-        <SetupRedirect />
-        <CustomerTopNav />
-        <main className="min-h-full flex-1 pb-20 lg:pb-0">
-          <div className="mx-auto w-full lg:max-w-4xl">{children}</div>
-        </main>
-        <BottomNav />
+        <CustomerShell>{children}</CustomerShell>
       </CartProvider>
     </UserProvider>
   );

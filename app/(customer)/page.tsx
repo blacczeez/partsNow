@@ -6,6 +6,7 @@ import { useUser } from '@/lib/hooks/use-user';
 import { useRecentOrders } from '@/lib/hooks/use-recent-orders';
 import { OrderCard } from '@/components/orders/order-card';
 import { formatCurrency } from '@/lib/utils/format';
+import { LandingPage } from '@/components/landing/landing-page';
 
 const categories = [
   { name: 'Brakes', icon: Disc3, href: '/search?category=brakes' },
@@ -14,7 +15,7 @@ const categories = [
   { name: 'Suspension', icon: Car, href: '/search?category=suspension' },
 ];
 
-export default function HomePage() {
+function Dashboard() {
   const { user, wallet } = useUser();
   const { orders, isLoading: ordersLoading } = useRecentOrders(3);
 
@@ -134,4 +135,13 @@ export default function HomePage() {
       </div>
     </div>
   );
+}
+
+export default function HomePage() {
+  const { user, isLoading } = useUser();
+
+  if (isLoading) return null;
+  if (!user) return <LandingPage />;
+
+  return <Dashboard />;
 }
