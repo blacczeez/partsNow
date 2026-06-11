@@ -18,6 +18,12 @@ import {
   type AuditEntityContext,
 } from '@/lib/constants/audit-log';
 import type { OrderStatus } from '@/lib/types/database';
+import type { AttentionType } from '@/lib/constants/admin-attention';
+import {
+  enrichAttentionOrdersWithCustomers,
+  getAdminAttentionInbox,
+  getAdminOrdersByAttention,
+} from './admin-attention';
 
 // ============================================
 // DASHBOARD
@@ -57,19 +63,11 @@ export async function getDashboardStats() {
   }
   const totalActive = activeOrders?.length ?? 0;
 
-  // SLA breaches - orders past promised delivery time
-  const { data: slaOrders } = await supabase
-    .from('orders')
-    .select('id, order_number, status, created_at, promised_delivery_minutes')
-    .in('status', ['confirmed', 'sourcing', 'picked', 'dispatched'])
-    .not('promised_delivery_minutes', 'is', null);
-
-  const now = Date.now();
-  const slaBreaches = (slaOrders ?? []).filter((o) => {
-    const created = new Date(o.created_at).getTime();
-    const elapsed = (now - created) / 60000;
-    return elapsed > (o.promised_delivery_minutes ?? 0);
-  });
+  const attention = await getAdminAttentionInbox(supabase);
+  const slaGroup = attention.groups.find((g) => g.type === 'sla_breach');
+  const priceReviewGroup = attention.groups.find((g) => g.type === 'price_review');
+  const slaBreachCount = slaGroup?.count ?? 0;
+  const priceReviewPendingCount = priceReviewGroup?.count ?? 0;
 
   // Active runners (with active shift)
   const { count: activeRunnerCount } = await supabase
@@ -115,19 +113,14 @@ export async function getDashboardStats() {
     }));
   }
 
-  const { count: priceReviewPendingCount } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .eq('price_review_status', 'pending');
-
   return {
     todayOrderCount: todayOrderCount ?? 0,
     todayRevenue: totalRevenue,
     totalActive,
     activeByStatus,
-    slaBreachCount: slaBreaches.length,
-    slaBreaches: slaBreaches.slice(0, 5),
-    priceReviewPendingCount: priceReviewPendingCount ?? 0,
+    slaBreachCount,
+    priceReviewPendingCount,
+    attention,
     activeRunnerCount: activeRunnerCount ?? 0,
     activeRiderCount: activeRiderIds.size,
     recentOrders: recentOrdersWithCustomer,
@@ -144,9 +137,25 @@ export async function getAdminOrders(filters: {
   status?: OrderStatus;
   search?: string;
   priceReviewPending?: boolean;
+  attention?: AttentionType;
 }) {
   const supabase = await createClient();
-  const { page, limit, status, search, priceReviewPending } = filters;
+  const { page, limit, status, search, priceReviewPending, attention } = filters;
+
+  if (attention) {
+    const { orders, total } = await getAdminOrdersByAttention(
+      supabase,
+      attention,
+      page,
+      limit
+    );
+    const ordersWithCustomer = await enrichAttentionOrdersWithCustomers(
+      supabase,
+      orders
+    );
+    return { orders: ordersWithCustomer, total };
+  }
+
   const offset = (page - 1) * limit;
 
   let query = supabase

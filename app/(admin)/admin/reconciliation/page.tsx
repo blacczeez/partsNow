@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils/format';
 
@@ -162,11 +162,11 @@ function ReconciliationContent() {
         description="Daily runner shift float and sourcing totals."
         filters={
           <div className="flex max-w-xs items-end gap-2">
-            <Input
+            <DateInput
               label="Date"
-              type="date"
+              fieldSize="sm"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
             />
             <Button variant="secondary" size="sm" onClick={() => setRefreshKey((k) => k + 1)}>
               Refresh

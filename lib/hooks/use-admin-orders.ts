@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
+import {
+  ATTENTION_LABELS,
+  ATTENTION_TYPES,
+  type AttentionType,
+} from '@/lib/constants/admin-attention';
 import type { OrderStatus } from '@/lib/types/database';
 
 interface Filters {
@@ -10,6 +15,7 @@ interface Filters {
   status?: OrderStatus;
   search?: string;
   priceReview?: 'pending';
+  attention?: AttentionType;
 }
 
 interface AdminOrder {
@@ -24,6 +30,7 @@ interface AdminOrder {
   customer_name: string;
   source_channel: string;
   price_review_status: string;
+  minutes_overdue?: number;
 }
 
 interface Pagination {
@@ -33,26 +40,47 @@ interface Pagination {
   totalPages: number;
 }
 
+function parseAttention(value: string | undefined): AttentionType | undefined {
+  if (!value) return undefined;
+  return ATTENTION_TYPES.includes(value as AttentionType)
+    ? (value as AttentionType)
+    : undefined;
+}
+
 function buildAdminOrdersParams(filters: Filters): URLSearchParams {
   const params = new URLSearchParams({ page: String(filters.page), limit: '20' });
-  if (filters.status) params.set('status', filters.status);
-  if (filters.search) params.set('search', filters.search);
-  if (filters.priceReview === 'pending') params.set('priceReview', 'pending');
+  if (filters.attention) {
+    params.set('attention', filters.attention);
+  } else {
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.priceReview === 'pending') params.set('priceReview', 'pending');
+  }
   return params;
 }
 
+const REALTIME_DEBOUNCE_MS = 3000;
+
 export function useAdminOrders() {
-  const { values, setUrlState } = useAdminUrlState(['status', 'search', 'priceReview']);
+  const { values, setUrlState } = useAdminUrlState([
+    'status',
+    'search',
+    'priceReview',
+    'attention',
+  ]);
   const page = parseInt(values.page || '1', 10);
+  const attention = parseAttention(values.attention);
 
   const filters: Filters = useMemo(
     () => ({
       page,
-      status: (values.status as OrderStatus) || undefined,
-      search: values.search || undefined,
-      priceReview: values.priceReview === 'pending' ? 'pending' : undefined,
+      status: attention ? undefined : (values.status as OrderStatus) || undefined,
+      search: attention ? undefined : values.search || undefined,
+      priceReview:
+        !attention && values.priceReview === 'pending' ? 'pending' : undefined,
+      attention,
     }),
-    [page, values.status, values.search, values.priceReview]
+    [page, values.status, values.search, values.priceReview, attention]
   );
 
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -63,6 +91,7 @@ export function useAdminOrders() {
     totalPages: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setFilters = useCallback(
     (value: Filters | ((prev: Filters) => Filters)) => {
@@ -70,9 +99,11 @@ export function useAdminOrders() {
       const next = typeof value === 'function' ? value(filters) : value;
       setUrlState({
         page: next.page,
-        status: next.status || undefined,
-        search: next.search || undefined,
-        priceReview: next.priceReview === 'pending' ? 'pending' : undefined,
+        attention: next.attention || undefined,
+        status: next.attention ? undefined : next.status || undefined,
+        search: next.attention ? undefined : next.search || undefined,
+        priceReview:
+          !next.attention && next.priceReview === 'pending' ? 'pending' : undefined,
       });
     },
     [filters, setUrlState]
@@ -105,28 +136,46 @@ export function useAdminOrders() {
 
   useEffect(() => {
     const supabase = createClient();
+
+    const scheduleReload = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        void (async () => {
+          const res = await fetch(`/api/admin/orders?${buildAdminOrdersParams(filters)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setOrders(data.orders);
+            setPagination(data.pagination);
+          }
+        })();
+      }, REALTIME_DEBOUNCE_MS);
+    };
+
     const channel = supabase
       .channel('admin-orders-list')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
-        () => {
-          void (async () => {
-            const res = await fetch(`/api/admin/orders?${buildAdminOrdersParams(filters)}`);
-            if (res.ok) {
-              const data = await res.json();
-              setOrders(data.orders);
-              setPagination(data.pagination);
-            }
-          })();
-        }
+        scheduleReload
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [filters]);
 
-  return { orders, pagination, isLoading, filters, setFilters };
+  const attentionLabel = filters.attention
+    ? ATTENTION_LABELS[filters.attention]
+    : null;
+
+  return {
+    orders,
+    pagination,
+    isLoading,
+    filters,
+    setFilters,
+    attentionLabel,
+  };
 }

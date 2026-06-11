@@ -1,41 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Package, DollarSign, AlertTriangle, Users, Bike, TrendingUp, Scale } from 'lucide-react';
+import { Package, DollarSign, AlertTriangle, Users, Bike, TrendingUp } from 'lucide-react';
 import { StatCard } from '@/components/admin/stat-card';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
+import { NeedsAttentionPanel } from '@/components/admin/needs-attention-panel';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Badge } from '@/components/ui/badge';
 import { useAdminDashboard } from '@/lib/hooks/use-admin-dashboard';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
 import type { OrderStatus } from '@/lib/types/database';
-
-function SlaBreachElapsed({
-  createdAt,
-  promisedMinutes,
-}: {
-  createdAt: string;
-  promisedMinutes: number;
-}) {
-  const [elapsedMinutes, setElapsedMinutes] = useState<number | null>(null);
-
-  useEffect(() => {
-    const createdMs = new Date(createdAt).getTime();
-    const tick = () => setElapsedMinutes(Math.round((Date.now() - createdMs) / 60000));
-    tick();
-    const id = setInterval(tick, 60_000);
-    return () => clearInterval(id);
-  }, [createdAt]);
-
-  return (
-    <span className="text-sm text-error">
-      {elapsedMinutes ?? '—'}m elapsed (SLA: {promisedMinutes}m)
-    </span>
-  );
-}
 
 export default function AdminDashboardPage() {
   const { stats, isLoading } = useAdminDashboard();
@@ -121,41 +95,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Price review + SLA */}
-      {(stats.priceReviewPendingCount > 0 || stats.slaBreaches.length > 0) && (
-        <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">Needs Attention</h2>
-          <div className="space-y-2">
-            {stats.priceReviewPendingCount > 0 && (
-              <Link
-                href="/admin/orders?priceReview=pending"
-                className="flex items-center justify-between rounded-card border border-warning/30 bg-warning-light px-4 py-3 hover:bg-warning-light/80"
-              >
-                <div className="flex items-center gap-2">
-                  <Scale className="h-5 w-5 text-warning" />
-                  <span className="font-medium text-slate-900">Price reviews pending</span>
-                </div>
-                <Badge variant="warning">{stats.priceReviewPendingCount}</Badge>
-              </Link>
-            )}
-            {stats.slaBreaches.map((breach) => (
-              <div
-                key={breach.id}
-                className="flex items-center justify-between rounded-card border border-error/20 bg-error-light px-4 py-3"
-              >
-                <div>
-                  <span className="font-medium text-slate-900">{breach.order_number}</span>
-                  <StatusBadge status={breach.status as OrderStatus} className="ml-2" />
-                </div>
-                <SlaBreachElapsed
-                  createdAt={breach.created_at}
-                  promisedMinutes={breach.promised_delivery_minutes}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <NeedsAttentionPanel attention={stats.attention} />
 
       {/* Recent Orders */}
       <div className="mt-6">

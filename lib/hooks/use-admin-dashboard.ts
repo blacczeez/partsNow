@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import type { AdminAttentionInbox } from '@/lib/services/admin-attention';
 
 interface DashboardStats {
   todayOrderCount: number;
@@ -10,13 +11,7 @@ interface DashboardStats {
   activeByStatus: Record<string, number>;
   slaBreachCount: number;
   priceReviewPendingCount: number;
-  slaBreaches: Array<{
-    id: string;
-    order_number: string;
-    status: string;
-    created_at: string;
-    promised_delivery_minutes: number;
-  }>;
+  attention: AdminAttentionInbox;
   activeRunnerCount: number;
   activeRiderCount: number;
   recentOrders: Array<{
@@ -30,9 +25,12 @@ interface DashboardStats {
   }>;
 }
 
+const REALTIME_DEBOUNCE_MS = 3000;
+
 export function useAdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -46,11 +44,20 @@ export function useAdminDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchStats();
+  const scheduleRefresh = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void fetchStats();
+    }, REALTIME_DEBOUNCE_MS);
   }, [fetchStats]);
 
-  // Subscribe to realtime order changes for live refresh
+  useEffect(() => {
+    void fetchStats();
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [fetchStats]);
+
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -59,15 +66,16 @@ export function useAdminDashboard() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
         () => {
-          fetchStats();
+          scheduleRefresh();
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [fetchStats]);
+  }, [scheduleRefresh]);
 
   return { stats, isLoading, refresh: fetchStats };
 }
