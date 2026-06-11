@@ -47,11 +47,16 @@ function SearchContent() {
 
   function addToCart(part: Part, quantity: number) {
     if (!part.average_price) return;
+    if (!part.weight_kg || part.weight_kg <= 0) {
+      toast('error', 'This part is not available for order yet (weight missing).');
+      return;
+    }
     cart.addItem({
       partId: part.id,
       name: part.name,
       category: part.category_name,
       price: part.average_price,
+      weightKg: part.weight_kg,
       quantity,
       imageUrl: part.image_url || undefined,
     });

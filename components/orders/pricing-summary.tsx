@@ -24,8 +24,19 @@ export function PricingSummary({ pricing, variant = 'checkout' }: PricingSummary
           <span className="text-slate-700">{formatCurrency(pricing.markupAmount)}</span>
         </div>
       )}
+      {pricing.totalWeightKg != null && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-500">
+            Weight
+            {pricing.deliveryTierLabel ? ` (${pricing.deliveryTierLabel})` : ''}
+          </span>
+          <span className="text-slate-700">{pricing.totalWeightKg} kg</span>
+        </div>
+      )}
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-500">Delivery fee</span>
+        <span className="text-slate-500">
+          {pricing.deliveryFeeLabel ?? 'Delivery fee'}
+        </span>
         <span className="text-slate-700">
           {pricing.deliveryFee === 0
             ? 'FREE'

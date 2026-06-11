@@ -98,15 +98,20 @@ function PartFormFields({ part, onClose, onSubmit, isLoading }: PartFormFieldsPr
       return;
     }
 
+    if (!weightKg || parseFloat(weightKg) <= 0) {
+      setSubmitError('Weight (kg) is required for delivery pricing.');
+      return;
+    }
+
     const data: Record<string, unknown> = {
       name,
       category_id: categoryId,
+      weight_kg: parseFloat(weightKg),
     };
 
     if (subcategory) data.subcategory = subcategory;
     if (oemCode) data.oem_code = oemCode;
     if (averagePrice) data.average_price = parseFloat(averagePrice);
-    if (weightKg) data.weight_kg = parseFloat(weightKg);
     if (imageUrl) data.image_url = imageUrl;
 
     if (compatibleVehicles.trim()) {
@@ -181,7 +186,7 @@ function PartFormFields({ part, onClose, onSubmit, isLoading }: PartFormFieldsPr
         step="0.01"
       />
       <Input
-        label="Weight (kg)"
+        label="Weight (kg) *"
         type="number"
         value={weightKg}
         onChange={(e) => setWeightKg(e.target.value)}

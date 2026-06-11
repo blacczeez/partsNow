@@ -656,7 +656,7 @@ export async function getAdminRiders(filters: { page: number; limit: number }) {
 
   const { data, error, count } = await supabase
     .from('users')
-    .select('id, full_name, phone, is_active, created_at', { count: 'exact' })
+    .select('id, full_name, phone, is_active, created_at, profile', { count: 'exact' })
     .eq('user_type', 'rider')
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -738,6 +738,47 @@ export async function getAdminRiderDetail(riderId: string) {
     activeDeliveries: activeDeliveries ?? [],
     recentHistory: recentHistory ?? [],
   };
+}
+
+export async function updateAdminRider(
+  riderId: string,
+  data: { vehicle_type?: string },
+  adminId: string
+) {
+  const supabase = await createClient();
+
+  const { data: rider, error: fetchError } = await supabase
+    .from('users')
+    .select('id, profile')
+    .eq('id', riderId)
+    .eq('user_type', 'rider')
+    .single();
+
+  if (fetchError || !rider) throw new Error('Rider not found');
+
+  const profile = {
+    ...((rider.profile as Record<string, unknown> | null) ?? {}),
+    ...(data.vehicle_type !== undefined ? { vehicle_type: data.vehicle_type } : {}),
+  };
+
+  const { data: updated, error } = await supabase
+    .from('users')
+    .update({ profile, updated_at: new Date().toISOString() })
+    .eq('id', riderId)
+    .select('id, full_name, phone, is_active, profile, created_at')
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId,
+    action: 'admin.rider_profile_updated',
+    entityType: 'user',
+    entityId: riderId,
+    newValues: auditDetails('Rider vehicle type updated', { vehicle_type: data.vehicle_type }),
+  });
+
+  return updated;
 }
 
 // ============================================
@@ -874,9 +915,10 @@ export async function getAdminParts(filters: {
   limit: number;
   search?: string;
   categoryId?: string;
+  missingWeight?: boolean;
 }) {
   const supabase = await createClient();
-  const { page, limit, search, categoryId } = filters;
+  const { page, limit, search, categoryId, missingWeight } = filters;
   const offset = (page - 1) * limit;
 
   let query = supabase
@@ -891,6 +933,10 @@ export async function getAdminParts(filters: {
 
   if (search) {
     query = query.or(`name.ilike.%${search}%,oem_code.ilike.%${search}%`);
+  }
+
+  if (missingWeight) {
+    query = query.is('weight_kg', null);
   }
 
   const { data, error, count } = await query;

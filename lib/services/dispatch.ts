@@ -2,6 +2,13 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { config } from '@/lib/config';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
+import {
+  assignPartnerDelivery,
+  requiresPartnerDispatchOnly,
+  shouldOfferPartnerDispatch,
+} from '@/lib/services/partner-dispatch';
+import { riderVehicleTypesForOrder } from '@/lib/utils/delivery-pricing';
+import type { DeliveryVehicleType } from '@/lib/types/delivery';
 
 export async function assignRunner(
   orderId: string,
@@ -158,25 +165,41 @@ export async function assignUnassignedOrdersInCluster(
   return assignedCount;
 }
 
-export async function assignRider(
+async function selectInternalRiderId(
   orderId: string,
-  clusterId: string
+  clusterId: string,
+  orderVehicleType: DeliveryVehicleType
 ): Promise<string | null> {
   const supabase = createServiceClient();
+  const allowedVehicleTypes = riderVehicleTypesForOrder(orderVehicleType);
 
-  // Find active riders in this cluster
   const { data: riders } = await supabase
     .from('users')
-    .select('id')
+    .select('id, profile')
     .eq('user_type', 'rider')
     .eq('is_active', true)
     .eq('cluster_id', clusterId);
 
   if (!riders || riders.length === 0) return null;
 
-  const riderIds: string[] = riders.map((r: { id: string }) => r.id);
+  const vehicleCapable = (riders as Array<{ id: string; profile: unknown }>).filter(
+    (rider) => {
+      const profile = rider.profile as Record<string, unknown> | null;
+      const vehicleType = profile?.vehicle_type;
+      if (typeof vehicleType !== 'string' || !vehicleType.trim()) {
+        return orderVehicleType === 'bike';
+      }
+      return allowedVehicleTypes.includes(vehicleType.toLowerCase());
+    }
+  );
 
-  // Count active assignments per rider
+  const riderPool =
+    vehicleCapable.length > 0
+      ? vehicleCapable
+      : (riders as Array<{ id: string }>);
+
+  const riderIds: string[] = riderPool.map((r) => r.id);
+
   const { data: assignments } = await supabase
     .from('order_assignments')
     .select('assignee_id')
@@ -194,21 +217,24 @@ export async function assignRider(
     }
   }
 
-  // Find eligible riders under max concurrent deliveries, sorted by fewest assignments
   const eligible = riderIds
     .filter((id) => (assignmentCounts[id] || 0) < config.dispatch.riderMaxConcurrentDeliveries)
     .sort((a, b) => (assignmentCounts[a] || 0) - (assignmentCounts[b] || 0));
 
-  if (eligible.length === 0) return null;
+  return eligible[0] ?? null;
+}
 
-  const selectedRiderId = eligible[0];
+async function createRiderAssignment(
+  orderId: string,
+  riderId: string
+): Promise<string | null> {
+  const supabase = createServiceClient();
 
-  // Create assignment
   const { data: assignment, error } = await supabase
     .from('order_assignments')
     .insert({
       order_id: orderId,
-      assignee_id: selectedRiderId,
+      assignee_id: riderId,
       role: 'rider',
       status: 'assigned',
     })
@@ -221,15 +247,57 @@ export async function assignRider(
   }
 
   await writeAuditLog({
-    userId: selectedRiderId,
+    userId: riderId,
     action: AUDIT_ACTIONS.ASSIGNMENT_RIDER_ASSIGNED,
     entityType: 'order',
     entityId: orderId,
     newValues: auditDetails('Rider auto-assigned to order', {
-      riderId: selectedRiderId,
+      riderId,
       assignmentId: assignment.id,
     }),
   });
 
   return assignment.id as string;
+}
+
+export async function assignRider(
+  orderId: string,
+  clusterId: string
+): Promise<string | null> {
+  const supabase = createServiceClient();
+
+  const { data: order } = await supabase
+    .from('orders')
+    .select('delivery_vehicle_type')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  const orderVehicleType =
+    (order?.delivery_vehicle_type as DeliveryVehicleType | null) ?? 'bike';
+
+  const partnerOnly = requiresPartnerDispatchOnly(orderVehicleType);
+  const partnerEligible = shouldOfferPartnerDispatch(orderVehicleType);
+
+  if (partnerOnly) {
+    const partner = await assignPartnerDelivery(orderId);
+    return partner ? `partner:${partner.reference}` : null;
+  }
+
+  if (config.dispatch.internalEnabled) {
+    const selectedRiderId = await selectInternalRiderId(
+      orderId,
+      clusterId,
+      orderVehicleType
+    );
+    if (selectedRiderId) {
+      return createRiderAssignment(orderId, selectedRiderId);
+    }
+  }
+
+  if (partnerEligible) {
+    const partner = await assignPartnerDelivery(orderId);
+    return partner ? `partner:${partner.reference}` : null;
+  }
+
+  return null;
 }

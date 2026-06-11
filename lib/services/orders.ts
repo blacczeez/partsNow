@@ -5,6 +5,11 @@ import {
   calculatePricing,
   isCodAllowedForCustomer,
 } from '@/lib/utils/pricing';
+import { getDeliveryPricingConfig } from '@/lib/services/delivery-config';
+import {
+  calculateDeliveryFee,
+  toDeliveryFeeBreakdown,
+} from '@/lib/utils/delivery-pricing';
 import { computeVendorBudget } from '@/lib/utils/vendor-budget';
 import { initializePayment } from '@/lib/integrations/paystack';
 import { debitWallet } from './wallet';
@@ -55,10 +60,29 @@ export async function createOrder(
     input.deliveryLongitude
   );
 
-  // Calculate pricing with server-side loyalty tier
   const loyaltyTier = customer.loyalty_tier as LoyaltyTier;
   const markupPercentage = getMarkupPercentage(loyaltyTier);
-  const pricing = calculatePricing(input.items, loyaltyTier);
+  const deliveryConfig = await getDeliveryPricingConfig();
+  const itemsWithWeight = await resolveOrderItemWeights(supabase, input.items);
+  const pricing = calculatePricing(
+    itemsWithWeight.map((item) => ({
+      price: item.price,
+      quantity: item.quantity,
+      weightKg: item.weightKg,
+    })),
+    loyaltyTier,
+    deliveryConfig
+  );
+  const deliveryBreakdown =
+    pricing.totalWeightKg != null
+      ? toDeliveryFeeBreakdown(
+          calculateDeliveryFee(
+            pricing.subtotal,
+            pricing.totalWeightKg,
+            deliveryConfig
+          )
+        )
+      : null;
 
   // Validate COD
   if (
@@ -90,7 +114,11 @@ export async function createOrder(
       delivery_latitude: input.deliveryLatitude || null,
       delivery_longitude: input.deliveryLongitude || null,
       delivery_notes: input.deliveryNotes || null,
-      delivery_type: 'express' as const,
+      delivery_type: (pricing.deliveryType ?? 'express') as 'express' | 'standard',
+      total_weight_kg: pricing.totalWeightKg ?? null,
+      delivery_tier: pricing.deliveryTierId ?? null,
+      delivery_vehicle_type: deliveryBreakdown?.vehicleType ?? null,
+      delivery_fee_breakdown: deliveryBreakdown,
       subtotal: pricing.subtotal,
       markup_amount: pricing.markupAmount,
       delivery_fee: pricing.deliveryFee,
@@ -100,7 +128,8 @@ export async function createOrder(
       payment_method: input.paymentMethod,
       payment_status: 'pending' as const,
       source_channel: input.sourceChannel || 'web',
-      promised_delivery_minutes: config.delivery.expressPromiseMinutes,
+      promised_delivery_minutes:
+        deliveryBreakdown?.promisedMinutes ?? config.delivery.expressPromiseMinutes,
       payment_hold_expires_at: new Date(
         Date.now() + config.payments.paymentHoldExpiryMinutes * 60 * 1000
       ).toISOString(),
@@ -111,7 +140,7 @@ export async function createOrder(
   if (orderError) throw new Error(orderError.message);
 
   // Insert order items
-  const orderItems = input.items.map((item) => {
+  const orderItems = itemsWithWeight.map((item) => {
     const sellingPrice = Math.round(item.price * (1 + markupPercentage / 100));
     const budget = computeVendorBudget(sellingPrice, markupPercentage);
     return {
@@ -119,6 +148,7 @@ export async function createOrder(
       part_id: item.partId || null,
       description: item.description,
       quantity: item.quantity,
+      weight_kg: item.weightKg,
       selling_price: sellingPrice,
       expected_vendor_price: budget.expectedVendorPrice,
       max_vendor_price: budget.maxVendorPrice,
@@ -295,6 +325,52 @@ export async function listOrders(
   if (error) throw new Error(error.message);
 
   return { orders: (data || []) as OrderWithItems[], total: count || 0 };
+}
+
+type OrderItemInput = CreateOrderInput['items'][number];
+
+interface ResolvedOrderItem extends OrderItemInput {
+  weightKg: number;
+}
+
+async function resolveOrderItemWeights(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  items: OrderItemInput[]
+): Promise<ResolvedOrderItem[]> {
+  const partIds = items
+    .map((item) => item.partId)
+    .filter((id): id is string => Boolean(id));
+
+  const weightByPartId = new Map<string, number>();
+
+  if (partIds.length > 0) {
+    const { data: parts, error } = await supabase
+      .from('parts')
+      .select('id, weight_kg, name')
+      .in('id', partIds);
+
+    if (error) throw new Error(error.message);
+
+    for (const part of parts ?? []) {
+      if (part.weight_kg == null || part.weight_kg <= 0) {
+        throw new Error(`Part "${part.name}" is missing weight. Contact support.`);
+      }
+      weightByPartId.set(part.id, Number(part.weight_kg));
+    }
+  }
+
+  return items.map((item) => {
+    if (!item.partId) {
+      throw new Error('All items must be catalogue parts with weight for delivery pricing');
+    }
+
+    const weightKg = weightByPartId.get(item.partId);
+    if (weightKg == null) {
+      throw new Error(`Part not found or missing weight: ${item.description}`);
+    }
+
+    return { ...item, weightKg };
+  });
 }
 
 async function findNearestCluster(

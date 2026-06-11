@@ -16,6 +16,9 @@ interface OrderDetail {
   delivery_address: string;
   delivery_type: string;
   delivery_notes: string | null;
+  total_weight_kg: number | null;
+  delivery_tier: string | null;
+  delivery_vehicle_type: string | null;
   customer_notes: string | null;
   internal_notes: string | null;
   price_review_status: string;

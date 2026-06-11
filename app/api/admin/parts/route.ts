@@ -13,8 +13,15 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || undefined;
     const categoryId = searchParams.get('categoryId') || undefined;
+    const missingWeight = searchParams.get('missingWeight') === 'true';
 
-    const result = await getAdminParts({ page, limit, search, categoryId });
+    const result = await getAdminParts({
+      page,
+      limit,
+      search,
+      categoryId,
+      missingWeight,
+    });
 
     return NextResponse.json({
       parts: result.parts,

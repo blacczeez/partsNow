@@ -17,11 +17,11 @@ export function ManufacturersSection() {
       <div className="mx-auto max-w-5xl px-4">
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-            Parts for Every Make
+            From Toyota to Mercedes &mdash; If It&apos;s in Lagos, We&apos;ll Find It
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-base text-slate-600">
-            We source parts for all major vehicle brands available in Nigerian
-            markets.
+            Our runners know every stall in Ladipo and ASPAMDA. Whatever your
+            vehicle, we source the right part.
           </p>
         </div>
 

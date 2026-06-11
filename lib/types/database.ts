@@ -201,6 +201,10 @@ export interface Order {
   delivery_longitude: number | null;
   delivery_type: DeliveryType;
   delivery_notes: string | null;
+  total_weight_kg: number | null;
+  delivery_tier: string | null;
+  delivery_vehicle_type: string | null;
+  delivery_fee_breakdown: Record<string, unknown> | null;
   subtotal: number;
   markup_amount: number;
   delivery_fee: number;
@@ -249,6 +253,7 @@ export interface OrderItem {
   description: string;
   oem_code: string | null;
   quantity: number;
+  weight_kg: number | null;
   vendor_price: number | null;
   selling_price: number;
   expected_vendor_price: number | null;

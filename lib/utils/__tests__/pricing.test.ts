@@ -1,5 +1,10 @@
 import { getMarkupPercentage, calculatePricing, isCodAllowed } from '../pricing';
 import { config } from '@/lib/config';
+import { getDefaultDeliveryPricingConfig } from '@/lib/constants/delivery-tiers';
+
+const deliveryConfig = getDefaultDeliveryPricingConfig();
+const lightItem = { price: 10000, quantity: 1, weightKg: 2 };
+const heavyItem = { price: 10000, quantity: 1, weightKg: 20 };
 
 // Mock config for tests that need to toggle features
 vi.mock('@/lib/config', async () => {
@@ -52,55 +57,79 @@ describe('calculatePricing', () => {
   });
 
   it('calculates single item correctly', () => {
-    const result = calculatePricing([{ price: 10000, quantity: 1 }]);
+    const result = calculatePricing([lightItem], 'new', deliveryConfig);
     expect(result.subtotal).toBe(10000);
     expect(result.markupAmount).toBe(1500); // 15%
-    expect(result.deliveryFee).toBe(1500); // below 50000 threshold
+    expect(result.deliveryFee).toBe(1500); // light tier below threshold
     expect(result.discountAmount).toBe(0);
     expect(result.total).toBe(13000);
+    expect(result.totalWeightKg).toBe(2);
   });
 
   it('calculates multi-item correctly', () => {
-    const result = calculatePricing([
-      { price: 5000, quantity: 2 },
-      { price: 3000, quantity: 1 },
-    ]);
-    // subtotal = 5000*2 + 3000*1 = 13000
+    const result = calculatePricing(
+      [
+        { price: 5000, quantity: 2, weightKg: 1 },
+        { price: 3000, quantity: 1, weightKg: 2 },
+      ],
+      'new',
+      deliveryConfig
+    );
     expect(result.subtotal).toBe(13000);
-    expect(result.markupAmount).toBe(1950); // 15% of 13000
+    expect(result.markupAmount).toBe(1950);
     expect(result.deliveryFee).toBe(1500);
     expect(result.total).toBe(16450);
+    expect(result.totalWeightKg).toBe(4);
   });
 
-  it('applies free delivery when subtotal >= 50000', () => {
-    const result = calculatePricing([{ price: 50000, quantity: 1 }]);
+  it('applies free delivery when subtotal >= 50000 on light tier', () => {
+    const result = calculatePricing(
+      [{ price: 50000, quantity: 1, weightKg: 3 }],
+      'new',
+      deliveryConfig
+    );
     expect(result.deliveryFee).toBe(0);
+    expect(result.freeDeliveryApplied).toBe(true);
+  });
+
+  it('charges delivery fee for heavy tier even above threshold', () => {
+    const result = calculatePricing(
+      [{ price: 60000, quantity: 1, weightKg: 20 }],
+      'new',
+      deliveryConfig
+    );
+    expect(result.deliveryFee).toBe(4000);
+    expect(result.freeDeliveryApplied).toBe(false);
   });
 
   it('charges delivery fee when subtotal < 50000', () => {
-    const result = calculatePricing([{ price: 49999, quantity: 1 }]);
+    const result = calculatePricing([lightItem], 'new', deliveryConfig);
     expect(result.deliveryFee).toBe(1500);
   });
 
   it('applies trusted tier discount', () => {
-    const result = calculatePricing([{ price: 10000, quantity: 1 }], 'trusted');
+    const result = calculatePricing([lightItem], 'trusted', deliveryConfig);
     // trusted = 15 - 5 = 10% markup
     expect(result.markupAmount).toBe(1000);
   });
 
   it('applies partner tier discount', () => {
-    const result = calculatePricing([{ price: 10000, quantity: 1 }], 'partner');
+    const result = calculatePricing([lightItem], 'partner', deliveryConfig);
     // partner = 15 - 8 = 7% markup
     expect(result.markupAmount).toBe(700);
   });
 
   it('defaults to "new" tier', () => {
-    const result = calculatePricing([{ price: 10000, quantity: 1 }]);
+    const result = calculatePricing([lightItem], 'new', deliveryConfig);
     expect(result.markupAmount).toBe(1500); // 15%
   });
 
   it('rounds markup amount', () => {
-    const result = calculatePricing([{ price: 333, quantity: 1 }]);
+    const result = calculatePricing(
+      [{ price: 333, quantity: 1, weightKg: 1 }],
+      'new',
+      deliveryConfig
+    );
     // 15% of 333 = 49.95 → rounds to 50
     expect(result.markupAmount).toBe(50);
   });

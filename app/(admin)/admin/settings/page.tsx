@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAdminSettings } from '@/lib/hooks/use-admin-settings';
@@ -123,6 +124,22 @@ export default function AdminSettingsPage() {
   return (
     <div className="p-6">
       <h1 className="mb-6 text-2xl font-bold text-slate-900">Settings</h1>
+
+      <div className="mb-6 rounded-card border border-slate-200 bg-white p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Weight-based delivery</h2>
+            <p className="text-sm text-slate-500">
+              Configure Lagos delivery tiers, fees, and free-delivery rules
+            </p>
+          </div>
+          <Link href="/admin/settings/delivery">
+            <Button variant="secondary" size="sm">
+              Manage tiers
+            </Button>
+          </Link>
+        </div>
+      </div>
 
       <div className="space-y-6">
         {CONFIG_GROUPS.map((group) => {

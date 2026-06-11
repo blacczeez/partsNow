@@ -18,6 +18,7 @@ const CUSTOMER_PREFIXES = [
   '/checkout',
   '/wallet',
   '/account',
+  '/how-delivery-works',
 ];
 
 /** Default landing path after login (or when leaving auth routes). */

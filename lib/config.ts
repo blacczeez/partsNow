@@ -105,6 +105,13 @@ export const config = {
     highValueRequiresPhoto: getEnvBoolean('HIGH_VALUE_REQUIRES_PHOTO_CONFIRMATION', true),
     riderMaxConcurrentDeliveries: getEnvNumber('RIDER_MAX_CONCURRENT_DELIVERIES', 3),
     freeRescheduleWindowHours: getEnvNumber('FREE_RESCHEDULE_WINDOW_HOURS', 24),
+    opsContactPhone: getEnvVar('OPS_CONTACT_PHONE', '2348000000000'),
+    partnerDispatchRiderId: getEnvVar('PARTNER_DISPATCH_RIDER_ID', ''),
+    kwik: {
+      apiUrl: getEnvVar('KWIK_API_URL', ''),
+      apiKey: getEnvVar('KWIK_API_KEY', ''),
+      webhookSecret: getEnvVar('KWIK_WEBHOOK_SECRET', ''),
+    },
   },
 
   settlement: {

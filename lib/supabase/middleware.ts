@@ -11,6 +11,7 @@ import type { UserType } from '@/lib/types/database';
 const PUBLIC_API_PREFIXES = [
   '/api/inventory/categories',
   '/api/inventory/search',
+  '/api/delivery/config',
   '/api/webhooks/',
 ];
 
@@ -69,7 +70,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/verify');
 
   const isApiRoute = pathname.startsWith('/api');
-  const isPublicRoute = isAuthRoute || pathname === '/';
+  const isPublicRoute =
+    isAuthRoute || pathname === '/' || pathname === '/how-delivery-works';
 
   if (!user && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();

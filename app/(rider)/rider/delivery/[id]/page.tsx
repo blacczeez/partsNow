@@ -200,6 +200,17 @@ export default function DeliveryDetailPage() {
           <span className="text-sm text-slate-500">Items</span>
           <span className="text-sm text-slate-700">{items.length}</span>
         </div>
+        {delivery.total_weight_kg != null && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-500">Package weight</span>
+            <span className="text-sm font-medium text-slate-900">
+              {delivery.total_weight_kg} kg
+              {delivery.delivery_vehicle_type
+                ? ` · ${delivery.delivery_vehicle_type}`
+                : ''}
+            </span>
+          </div>
+        )}
         <p className="text-sm text-slate-600">{itemsSummary}</p>
       </div>
 

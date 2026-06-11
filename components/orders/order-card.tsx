@@ -2,6 +2,7 @@
 
 import { ChevronRight, Clock } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { DeliveryTierBadge } from '@/components/orders/delivery-tier-badge';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
 import Link from 'next/link';
 import type { OrderStatus } from '@/lib/types/database';
@@ -13,6 +14,8 @@ interface OrderCardProps {
     status: OrderStatus;
     total: number;
     created_at: string;
+    delivery_tier?: string | null;
+    total_weight_kg?: number | null;
     order_items: Array<{
       description: string;
       quantity: number;
@@ -38,7 +41,16 @@ export function OrderCard({ order }: OrderCardProps) {
           <StatusBadge status={order.status} />
         </div>
 
-        <p className="mb-3 line-clamp-2 text-sm text-slate-600">{itemsSummary}</p>
+        <p className="mb-2 line-clamp-2 text-sm text-slate-600">{itemsSummary}</p>
+
+        {(order.delivery_tier || order.total_weight_kg != null) && (
+          <div className="mb-3">
+            <DeliveryTierBadge
+              tier={order.delivery_tier}
+              totalWeightKg={order.total_weight_kg}
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-between text-sm text-slate-500">
           <div className="flex items-center gap-1">

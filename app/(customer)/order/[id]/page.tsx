@@ -26,6 +26,7 @@ import {
 import { toast } from '@/components/ui/toast';
 import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
 import { DeliverySettlementSummary } from '@/components/orders/delivery-settlement-summary';
+import { DeliveryFeeBreakdownPanel } from '@/components/orders/delivery-fee-breakdown';
 import type { OrderStatus } from '@/lib/types/database';
 
 function OrderDetailContent({ orderId }: { orderId: string }) {
@@ -344,6 +345,17 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
         {/* Delivery Info */}
         <div className="rounded-card border border-slate-200 bg-white p-4">
           <h3 className="mb-2 text-sm font-medium text-slate-900">Delivery</h3>
+          {order.total_weight_kg != null && (
+            <p className="mb-2 text-sm text-slate-600">
+              {order.total_weight_kg} kg
+              {order.delivery_tier
+                ? ` · ${String(order.delivery_tier).charAt(0).toUpperCase()}${String(order.delivery_tier).slice(1)}`
+                : ''}
+              {order.delivery_vehicle_type
+                ? ` · ${order.delivery_vehicle_type} dispatch`
+                : ''}
+            </p>
+          )}
           <p className="text-sm text-slate-600">{order.delivery_address}</p>
           {order.delivery_notes && (
             <p className="mt-1 text-xs text-slate-400">
@@ -353,6 +365,12 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
           <p className="mt-2 text-xs text-slate-400">
             Ordered {formatRelativeTime(order.created_at)}
           </p>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <DeliveryFeeBreakdownPanel
+              breakdown={order.delivery_fee_breakdown}
+              deliveryFee={order.delivery_fee}
+            />
+          </div>
         </div>
 
         {/* Rating */}

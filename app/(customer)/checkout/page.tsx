@@ -13,6 +13,8 @@ import { MarketPriceNotice } from '@/components/orders/price-change-notice';
 import { useCart } from '@/lib/hooks/use-cart';
 import { useUser } from '@/lib/hooks/use-user';
 import { calculatePricing, isCodAllowedForCustomer } from '@/lib/utils/pricing';
+import { useDeliveryConfig } from '@/lib/hooks/use-delivery-config';
+import { DeliveryWeightSummary } from '@/components/orders/delivery-weight-summary';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
 import type { LoyaltyTier } from '@/lib/types/database';
@@ -28,6 +30,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const cart = useCart();
   const { user, wallet, refresh } = useUser();
+  const { deliveryConfig } = useDeliveryConfig();
 
   const [vehicleId, setVehicleId] = useState<string | undefined>(cart.vehicleId);
   const savedAddress = getSavedDeliveryAddress(
@@ -54,8 +57,12 @@ export default function CheckoutPage() {
   }
 
   const loyaltyTier = (user?.loyalty_tier || 'new') as LoyaltyTier;
-  const pricingItems = cart.items.map((i) => ({ price: i.price, quantity: i.quantity }));
-  const pricing = calculatePricing(pricingItems, loyaltyTier);
+  const pricingItems = cart.items.map((i) => ({
+    price: i.price,
+    quantity: i.quantity,
+    weightKg: i.weightKg,
+  }));
+  const pricing = calculatePricing(pricingItems, loyaltyTier, deliveryConfig);
   const codAllowed = isCodAllowedForCustomer(
     pricing.total,
     user?.profile as Record<string, unknown> | undefined
@@ -196,8 +203,14 @@ export default function CheckoutPage() {
         </div>
 
         {/* Pricing Breakdown */}
-        <div className="rounded-card border border-slate-200 bg-white p-4">
+        <div className="rounded-card border border-slate-200 bg-white p-4 space-y-3">
+          <DeliveryWeightSummary pricing={pricing} />
           <PricingSummary pricing={pricing} />
+          <p className="text-center text-xs text-slate-500">
+            <Link href="/how-delivery-works" className="text-primary hover:underline">
+              How delivery pricing works
+            </Link>
+          </p>
         </div>
 
         {/* Payment Method */}

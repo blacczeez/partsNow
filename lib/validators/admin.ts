@@ -64,7 +64,7 @@ export const createPartSchema = z.object({
   subcategory: z.string().max(200).optional(),
   oem_code: z.string().max(100).optional(),
   average_price: z.number().positive().optional(),
-  weight_kg: z.number().positive().optional(),
+  weight_kg: z.number().positive(),
   image_url: z.string().url().optional(),
   compatible_vehicles: z.array(z.object({
     make: z.string(),
@@ -73,6 +73,29 @@ export const createPartSchema = z.object({
     year_end: z.number().optional(),
     spec: z.string().optional(),
   })).optional(),
+});
+
+const deliveryWeightTierSchema = z.object({
+  id: z.string().min(1).max(50),
+  label: z.string().min(1).max(100),
+  min_kg: z.number().min(0),
+  max_kg: z.number().min(0).nullable(),
+  delivery_fee: z.number().min(0),
+  vehicle_type: z.enum(['bike', 'car', 'van', 'partner']),
+  express_allowed: z.boolean(),
+  promise_minutes: z.number().int().positive(),
+  sort_order: z.number().int().min(0),
+  is_active: z.boolean(),
+});
+
+export const updateAdminRiderSchema = z.object({
+  vehicle_type: z.enum(['bike', 'bicycle', 'motorcycle', 'car', 'keke', 'van', '']).optional(),
+});
+
+export const deliveryTiersConfigSchema = z.object({
+  tiers: z.array(deliveryWeightTierSchema).min(1),
+  freeDeliveryEligibleTiers: z.array(z.string().min(1)).optional(),
+  freeDeliveryThreshold: z.number().min(0).optional(),
 });
 
 export const updatePartSchema = z.object({

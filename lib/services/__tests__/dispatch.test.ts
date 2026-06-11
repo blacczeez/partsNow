@@ -5,7 +5,19 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(),
 }));
 
+vi.mock('@/lib/services/partner-dispatch', () => ({
+  assignPartnerDelivery: vi.fn(),
+  requiresPartnerDispatchOnly: (vehicleType: string | null | undefined) =>
+    vehicleType === 'partner',
+  shouldOfferPartnerDispatch: (vehicleType: string | null | undefined) =>
+    vehicleType === 'van' || vehicleType === 'partner',
+}));
+
 const mockedCreateServiceClient = vi.mocked(createServiceClient);
+
+function bikeOrderChain() {
+  return createChain({ delivery_vehicle_type: 'bike' });
+}
 
 // Helper: create a chainable that resolves with given data/error
 // Supports both .single() and direct await (thenable)
@@ -275,6 +287,8 @@ describe('assignRider', () => {
     let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
+        case 'orders':
+          return bikeOrderChain();
         case 'users':
           return createChain([{ id: 'rider1' }, { id: 'rider2' }]);
         case 'order_assignments':
@@ -302,6 +316,8 @@ describe('assignRider', () => {
 
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
+        case 'orders':
+          return bikeOrderChain();
         case 'users':
           return createChain([{ id: 'rider1' }, { id: 'rider2' }]);
         case 'order_assignments':
@@ -328,6 +344,7 @@ describe('assignRider', () => {
     const { mockSupabase } = setupMock();
 
     mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'orders') return bikeOrderChain();
       if (table === 'users') return createChain([]);
       return createChain(null);
     });
@@ -341,6 +358,7 @@ describe('assignRider', () => {
     const { mockSupabase } = setupMock();
 
     mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'orders') return bikeOrderChain();
       if (table === 'users') return createChain(null);
       return createChain(null);
     });
@@ -355,6 +373,8 @@ describe('assignRider', () => {
 
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
+        case 'orders':
+          return bikeOrderChain();
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
@@ -379,6 +399,8 @@ describe('assignRider', () => {
     let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
+        case 'orders':
+          return bikeOrderChain();
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
@@ -401,6 +423,8 @@ describe('assignRider', () => {
     let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
+        case 'orders':
+          return bikeOrderChain();
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
@@ -425,6 +449,8 @@ describe('assignRider', () => {
 
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
+        case 'orders':
+          return bikeOrderChain();
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
@@ -445,5 +471,52 @@ describe('assignRider', () => {
       role: 'rider',
       status: 'assigned',
     });
+  });
+
+  it('routes partner-only orders to Kwik dispatch', async () => {
+    const { mockSupabase } = setupMock();
+    const { assignPartnerDelivery } = await import('../partner-dispatch');
+    vi.mocked(assignPartnerDelivery).mockResolvedValue({
+      reference: 'kwik-123',
+      trackingUrl: 'https://track.kwik.delivery/kwik-123',
+      partner: 'kwik',
+    });
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'orders') {
+        return createChain({ delivery_vehicle_type: 'partner' });
+      }
+      return createChain(null);
+    });
+
+    const { assignRider } = await getModule();
+    const result = await assignRider('order-1', 'cluster-1');
+
+    expect(result).toBe('partner:kwik-123');
+    expect(assignPartnerDelivery).toHaveBeenCalledWith('order-1');
+  });
+
+  it('falls back to partner dispatch for oversized van when no internal rider', async () => {
+    const { mockSupabase } = setupMock();
+    const { assignPartnerDelivery } = await import('../partner-dispatch');
+    vi.mocked(assignPartnerDelivery).mockResolvedValue({
+      reference: 'kwik-456',
+      trackingUrl: 'https://track.kwik.delivery/kwik-456',
+      partner: 'kwik',
+    });
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'orders') {
+        return createChain({ delivery_vehicle_type: 'van' });
+      }
+      if (table === 'users') return createChain([]);
+      return createChain(null);
+    });
+
+    const { assignRider } = await getModule();
+    const result = await assignRider('order-2', 'cluster-1');
+
+    expect(result).toBe('partner:kwik-456');
+    expect(assignPartnerDelivery).toHaveBeenCalledWith('order-2');
   });
 });

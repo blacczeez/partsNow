@@ -1,6 +1,12 @@
 import type { LoyaltyTier } from '@/lib/types/database';
 import type { PricingBreakdown } from '@/lib/types/orders';
+import type { DeliveryPricingConfig } from '@/lib/types/delivery';
 import { config } from '@/lib/config';
+import { getDefaultDeliveryPricingConfig } from '@/lib/constants/delivery-tiers';
+import {
+  calculateDeliveryFee,
+  computeTotalWeightKg,
+} from '@/lib/utils/delivery-pricing';
 
 export function getMarkupPercentage(loyaltyTier: LoyaltyTier): number {
   const base = config.business.defaultMarkupPercentage;
@@ -20,8 +26,9 @@ export function getMarkupPercentage(loyaltyTier: LoyaltyTier): number {
 }
 
 export function calculatePricing(
-  items: Array<{ price: number; quantity: number }>,
-  loyaltyTier: LoyaltyTier = 'new'
+  items: Array<{ price: number; quantity: number; weightKg?: number | null }>,
+  loyaltyTier: LoyaltyTier = 'new',
+  deliveryConfig: DeliveryPricingConfig = getDefaultDeliveryPricingConfig()
 ): PricingBreakdown {
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -31,13 +38,36 @@ export function calculatePricing(
   const markupPercentage = getMarkupPercentage(loyaltyTier);
   const markupAmount = Math.round(subtotal * (markupPercentage / 100));
 
-  const deliveryFee =
-    subtotal >= config.business.freeDeliveryThreshold
-      ? 0
-      : config.business.standardDeliveryFee;
+  const weightItems = items
+    .filter((item) => item.weightKg != null && item.weightKg > 0)
+    .map((item) => ({ weight_kg: item.weightKg as number, quantity: item.quantity }));
 
-  const discountAmount = 0; // Loyalty discount handled via markup reduction
+  let deliveryFee = config.business.standardDeliveryFee;
+  let totalWeightKg: number | undefined;
+  let deliveryTierLabel: string | undefined;
+  let deliveryTierId: string | undefined;
+  let deliveryType: 'express' | 'standard' | undefined;
+  let freeDeliveryApplied: boolean | undefined;
+  let deliveryFeeLabel: string | undefined;
 
+  if (weightItems.length > 0) {
+    totalWeightKg = computeTotalWeightKg(weightItems);
+    const delivery = calculateDeliveryFee(subtotal, totalWeightKg, deliveryConfig);
+    deliveryFee = delivery.deliveryFee;
+    deliveryTierLabel = delivery.tierLabel;
+    deliveryTierId = delivery.tierId;
+    deliveryType = delivery.deliveryType;
+    freeDeliveryApplied = delivery.freeDeliveryApplied;
+    deliveryFeeLabel = freeDeliveryApplied
+      ? `Free delivery (${delivery.tierLabel})`
+      : `${delivery.tierLabel} delivery · ${totalWeightKg} kg`;
+  } else if (subtotal >= deliveryConfig.freeDeliveryThreshold) {
+    deliveryFee = 0;
+    freeDeliveryApplied = true;
+    deliveryFeeLabel = 'Free delivery';
+  }
+
+  const discountAmount = 0;
   const total = subtotal + markupAmount + deliveryFee - discountAmount;
 
   return {
@@ -46,6 +76,12 @@ export function calculatePricing(
     deliveryFee,
     discountAmount,
     total,
+    totalWeightKg,
+    deliveryTierLabel,
+    deliveryTierId,
+    deliveryType,
+    freeDeliveryApplied,
+    deliveryFeeLabel,
   };
 }
 

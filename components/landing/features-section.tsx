@@ -3,39 +3,39 @@ import { Mic, ShieldCheck, Zap, Receipt, Wallet, MapPin } from 'lucide-react';
 const features = [
   {
     icon: Mic,
-    title: 'Voice-First Ordering',
+    title: 'Just Talk, We Handle the Rest',
     description:
-      'Just send a WhatsApp voice note describing what you need. No typing, no apps to download.',
+      'Send a WhatsApp voice note describing the part. No typing, no apps to install — order the way you already communicate.',
   },
   {
     icon: ShieldCheck,
-    title: 'Quality Checked',
+    title: 'Never Get the Wrong Part Again',
     description:
-      'Every part is photographed and verified by our sourcing team before dispatch.',
+      'Our runners photograph every part and verify it before dispatch. You confirm before it leaves the market.',
   },
   {
     icon: Zap,
-    title: 'Express Delivery',
+    title: 'Back to Work in 45 Minutes',
     description:
-      '45-minute delivery within our express zone. Standard delivery for wider areas.',
+      'Express delivery within 10km of the market. Your customer\'s car doesn\'t wait — and neither do you.',
   },
   {
     icon: Receipt,
-    title: 'Transparent Pricing',
+    title: 'No Surprise Charges',
     description:
-      'See the price breakdown before you pay. No hidden fees or surprises.',
+      'See the full price breakdown before you pay. What we quote is what you pay — no hidden markup.',
   },
   {
     icon: Wallet,
-    title: 'Digital Wallet',
+    title: 'Pay Once, Order All Week',
     description:
-      'Top up once, order multiple times. Skip the payment step on every order.',
+      'Load your wallet and skip the payment step on every order. No more counting cash or waiting for transfers.',
   },
   {
     icon: MapPin,
-    title: 'Real-Time Tracking',
+    title: 'Know Exactly When It Arrives',
     description:
-      'Track your parts from market to your door. Know exactly when they\'ll arrive.',
+      'Live tracking from market to your door. Plan your work instead of guessing when parts will show up.',
   },
 ];
 
@@ -44,10 +44,10 @@ export function FeaturesSection() {
     <section className="bg-slate-50 px-4 py-16 sm:px-6 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <h2 className="text-center text-2xl font-bold text-slate-900 sm:text-3xl">
-          Why Choose PartsNow
+          Built for How You Actually Work
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-slate-500">
-          Built for the way mechanics and car owners actually work.
+          No apps to learn, no market trips, no guesswork. Just parts at your door.
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

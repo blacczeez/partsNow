@@ -181,6 +181,15 @@ export default function RunnerOrderPage() {
             {formatCurrency(sourcingTarget)}
           </span>
         </div>
+        {order.total_weight_kg != null && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-500">Package weight</span>
+            <span className="font-semibold text-slate-900">
+              {order.total_weight_kg} kg
+              {order.delivery_tier ? ` (${order.delivery_tier})` : ''}
+            </span>
+          </div>
+        )}
         <p className="text-xs text-slate-500">
           Negotiate at or below — paying above target triggers admin and customer approval
         </p>

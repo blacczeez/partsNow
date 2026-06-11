@@ -47,6 +47,9 @@ export function PartCard({ part, onClick }: PartCardProps) {
         {vehicleText && (
           <p className="mt-1 truncate text-xs text-slate-500">{vehicleText}</p>
         )}
+        {part.weight_kg != null && part.weight_kg > 0 && (
+          <p className="mt-1 text-xs text-slate-500">{part.weight_kg} kg</p>
+        )}
         <p className="mt-1 text-sm font-semibold text-slate-900">
           {part.average_price ? formatCurrency(part.average_price) : 'Price on request'}
         </p>

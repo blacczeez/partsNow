@@ -356,6 +356,13 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
             {/* Delivery Info */}
             <div>
               <h4 className="mb-1 text-xs font-semibold uppercase text-slate-400">Delivery</h4>
+              {order.total_weight_kg != null && (
+                <p className="text-sm text-slate-700">
+                  {order.total_weight_kg} kg
+                  {order.delivery_tier ? ` · ${order.delivery_tier} tier` : ''}
+                  {order.delivery_vehicle_type ? ` · ${order.delivery_vehicle_type}` : ''}
+                </p>
+              )}
               <p className="text-sm text-slate-700">{order.delivery_address}</p>
               <p className="text-xs text-slate-400">{order.delivery_type} - {order.payment_method}</p>
               {order.delivery_notes && <p className="mt-1 text-xs text-slate-500">Notes: {order.delivery_notes}</p>}

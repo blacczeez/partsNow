@@ -194,6 +194,7 @@ describe('createPartSchema', () => {
   const validPart = {
     name: 'Brake Pad Set',
     category_id: '00000000-0000-0000-0000-000000000001',
+    weight_kg: 2.5,
   };
 
   it('accepts valid input with required fields only', () => {
@@ -214,6 +215,12 @@ describe('createPartSchema', () => {
 
   it('rejects missing category_id', () => {
     const { category_id, ...rest } = validPart;
+    const result = createPartSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing weight_kg', () => {
+    const { weight_kg, ...rest } = validPart;
     const result = createPartSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });

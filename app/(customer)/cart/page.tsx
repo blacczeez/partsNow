@@ -5,12 +5,38 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VehicleSelect } from '@/components/forms/vehicle-select';
+import { DeliveryWeightSummary } from '@/components/orders/delivery-weight-summary';
 import { useCart } from '@/lib/hooks/use-cart';
+import { useUser } from '@/lib/hooks/use-user';
+import { useDeliveryConfig } from '@/lib/hooks/use-delivery-config';
+import { calculatePricing } from '@/lib/utils/pricing';
 import { formatCurrency } from '@/lib/utils/format';
+import type { LoyaltyTier } from '@/lib/types/database';
 
 export default function CartPage() {
-  const { items, vehicleId, itemCount, subtotal, updateQuantity, removeItem, setVehicle } =
-    useCart();
+  const {
+    items,
+    vehicleId,
+    itemCount,
+    subtotal,
+    totalWeightKg,
+    updateQuantity,
+    removeItem,
+    setVehicle,
+  } = useCart();
+  const { user } = useUser();
+  const { deliveryConfig } = useDeliveryConfig();
+
+  const loyaltyTier = (user?.loyalty_tier || 'new') as LoyaltyTier;
+  const pricingPreview = calculatePricing(
+    items.map((item) => ({
+      price: item.price,
+      quantity: item.quantity,
+      weightKg: item.weightKg,
+    })),
+    loyaltyTier,
+    deliveryConfig
+  );
 
   if (items.length === 0) {
     return (
@@ -58,6 +84,10 @@ export default function CartPage() {
                 <Badge variant="default" className="mt-1">
                   {item.category}
                 </Badge>
+                <p className="mt-1 text-xs text-slate-500">
+                  {item.weightKg} kg each ·{' '}
+                  {(item.weightKg * item.quantity).toFixed(1)} kg line total
+                </p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">
                   {formatCurrency(item.price)}
                 </p>
@@ -97,10 +127,36 @@ export default function CartPage() {
         ))}
       </div>
 
+      <div className="space-y-3 px-4 pb-36">
+        <DeliveryWeightSummary pricing={pricingPreview} />
+        <p className="text-center text-xs text-slate-500">
+          <Link href="/how-delivery-works" className="text-primary hover:underline">
+            How delivery pricing works
+          </Link>
+        </p>
+      </div>
+
       {/* Sticky Bottom Bar */}
       <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:bottom-0 lg:left-0">
+        <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
+          <span>
+            Delivery
+            {pricingPreview.deliveryTierLabel
+              ? ` (${pricingPreview.deliveryTierLabel})`
+              : ''}
+          </span>
+          <span>
+            {pricingPreview.deliveryFee === 0
+              ? 'FREE'
+              : formatCurrency(pricingPreview.deliveryFee)}
+          </span>
+        </div>
+        <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
+          <span>Total weight</span>
+          <span>{totalWeightKg} kg</span>
+        </div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm text-slate-500">Subtotal</span>
+          <span className="text-sm text-slate-500">Parts subtotal</span>
           <span className="text-lg font-bold text-slate-900">
             {formatCurrency(subtotal)}
           </span>

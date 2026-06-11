@@ -43,4 +43,10 @@ export interface PricingBreakdown {
   deliveryFee: number;
   discountAmount: number;
   total: number;
+  totalWeightKg?: number;
+  deliveryTierLabel?: string;
+  deliveryTierId?: string;
+  deliveryType?: 'express' | 'standard';
+  freeDeliveryApplied?: boolean;
+  deliveryFeeLabel?: string;
 }

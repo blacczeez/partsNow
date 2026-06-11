@@ -17,6 +17,7 @@ interface CartContextValue {
   vehicleId: string | undefined;
   itemCount: number;
   subtotal: number;
+  totalWeightKg: number;
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
   updateQuantity: (partId: string, quantity: number) => void;
   removeItem: (partId: string) => void;
@@ -33,7 +34,12 @@ function loadCart(): { items: CartItem[]; vehicleId?: string } {
     if (!raw) return { items: [] };
     const parsed = JSON.parse(raw);
     return {
-      items: Array.isArray(parsed.items) ? parsed.items : [],
+      items: Array.isArray(parsed.items)
+        ? parsed.items.filter(
+            (item: CartItem) =>
+              item.partId && typeof item.weightKg === 'number' && item.weightKg > 0
+          )
+        : [],
       vehicleId: parsed.vehicleId,
     };
   } catch {
@@ -116,6 +122,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
+  const totalWeightKg = useMemo(
+    () =>
+      Math.round(
+        items.reduce((sum, i) => sum + i.weightKg * i.quantity, 0) * 100
+      ) / 100,
+    [items]
+  );
+
   return (
     <CartContext.Provider
       value={{
@@ -123,6 +137,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         vehicleId,
         itemCount,
         subtotal,
+        totalWeightKg,
         addItem,
         updateQuantity,
         removeItem,

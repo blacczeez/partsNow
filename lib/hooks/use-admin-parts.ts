@@ -27,10 +27,16 @@ interface Pagination {
   totalPages: number;
 }
 
-async function fetchPartsPage(page: number, search: string, categoryId: string) {
+async function fetchPartsPage(
+  page: number,
+  search: string,
+  categoryId: string,
+  missingWeight: boolean
+) {
   const params = new URLSearchParams({ page: String(page), limit: '20' });
   if (search) params.set('search', search);
   if (categoryId) params.set('categoryId', categoryId);
+  if (missingWeight) params.set('missingWeight', 'true');
 
   const res = await fetch(`/api/admin/parts?${params}`);
   if (res.ok) {
@@ -40,10 +46,11 @@ async function fetchPartsPage(page: number, search: string, categoryId: string) 
 }
 
 export function useAdminParts() {
-  const { values, setUrlState } = useAdminUrlState(['search', 'categoryId']);
+  const { values, setUrlState } = useAdminUrlState(['search', 'categoryId', 'missingWeight']);
   const page = parseInt(values.page || '1', 10);
   const search = values.search;
   const categoryId = values.categoryId;
+  const missingWeight = values.missingWeight === 'true';
 
   const [parts, setParts] = useState<AdminPart[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -80,10 +87,19 @@ export function useAdminParts() {
     [setUrlState]
   );
 
-  const refreshParts = useCallback(async (p: number, s: string, c: string) => {
+  const setMissingWeight = useCallback(
+    (value: boolean) => {
+      setIsLoading(true);
+      setUrlState({ missingWeight: value ? 'true' : undefined, page: 1 });
+    },
+    [setUrlState]
+  );
+
+  const refreshParts = useCallback(
+    async (p: number, s: string, c: string, mw: boolean) => {
     setIsLoading(true);
     try {
-      const data = await fetchPartsPage(p, s, c);
+      const data = await fetchPartsPage(p, s, c, mw);
       if (data) {
         setParts(data.parts);
         setPagination(data.pagination);
@@ -98,7 +114,7 @@ export function useAdminParts() {
 
     async function loadParts() {
       try {
-        const data = await fetchPartsPage(page, search, categoryId);
+        const data = await fetchPartsPage(page, search, categoryId, missingWeight);
         if (!cancelled && data) {
           setParts(data.parts);
           setPagination(data.pagination);
@@ -115,7 +131,7 @@ export function useAdminParts() {
     return () => {
       cancelled = true;
     };
-  }, [page, search, categoryId]);
+  }, [page, search, categoryId, missingWeight]);
 
   const createPart = async (data: {
     name: string;
@@ -135,7 +151,7 @@ export function useAdminParts() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        await refreshParts(page, search, categoryId);
+        await refreshParts(page, search, categoryId, missingWeight);
         return true;
       }
       return false;
@@ -153,7 +169,7 @@ export function useAdminParts() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        await refreshParts(page, search, categoryId);
+        await refreshParts(page, search, categoryId, missingWeight);
         return true;
       }
       return false;
@@ -173,8 +189,10 @@ export function useAdminParts() {
     setSearch,
     categoryId,
     setCategoryId,
+    missingWeight,
+    setMissingWeight,
     createPart,
     updatePart,
-    refresh: () => refreshParts(page, search, categoryId),
+    refresh: () => refreshParts(page, search, categoryId, missingWeight),
   };
 }

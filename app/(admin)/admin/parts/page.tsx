@@ -60,13 +60,33 @@ export default function AdminPartsPage() {
     setSearch,
     categoryId,
     setCategoryId,
+    missingWeight,
+    setMissingWeight,
     createPart,
     updatePart,
   } = useAdminParts();
   const [categories, setCategories] = useState<PartCategory[]>([]);
+  const [missingWeightCount, setMissingWeightCount] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editingPart, setEditingPart] = useState<(typeof parts)[0] | null>(null);
   const [vendorsPartId, setVendorsPartId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/parts?missingWeight=true&limit=1')
+      .then(async (res) => {
+        const data = await res.json();
+        if (!cancelled && res.ok) {
+          setMissingWeightCount(data.pagination?.total ?? 0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMissingWeightCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [parts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,6 +161,15 @@ export default function AdminPartsPage() {
         row.average_price != null ? formatCurrency(row.average_price) : '-',
     },
     {
+      header: 'Weight',
+      render: (row: (typeof parts)[0]) =>
+        row.weight_kg != null ? (
+          <span>{row.weight_kg} kg</span>
+        ) : (
+          <Badge variant="warning">Missing</Badge>
+        ),
+    },
+    {
       header: 'Vendors',
       render: (row: (typeof parts)[0]) => (
         <button
@@ -199,13 +228,22 @@ export default function AdminPartsPage() {
               ))}
             </Select>
 
-            {(search || categoryId) && (
+            <Button
+              size="sm"
+              variant={missingWeight ? 'primary' : 'secondary'}
+              onClick={() => setMissingWeight(!missingWeight)}
+            >
+              Missing weight{missingWeightCount > 0 ? ` (${missingWeightCount})` : ''}
+            </Button>
+
+            {(search || categoryId || missingWeight) && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => {
                   setSearch('');
                   setCategoryId('');
+                  setMissingWeight(false);
                 }}
               >
                 Clear filters
@@ -214,6 +252,20 @@ export default function AdminPartsPage() {
           </div>
         }
       />
+
+      {missingWeightCount > 0 && !missingWeight && (
+        <div className="mb-4 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {missingWeightCount} part{missingWeightCount === 1 ? '' : 's'} missing weight — customers
+          cannot add them to cart.{' '}
+          <button
+            type="button"
+            className="font-medium text-primary underline"
+            onClick={() => setMissingWeight(true)}
+          >
+            Show missing weight
+          </button>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

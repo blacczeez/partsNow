@@ -59,10 +59,13 @@ export function PartDetailSheet({
           </div>
         </div>
 
-        {/* Price */}
+        {/* Price & weight */}
         <p className="text-2xl font-bold text-slate-900">
           {part.average_price ? formatCurrency(part.average_price) : 'Price on request'}
         </p>
+        {part.weight_kg != null && part.weight_kg > 0 && (
+          <p className="text-sm text-slate-600">{part.weight_kg} kg per unit</p>
+        )}
 
         {/* Compatible Vehicles */}
         {part.compatible_vehicles.length > 0 && (
@@ -83,7 +86,7 @@ export function PartDetailSheet({
         )}
 
         {/* Quantity Selector */}
-        {part.average_price && (
+        {part.average_price && part.weight_kg != null && part.weight_kg > 0 && (
           <>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700">Quantity</span>
