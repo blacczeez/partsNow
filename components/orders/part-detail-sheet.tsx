@@ -5,14 +5,15 @@ import { Package, Minus, Plus, ShoppingCart, Car } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { VehicleFitmentBadge } from '@/components/vehicles/vehicle-fitment-badge';
 import { formatCurrency } from '@/lib/utils/format';
-import type { Part } from '@/lib/types/database';
+import type { CatalogPart } from '@/lib/types/catalog';
 
 interface PartDetailSheetProps {
-  part: Part | null;
+  part: CatalogPart | null;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: (part: Part, quantity: number) => void;
+  onAddToCart: (part: CatalogPart, quantity: number) => void;
 }
 
 export function PartDetailSheet({
@@ -53,6 +54,9 @@ export function PartDetailSheet({
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge variant="default">{part.category_name}</Badge>
             {part.subcategory && <Badge variant="info">{part.subcategory}</Badge>}
+            {part.fitment && part.fitment !== 'no_data' && (
+              <VehicleFitmentBadge status={part.fitment} />
+            )}
             {part.oem_code && (
               <span className="text-xs text-slate-400">OEM: {part.oem_code}</span>
             )}

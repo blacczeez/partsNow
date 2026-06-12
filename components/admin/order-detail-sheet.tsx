@@ -19,6 +19,7 @@ import { PriceReviewPanel } from './price-review-panel';
 import { DeliverySettlementPanel } from './delivery-settlement-panel';
 import { canAdminReassignRider } from '@/lib/constants/order-status';
 import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
+import { OrderVehicleSummary } from '@/components/orders/order-vehicle-summary';
 import type { OrderStatus } from '@/lib/types/database';
 
 interface OrderDetailSheetProps {
@@ -147,6 +148,9 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                 <p className="text-sm font-medium text-slate-900">{order.customer.full_name}</p>
                 <p className="text-sm text-slate-500">{order.customer.phone}</p>
                 <Badge className="mt-1">{order.customer.loyalty_tier}</Badge>
+                {order.vehicle && (
+                  <OrderVehicleSummary className="mt-3" vehicle={order.vehicle} />
+                )}
               </div>
             )}
 

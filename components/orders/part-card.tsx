@@ -2,11 +2,12 @@
 
 import { Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { VehicleFitmentBadge } from '@/components/vehicles/vehicle-fitment-badge';
 import { formatCurrency } from '@/lib/utils/format';
-import type { Part } from '@/lib/types/database';
+import type { CatalogPart } from '@/lib/types/catalog';
 
 interface PartCardProps {
-  part: Part;
+  part: CatalogPart;
   onClick: () => void;
 }
 
@@ -38,8 +39,11 @@ export function PartCard({ part, onClick }: PartCardProps) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-slate-900">{part.name}</p>
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           <Badge variant="default">{part.category_name}</Badge>
+          {part.fitment && part.fitment !== 'no_data' && (
+            <VehicleFitmentBadge status={part.fitment} />
+          )}
           {part.oem_code && (
             <span className="text-xs text-slate-400">{part.oem_code}</span>
           )}

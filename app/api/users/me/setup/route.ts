@@ -41,6 +41,25 @@ export async function POST(request: NextRequest) {
       delivery_address: result.data.delivery_address,
     });
 
+    if (result.data.add_vehicle && result.data.vehicle) {
+      const { error: vehicleError } = await supabase.from('vehicles').insert({
+        user_id: authUser.id,
+        make: result.data.vehicle.make,
+        model: result.data.vehicle.model,
+        year: result.data.vehicle.year,
+        spec: result.data.vehicle.spec || null,
+        nickname: result.data.vehicle.nickname || null,
+        is_primary: true,
+      });
+
+      if (vehicleError) {
+        return NextResponse.json(
+          { error: 'Profile created but vehicle could not be saved' },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json({ user }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Setup failed';

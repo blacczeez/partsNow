@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { attachVehicleToOrder } from '@/lib/services/order-vehicle';
 
 export async function GET(
   _request: NextRequest,
@@ -33,9 +34,11 @@ export async function GET(
     .order('attempt_number', { ascending: false })
     .limit(5);
 
+  const orderWithVehicle = await attachVehicleToOrder(supabase, order);
+
   return NextResponse.json({
     order: {
-      ...order,
+      ...orderWithVehicle,
       delivery_attempts: deliveryAttempts ?? [],
     },
   });

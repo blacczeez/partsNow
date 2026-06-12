@@ -13,11 +13,38 @@ export const updateProfileSchema = z.object({
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-export const setupProfileSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  email: z.email('Enter a valid email address').optional().or(z.literal('')),
-  delivery_address: z.string().min(5, 'Enter a valid delivery address'),
+const setupVehicleFieldsSchema = z.object({
+  make: z.string().min(1, 'Make is required'),
+  model: z.string().min(1, 'Model is required'),
+  year: z
+    .number()
+    .int()
+    .min(1980, 'Year must be 1980 or later')
+    .max(new Date().getFullYear() + 1, 'Invalid year'),
+  spec: z.enum(['American', 'European', 'Nigerian', 'Japanese', 'Other']).optional(),
+  nickname: z.string().max(30).optional().or(z.literal('')),
 });
+
+export const setupProfileSchema = z
+  .object({
+    full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+    email: z.email('Enter a valid email address').optional().or(z.literal('')),
+    delivery_address: z.string().min(5, 'Enter a valid delivery address'),
+    add_vehicle: z.boolean().optional(),
+    vehicle: setupVehicleFieldsSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.add_vehicle) return;
+    const result = setupVehicleFieldsSchema.safeParse(data.vehicle);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: ['vehicle', ...issue.path],
+        });
+      }
+    }
+  });
 
 export type SetupProfileInput = z.infer<typeof setupProfileSchema>;
 

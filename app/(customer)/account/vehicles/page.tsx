@@ -10,8 +10,10 @@ import { VehicleForm } from '@/components/forms/vehicle-form';
 import { toast } from '@/components/ui/toast';
 import type { Vehicle } from '@/lib/types/database';
 import type { CreateVehicleInput } from '@/lib/validators/user';
+import { useSelectedVehicle } from '@/lib/contexts/selected-vehicle-context';
 
 export default function VehiclesPage() {
+  const { refreshVehicles: refreshSelectedVehicle } = useSelectedVehicle();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -44,7 +46,7 @@ export default function VehiclesPage() {
     if (!res.ok) throw new Error('Failed to add vehicle');
     toast('success', 'Vehicle added');
     setShowAdd(false);
-    fetchVehicles();
+    await Promise.all([fetchVehicles(), refreshSelectedVehicle()]);
   }
 
   async function handleEdit(data: CreateVehicleInput) {
@@ -57,7 +59,7 @@ export default function VehiclesPage() {
     if (!res.ok) throw new Error('Failed to update vehicle');
     toast('success', 'Vehicle updated');
     setEditVehicle(null);
-    fetchVehicles();
+    await Promise.all([fetchVehicles(), refreshSelectedVehicle()]);
   }
 
   async function handleDelete() {
@@ -70,7 +72,7 @@ export default function VehiclesPage() {
       if (!res.ok) throw new Error('Failed to delete');
       toast('success', 'Vehicle removed');
       setDeleteTarget(null);
-      fetchVehicles();
+      await Promise.all([fetchVehicles(), refreshSelectedVehicle()]);
     } catch {
       toast('error', 'Failed to delete vehicle');
     } finally {

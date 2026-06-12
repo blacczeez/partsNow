@@ -76,6 +76,14 @@ interface OrderDetail {
     email: string | null;
     loyalty_tier: string;
   } | null;
+  vehicle: {
+    id: string;
+    make: string;
+    model: string;
+    year: number;
+    spec: string | null;
+    nickname: string | null;
+  } | null;
   tracking: {
     current_latitude: number | null;
     current_longitude: number | null;

@@ -261,6 +261,16 @@ export async function getAdminOrderDetail(orderId: string) {
     .eq('id', order.customer_id)
     .single();
 
+  let vehicle = null;
+  if (order.vehicle_id) {
+    const { data: vehicleRow } = await supabase
+      .from('vehicles')
+      .select('id, make, model, year, spec, nickname')
+      .eq('id', order.vehicle_id)
+      .maybeSingle();
+    vehicle = vehicleRow;
+  }
+
   // Get delivery tracking
   const { data: tracking } = await supabase
     .from('delivery_tracking')
@@ -294,6 +304,7 @@ export async function getAdminOrderDetail(orderId: string) {
     items: items ?? [],
     assignments: assignmentsWithNames,
     customer,
+    vehicle,
     tracking,
     deliveryAttempts: deliveryAttempts ?? [],
     paymentEvents: paymentEvents ?? [],

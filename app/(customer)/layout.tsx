@@ -6,6 +6,7 @@ import { TopNav } from '@/components/layout/top-nav';
 import { SetupRedirect } from '@/components/auth/setup-redirect';
 import { UserProvider, useUser } from '@/lib/hooks/use-user';
 import { CartProvider } from '@/lib/contexts/cart-context';
+import { SelectedVehicleProvider } from '@/lib/contexts/selected-vehicle-context';
 import { useCart } from '@/lib/hooks/use-cart';
 import { AppFontShell } from '@/components/layout/app-font-shell';
 
@@ -70,7 +71,9 @@ export default function CustomerLayout({
     <AppFontShell className="flex min-h-full flex-col">
       <UserProvider>
         <CartProvider>
-          <CustomerShell>{children}</CustomerShell>
+          <SelectedVehicleProvider>
+            <CustomerShell>{children}</CustomerShell>
+          </SelectedVehicleProvider>
         </CartProvider>
       </UserProvider>
     </AppFontShell>

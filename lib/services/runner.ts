@@ -260,6 +260,14 @@ export interface RunnerOrderDetail extends OrderWithItems {
   assignment: OrderAssignment;
   customer_name: string;
   customer_phone: string;
+  vehicle: {
+    id: string;
+    make: string;
+    model: string;
+    year: number;
+    spec: string | null;
+    nickname: string | null;
+  } | null;
 }
 
 export async function getRunnerOrderDetail(
@@ -302,11 +310,22 @@ export async function getRunnerOrderDetail(
     .eq('id', order.customer_id)
     .single();
 
+  let vehicle = null;
+  if (order.vehicle_id) {
+    const { data: vehicleRow } = await supabase
+      .from('vehicles')
+      .select('id, make, model, year, spec, nickname')
+      .eq('id', order.vehicle_id)
+      .maybeSingle();
+    vehicle = vehicleRow;
+  }
+
   return {
     ...order,
     assignment: assignment as OrderAssignment,
     customer_name: customer?.full_name ?? 'Unknown',
     customer_phone: customer?.phone ?? '',
+    vehicle,
   } as RunnerOrderDetail;
 }
 

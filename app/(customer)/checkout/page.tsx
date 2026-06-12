@@ -32,7 +32,6 @@ export default function CheckoutPage() {
   const { user, wallet, refresh } = useUser();
   const { deliveryConfig } = useDeliveryConfig();
 
-  const [vehicleId, setVehicleId] = useState<string | undefined>(cart.vehicleId);
   const savedAddress = getSavedDeliveryAddress(
     user?.profile as Record<string, unknown> | undefined
   );
@@ -87,7 +86,7 @@ export default function CheckoutPage() {
             price: item.price,
             imageUrl: item.imageUrl,
           })),
-          vehicleId: vehicleId || undefined,
+          vehicleId: cart.vehicleId || undefined,
           deliveryAddress: address,
           deliveryNotes: deliveryNotes || undefined,
           paymentMethod,
@@ -137,8 +136,8 @@ export default function CheckoutPage() {
         <div>
           <p className="mb-2 text-sm font-medium text-slate-700">Vehicle</p>
           <VehicleSelect
-            selectedId={vehicleId}
-            onSelect={(v) => setVehicleId(v?.id)}
+            selectedId={cart.vehicleId}
+            onSelect={(v) => cart.setVehicle(v?.id)}
           />
         </div>
 

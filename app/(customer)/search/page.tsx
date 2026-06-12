@@ -7,15 +7,19 @@ import { PartCard } from '@/components/orders/part-card';
 import { PartDetailSheet } from '@/components/orders/part-detail-sheet';
 import { usePartsSearch } from '@/lib/hooks/use-parts-search';
 import { useCart } from '@/lib/hooks/use-cart';
+import { useSelectedVehicle } from '@/lib/contexts/selected-vehicle-context';
+import { formatVehicleLabelShort } from '@/lib/utils/vehicle-fitment';
+import { SearchVehicleBar } from '@/components/search/search-vehicle-bar';
 import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils/cn';
 import { useState, useEffect, Suspense } from 'react';
-import type { Part } from '@/lib/types/database';
+import type { CatalogPart } from '@/lib/types/catalog';
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialCategory = searchParams.get('category') || '';
+  const { selectedVehicle, selectedVehicleId, fitMyCar } = useSelectedVehicle();
 
   const {
     results,
@@ -27,9 +31,13 @@ function SearchContent() {
     setQuery,
     category,
     setCategory,
-  } = usePartsSearch({ initialCategory });
+  } = usePartsSearch({
+    initialCategory,
+    vehicleId: selectedVehicleId,
+    fitMyCar,
+  });
 
-  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+  const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [categories, setCategories] = useState<
     Array<{ id: string; slug: string; name: string; part_count: number }>
   >([]);
@@ -45,7 +53,7 @@ function SearchContent() {
       .catch(() => setCategories([]));
   }, []);
 
-  function addToCart(part: Part, quantity: number) {
+  function addToCart(part: CatalogPart, quantity: number) {
     if (!part.average_price) return;
     if (!part.weight_kg || part.weight_kg <= 0) {
       toast('error', 'This part is not available for order yet (weight missing).');
@@ -85,6 +93,8 @@ function SearchContent() {
           autoFocus
         />
 
+        <SearchVehicleBar />
+
         {/* Category Chips */}
         <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
           {categories.map((cat) => (
@@ -108,9 +118,15 @@ function SearchContent() {
       {/* Results */}
       <div className="px-4 py-4">
         {/* Result count */}
-        {!isLoading && (query || category) && (
+        {!isLoading && (query || category || fitMyCar) && (
           <p className="mb-3 text-xs text-slate-500">
             {total} result{total !== 1 ? 's' : ''} found
+            {fitMyCar && selectedVehicle && (
+              <> for {formatVehicleLabelShort(selectedVehicle)}</>
+            )}
+            {!fitMyCar && selectedVehicle && (query || category) && (
+              <> · fitment for {formatVehicleLabelShort(selectedVehicle)}</>
+            )}
           </p>
         )}
 

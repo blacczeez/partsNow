@@ -28,6 +28,7 @@ import {
 } from '@/lib/utils/runner-price-review';
 import { toast } from '@/components/ui/toast';
 import Link from 'next/link';
+import { OrderVehicleSummary } from '@/components/orders/order-vehicle-summary';
 
 export default function RunnerOrderPage() {
   const { id } = useParams<{ id: string }>();
@@ -206,6 +207,9 @@ export default function RunnerOrderPage() {
             </a>
           </span>
         </div>
+        {order.vehicle && (
+          <OrderVehicleSummary vehicle={order.vehicle} className="pt-1" />
+        )}
       </div>
 
       {/* Accept/Reject for new assignments */}

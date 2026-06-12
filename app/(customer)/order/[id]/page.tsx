@@ -27,6 +27,7 @@ import { toast } from '@/components/ui/toast';
 import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
 import { DeliverySettlementSummary } from '@/components/orders/delivery-settlement-summary';
 import { DeliveryFeeBreakdownPanel } from '@/components/orders/delivery-fee-breakdown';
+import { OrderVehicleSummary } from '@/components/orders/order-vehicle-summary';
 import type { OrderStatus } from '@/lib/types/database';
 
 function OrderDetailContent({ orderId }: { orderId: string }) {
@@ -345,6 +346,9 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
         {/* Delivery Info */}
         <div className="rounded-card border border-slate-200 bg-white p-4">
           <h3 className="mb-2 text-sm font-medium text-slate-900">Delivery</h3>
+          {order.vehicle && (
+            <OrderVehicleSummary className="mb-3" vehicle={order.vehicle} />
+          )}
           {order.total_weight_kg != null && (
             <p className="mb-2 text-sm text-slate-600">
               {order.total_weight_kg} kg

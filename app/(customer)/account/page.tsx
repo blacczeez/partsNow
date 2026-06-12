@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/toast';
 import { useUser } from '@/lib/hooks/use-user';
+import { useSelectedVehicle } from '@/lib/contexts/selected-vehicle-context';
 import {
   updateProfileSchema,
   setupProfileSchema,
@@ -31,13 +32,20 @@ import { formatPhone } from '@/lib/utils/format';
 import Link from 'next/link';
 
 function SetupForm({ phone, onComplete }: { phone?: string; onComplete: () => void }) {
+  const { refreshVehicles } = useSelectedVehicle();
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<SetupProfileInput>({
     resolver: zodResolver(setupProfileSchema),
+    defaultValues: {
+      add_vehicle: false,
+    },
   });
+
+  const addVehicle = watch('add_vehicle');
 
   async function onSubmit(data: SetupProfileInput) {
     try {
@@ -51,6 +59,7 @@ function SetupForm({ phone, onComplete }: { phone?: string; onComplete: () => vo
         throw new Error(err.error || 'Setup failed');
       }
       toast('success', 'Profile created!');
+      await refreshVehicles();
       onComplete();
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Something went wrong');
@@ -87,6 +96,68 @@ function SetupForm({ phone, onComplete }: { phone?: string; onComplete: () => vo
           error={errors.delivery_address?.message}
           {...register('delivery_address')}
         />
+
+        <div className="rounded-card border border-slate-200 bg-slate-50 p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-900">
+            <input type="checkbox" className="h-4 w-4 rounded" {...register('add_vehicle')} />
+            Add your car (optional)
+          </label>
+          <p className="mt-1 text-xs text-slate-500">
+            Helps us show parts that fit and pre-fill checkout. You can skip and add later.
+          </p>
+
+          {addVehicle && (
+            <div className="mt-4 space-y-3">
+              <Input
+                label="Make"
+                id="vehicle_make"
+                placeholder="Toyota"
+                error={errors.vehicle?.make?.message}
+                {...register('vehicle.make')}
+              />
+              <Input
+                label="Model"
+                id="vehicle_model"
+                placeholder="Camry"
+                error={errors.vehicle?.model?.message}
+                {...register('vehicle.model')}
+              />
+              <Input
+                label="Year"
+                id="vehicle_year"
+                type="number"
+                placeholder="2018"
+                error={errors.vehicle?.year?.message}
+                {...register('vehicle.year', { valueAsNumber: true })}
+              />
+              <div>
+                <label htmlFor="vehicle_spec" className="mb-1 block text-sm font-medium text-slate-700">
+                  Spec (optional)
+                </label>
+                <select
+                  id="vehicle_spec"
+                  className="w-full rounded-input border border-slate-300 px-3 py-2 text-sm"
+                  {...register('vehicle.spec')}
+                >
+                  <option value="">Select spec</option>
+                  <option value="Nigerian">Nigerian</option>
+                  <option value="American">American</option>
+                  <option value="European">European</option>
+                  <option value="Japanese">Japanese</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <Input
+                label="Nickname (optional)"
+                id="vehicle_nickname"
+                placeholder="Workshop car"
+                error={errors.vehicle?.nickname?.message}
+                {...register('vehicle.nickname')}
+              />
+            </div>
+          )}
+        </div>
+
         <Button type="submit" fullWidth isLoading={isSubmitting}>
           Continue
         </Button>
