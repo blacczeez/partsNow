@@ -67,7 +67,15 @@ export async function refundOrderPayment(
       typed.customer_id,
       amount,
       `refund_${orderId}`,
-      refundDescription
+      refundDescription,
+      {
+        metadata: {
+          kind: 'refund',
+          source: 'refund',
+          order_id: orderId,
+          order_number: typed.order_number,
+        },
+      }
     );
     provider = typed.payment_method === 'card' ? 'wallet_fallback' : 'wallet';
   } else {
@@ -164,7 +172,15 @@ export async function refundOrderPartial(
       typed.customer_id,
       amount,
       `partial_refund_${orderId}_${Date.now()}`,
-      refundDescription
+      refundDescription,
+      {
+        metadata: {
+          kind: 'partial_refund',
+          source: 'refund',
+          order_id: orderId,
+          order_number: typed.order_number,
+        },
+      }
     );
     provider = typed.payment_method === 'card' ? 'wallet_fallback' : 'wallet';
   } else {

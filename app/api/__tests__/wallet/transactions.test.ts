@@ -43,12 +43,18 @@ describe('GET /api/wallet/transactions', () => {
   it('returns transactions with pagination', async () => {
     mockAuthUser(mockSupabase, 'user-1');
     mockedGetTransactions.mockResolvedValue({
-      transactions: [{ id: 'tx-1', amount: 5000 }],
+      transactions: [{ id: 'tx-1', amount: 5000, kind: 'topup', order: null }],
       total: 25,
+      summary: {
+        moneyIn: 5000,
+        moneyOut: 0,
+        periodLabel: 'June 2026',
+        filter: 'all',
+      },
     } as never);
 
     const request = createTestRequest('/api/wallet/transactions', {
-      searchParams: { page: '2', limit: '5' },
+      searchParams: { page: '2', limit: '5', filter: 'topups' },
     });
 
     const response = await GET(request);
@@ -56,13 +62,14 @@ describe('GET /api/wallet/transactions', () => {
 
     expect(status).toBe(200);
     expect(body.transactions).toHaveLength(1);
+    expect(body.summary.moneyIn).toBe(5000);
     expect(body.pagination).toEqual({
       page: 2,
       limit: 5,
       total: 25,
       totalPages: 5,
     });
-    expect(mockedGetTransactions).toHaveBeenCalledWith('user-1', 2, 5);
+    expect(mockedGetTransactions).toHaveBeenCalledWith('user-1', 2, 5, 'topups');
   });
 
   it('clamps limit to maximum 50', async () => {
@@ -70,6 +77,7 @@ describe('GET /api/wallet/transactions', () => {
     mockedGetTransactions.mockResolvedValue({
       transactions: [],
       total: 0,
+      summary: { moneyIn: 0, moneyOut: 0, periodLabel: 'June 2026', filter: 'all' },
     } as never);
 
     const request = createTestRequest('/api/wallet/transactions', {
@@ -80,7 +88,7 @@ describe('GET /api/wallet/transactions', () => {
     const { body } = await readResponse(response);
 
     expect(body.pagination.limit).toBe(50);
-    expect(mockedGetTransactions).toHaveBeenCalledWith('user-1', 1, 50);
+    expect(mockedGetTransactions).toHaveBeenCalledWith('user-1', 1, 50, 'all');
   });
 
   it('defaults to page 1, limit 10', async () => {
@@ -88,13 +96,14 @@ describe('GET /api/wallet/transactions', () => {
     mockedGetTransactions.mockResolvedValue({
       transactions: [],
       total: 0,
+      summary: { moneyIn: 0, moneyOut: 0, periodLabel: 'June 2026', filter: 'all' },
     } as never);
 
     const request = createTestRequest('/api/wallet/transactions');
 
     await GET(request);
 
-    expect(mockedGetTransactions).toHaveBeenCalledWith('user-1', 1, 10);
+    expect(mockedGetTransactions).toHaveBeenCalledWith('user-1', 1, 10, 'all');
   });
 
   it('returns 500 when service throws', async () => {

@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getTransactions } from '@/lib/services/wallet';
+import type { WalletTransactionFilter } from '@/lib/utils/wallet-transactions';
+
+const VALID_FILTERS = new Set<WalletTransactionFilter>([
+  'all',
+  'topups',
+  'orders',
+  'refunds',
+]);
+
+function parseFilter(value: string | null): WalletTransactionFilter {
+  if (value && VALID_FILTERS.has(value as WalletTransactionFilter)) {
+    return value as WalletTransactionFilter;
+  }
+  return 'all';
+}
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -15,12 +30,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10')));
+  const filter = parseFilter(searchParams.get('filter'));
 
   try {
-    const { transactions, total } = await getTransactions(user.id, page, limit);
+    const { transactions, total, summary } = await getTransactions(
+      user.id,
+      page,
+      limit,
+      filter
+    );
 
     return NextResponse.json({
       transactions,
+      summary,
       pagination: {
         page,
         limit,

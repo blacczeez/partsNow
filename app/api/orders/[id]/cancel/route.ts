@@ -62,7 +62,15 @@ export async function POST(
       user.id,
       order.total,
       order.id,
-      `Refund for cancelled order ${order.order_number}`
+      `Refund for cancelled order ${order.order_number}`,
+      {
+        metadata: {
+          kind: 'refund',
+          source: 'refund',
+          order_id: order.id,
+          order_number: order.order_number,
+        },
+      }
     );
 
     await supabase

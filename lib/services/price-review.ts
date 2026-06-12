@@ -23,7 +23,8 @@ async function debitUserWallet(
   userId: string,
   amount: number,
   reference: string,
-  description: string
+  description: string,
+  metadata?: Record<string, unknown>
 ): Promise<void> {
   const { data: wallet } = await supabase
     .from('wallets')
@@ -38,6 +39,7 @@ async function debitUserWallet(
     p_amount: amount,
     p_reference: reference,
     p_description: description,
+    p_metadata: metadata ?? {},
   });
 
   if (error) throw new Error(error.message);
@@ -49,7 +51,8 @@ async function creditUserWallet(
   userId: string,
   amount: number,
   reference: string,
-  description: string
+  description: string,
+  metadata?: Record<string, unknown>
 ): Promise<void> {
   const { data: wallet } = await supabase
     .from('wallets')
@@ -64,6 +67,7 @@ async function creditUserWallet(
     p_amount: amount,
     p_reference: reference,
     p_description: description,
+    p_metadata: metadata ?? {},
   });
 
   if (error) throw new Error(error.message);
@@ -448,7 +452,13 @@ export async function acceptCustomerPriceChange(
         customerId,
         topUp,
         orderId,
-        `Price adjustment top-up for order ${order.order_number}`
+        `Price adjustment top-up for order ${order.order_number}`,
+        {
+          kind: 'price_adjustment',
+          source: 'price_review',
+          order_id: orderId,
+          order_number: order.order_number,
+        }
       );
     } else if (order.payment_method === 'card') {
       const { data: user } = await supabase
@@ -530,7 +540,13 @@ export async function discardCustomerPriceChange(
       customerId,
       refundAmount,
       `refund_price_discard_${orderId}`,
-      `Full refund — order ${order.order_number} cancelled after price change`
+      `Full refund — order ${order.order_number} cancelled after price change`,
+      {
+        kind: 'refund',
+        source: 'price_review',
+        order_id: orderId,
+        order_number: order.order_number,
+      }
     );
   }
 

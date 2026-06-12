@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
             p_amount: amountNaira,
             p_reference: reference,
             p_description: `Wallet top-up via Paystack`,
+            p_metadata: { kind: 'topup', source: 'paystack' },
           });
         }
 

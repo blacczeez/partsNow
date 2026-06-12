@@ -125,7 +125,7 @@ export function TopNav({
 
       {/* Row 2 — Nav Tabs */}
       <div>
-        <div className="mx-auto flex max-w-5xl items-center gap-1 px-6">
+        <div className="mx-auto flex max-w-5xl items-center justify-center gap-1 px-6">
           {tabItems.map(({ href, icon: Icon, label }) => {
             const isActive =
               pathname === href ||

@@ -128,6 +128,7 @@ describe('POST /api/webhooks/paystack', () => {
       p_amount: 10000, // amount / 100
       p_reference: 'ref_abc123',
       p_description: 'Wallet top-up via Paystack',
+      p_metadata: { kind: 'topup', source: 'paystack' },
     });
   });
 

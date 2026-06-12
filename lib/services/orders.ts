@@ -183,7 +183,15 @@ export async function createOrder(
       customerId,
       pricing.total,
       order.id,
-      `Order ${orderNumber}`
+      `Order ${orderNumber}`,
+      {
+        metadata: {
+          kind: 'order_payment',
+          source: 'order',
+          order_id: order.id,
+          order_number: orderNumber as string,
+        },
+      }
     );
 
     if (!debited) {

@@ -2,7 +2,15 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { initializePayment, verifyPayment } from '@/lib/integrations/paystack';
 import { config } from '@/lib/config';
-import type { Wallet, WalletTransaction } from '@/lib/types/database';
+import type { WalletLedgerOptions } from '@/lib/types/wallet';
+import type { WalletTransactionSummary, EnrichedWalletTransaction } from '@/lib/types/wallet';
+import type { WalletTransactionFilter } from '@/lib/utils/wallet-transactions';
+import {
+  applyWalletTransactionFilter,
+  enrichWalletTransactions,
+  getWalletTransactionSummary,
+} from '@/lib/services/wallet-transactions-query';
+import type { WalletTransaction } from '@/lib/types/database';
 
 export async function getWalletBalance(userId: string): Promise<{
   balance: number;
@@ -26,33 +34,64 @@ export async function getWalletBalance(userId: string): Promise<{
   };
 }
 
+function ledgerMetadata(options?: WalletLedgerOptions) {
+  return options?.metadata ?? {};
+}
+
 export async function getTransactions(
   userId: string,
   page: number = 1,
-  limit: number = 10
-): Promise<{ transactions: WalletTransaction[]; total: number }> {
+  limit: number = 10,
+  filter: WalletTransactionFilter = 'all'
+): Promise<{
+  transactions: EnrichedWalletTransaction[];
+  total: number;
+  summary: WalletTransactionSummary;
+}> {
   const supabase = await createClient();
   const offset = (page - 1) * limit;
 
-  // First get the wallet id
   const { data: wallet } = await supabase
     .from('wallets')
     .select('id')
     .eq('user_id', userId)
     .single();
 
-  if (!wallet) return { transactions: [], total: 0 };
+  if (!wallet) {
+    return {
+      transactions: [],
+      total: 0,
+      summary: {
+        moneyIn: 0,
+        moneyOut: 0,
+        periodLabel: new Date().toLocaleString('en-NG', { month: 'long', year: 'numeric' }),
+        filter,
+      },
+    };
+  }
 
-  const { data, error, count } = await supabase
-    .from('wallet_transactions')
-    .select('*', { count: 'exact' })
-    .eq('wallet_id', wallet.id)
+  const filteredQuery = applyWalletTransactionFilter(
+    supabase
+      .from('wallet_transactions')
+      .select('*', { count: 'exact' })
+      .eq('wallet_id', wallet.id),
+    filter
+  );
+
+  const { data, error, count } = await filteredQuery
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) throw new Error(error.message);
 
-  return { transactions: data || [], total: count || 0 };
+  const transactions = await enrichWalletTransactions(supabase, (data || []) as WalletTransaction[]);
+  const summary = await getWalletTransactionSummary(supabase, wallet.id, filter);
+
+  return {
+    transactions,
+    total: count || 0,
+    summary,
+  };
 }
 
 export async function initiateTopUp(
@@ -132,6 +171,7 @@ export async function verifyAndCreditTopUp(
     p_amount: payment.amount,
     p_reference: reference,
     p_description: 'Wallet top-up via Paystack',
+    p_metadata: { kind: 'topup', source: 'paystack' },
   });
 
   // Log payment event
@@ -156,7 +196,8 @@ export async function debitWallet(
   userId: string,
   amount: number,
   reference: string,
-  description: string
+  description: string,
+  options?: WalletLedgerOptions
 ): Promise<boolean> {
   const supabase = await createClient();
 
@@ -175,6 +216,7 @@ export async function debitWallet(
     p_amount: amount,
     p_reference: reference,
     p_description: description,
+    p_metadata: ledgerMetadata(options),
   });
 
   if (error) {
@@ -188,7 +230,8 @@ export async function creditWallet(
   userId: string,
   amount: number,
   reference: string,
-  description: string
+  description: string,
+  options?: WalletLedgerOptions
 ): Promise<boolean> {
   const supabase = await createClient();
 
@@ -205,6 +248,7 @@ export async function creditWallet(
     p_amount: amount,
     p_reference: reference,
     p_description: description,
+    p_metadata: ledgerMetadata(options),
   });
 
   return success === true;
@@ -215,7 +259,8 @@ export async function creditWalletAsService(
   userId: string,
   amount: number,
   reference: string,
-  description: string
+  description: string,
+  options?: WalletLedgerOptions
 ): Promise<void> {
   const supabase = createServiceClient();
 
@@ -234,6 +279,7 @@ export async function creditWalletAsService(
     p_amount: amount,
     p_reference: reference,
     p_description: description,
+    p_metadata: ledgerMetadata(options),
   });
 
   if (rpcError) {

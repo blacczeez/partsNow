@@ -2,57 +2,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import {
-  Wallet as WalletIcon,
-  Plus,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Loader2,
-  Clock,
-} from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { TopUpForm } from '@/components/forms/topup-form';
+import { WalletTransactionHistory } from '@/components/wallet/wallet-transaction-history';
 import { useWallet } from '@/lib/hooks/use-wallet';
-import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
-import type { WalletTransaction } from '@/lib/types/database';
-
-function TransactionItem({ tx }: { tx: WalletTransaction }) {
-  const isCredit = tx.type === 'credit' || tx.type === 'release';
-
-  return (
-    <div className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-0">
-      <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          isCredit ? 'bg-green-100' : 'bg-red-100'
-        }`}
-      >
-        {isCredit ? (
-          <ArrowDownLeft className="h-4 w-4 text-success" />
-        ) : (
-          <ArrowUpRight className="h-4 w-4 text-error" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900">
-          {tx.description || tx.type}
-        </p>
-        <p className="text-xs text-slate-400">
-          {formatRelativeTime(tx.created_at)}
-        </p>
-      </div>
-      <p
-        className={`text-sm font-semibold ${
-          isCredit ? 'text-success' : 'text-slate-900'
-        }`}
-      >
-        {isCredit ? '+' : '-'}
-        {formatCurrency(tx.amount)}
-      </p>
-    </div>
-  );
-}
 
 function WalletContent() {
   const searchParams = useSearchParams();
@@ -60,10 +17,14 @@ function WalletContent() {
   const {
     balance,
     transactions,
+    summary,
+    filter,
+    setFilter,
     isLoadingBalance,
     isLoadingTransactions,
     hasMore,
     refreshBalance,
+    refreshTransactions,
     loadMoreTransactions,
   } = useWallet();
 
@@ -71,7 +32,6 @@ function WalletContent() {
   const [isTopUpSubmitting, setIsTopUpSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
-  // Handle Paystack return
   useEffect(() => {
     if (!reference) return;
 
@@ -85,8 +45,11 @@ function WalletContent() {
         });
         const data = await res.json();
         if (data.success) {
-          toast('success', `Top-up successful! ${data.amount ? formatCurrency(data.amount) + ' added' : ''}`);
-          refreshBalance();
+          toast(
+            'success',
+            `Top-up successful! ${data.amount ? formatCurrency(data.amount) + ' added' : ''}`
+          );
+          await Promise.all([refreshBalance(), refreshTransactions()]);
         } else {
           toast('error', 'Payment verification failed');
         }
@@ -94,13 +57,12 @@ function WalletContent() {
         toast('error', 'Failed to verify payment');
       } finally {
         setVerifying(false);
-        // Clean URL
         window.history.replaceState({}, '', '/wallet');
       }
     }
 
     verify();
-  }, [reference, refreshBalance]);
+  }, [reference, refreshBalance, refreshTransactions]);
 
   async function handleTopUp(amount: number) {
     setIsTopUpSubmitting(true);
@@ -117,7 +79,6 @@ function WalletContent() {
         return;
       }
 
-      // Redirect to Paystack
       window.location.href = data.authorizationUrl;
     } catch {
       toast('error', 'Failed to initiate top-up');
@@ -128,7 +89,6 @@ function WalletContent() {
 
   return (
     <div>
-      {/* Balance Card */}
       <div className="bg-primary px-4 pb-8 pt-6 lg:rounded-b-2xl">
         <h1 className="mb-4 text-xl font-bold text-white">Wallet</h1>
         <div className="rounded-card bg-white/10 px-5 py-5">
@@ -159,49 +119,22 @@ function WalletContent() {
         </Button>
       </div>
 
-      {/* Transaction History */}
       <div className="px-4 py-4">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">
           Transaction History
         </h2>
 
-        {isLoadingTransactions && transactions.length === 0 ? (
-          <div className="flex h-32 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12">
-            <Clock className="h-10 w-10 text-slate-300" />
-            <p className="text-sm text-slate-500">No transactions yet</p>
-            <p className="text-xs text-slate-400">
-              Top up your wallet to get started
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-card border border-slate-200 bg-white px-4">
-            {transactions.map((tx) => (
-              <TransactionItem key={tx.id} tx={tx} />
-            ))}
-          </div>
-        )}
-
-        {hasMore && (
-          <button
-            type="button"
-            onClick={loadMoreTransactions}
-            disabled={isLoadingTransactions}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-card border border-slate-200 bg-white py-3 text-sm font-medium text-primary hover:bg-slate-50"
-          >
-            {isLoadingTransactions ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Load more'
-            )}
-          </button>
-        )}
+        <WalletTransactionHistory
+          transactions={transactions}
+          summary={summary}
+          filter={filter}
+          onFilterChange={setFilter}
+          isLoading={isLoadingTransactions}
+          hasMore={hasMore}
+          onLoadMore={loadMoreTransactions}
+        />
       </div>
 
-      {/* Top Up Sheet */}
       <BottomSheet
         isOpen={showTopUp}
         onClose={() => setShowTopUp(false)}

@@ -54,7 +54,7 @@ function CustomerShell({ children }: { children: React.ReactNode }) {
       <SetupRedirect />
       <CustomerTopNav />
       <main className="min-h-full flex-1 pb-20 lg:pb-0">
-        <div className="mx-auto w-full lg:max-w-4xl">{children}</div>
+        <div className="mx-auto w-full lg:max-w-5xl">{children}</div>
       </main>
       <BottomNav />
     </>

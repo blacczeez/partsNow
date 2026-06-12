@@ -60,6 +60,7 @@ describe('debitWallet', () => {
       p_amount: 5000,
       p_reference: 'order-1',
       p_description: 'Test debit',
+      p_metadata: {},
     });
   });
 
@@ -117,6 +118,7 @@ describe('creditWallet', () => {
       p_amount: 3000,
       p_reference: 'topup-1',
       p_description: 'Top up',
+      p_metadata: {},
     });
   });
 
@@ -314,6 +316,7 @@ describe('verifyAndCreditTopUp', () => {
       p_amount: 5000,
       p_reference: 'ref_new',
       p_description: 'Wallet top-up via Paystack',
+      p_metadata: { kind: 'topup', source: 'paystack' },
     });
   });
 
