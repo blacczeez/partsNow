@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const shift = await endShift(auth.user.id, result.data.notes || undefined);
-    return NextResponse.json({ shift });
+    const { shift, transferSummary } = await endShift(auth.user.id, result.data.notes || undefined);
+    return NextResponse.json({ shift, transferSummary });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to end shift';
     return NextResponse.json({ error: message }, { status: 500 });

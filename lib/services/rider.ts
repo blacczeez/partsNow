@@ -12,6 +12,8 @@ import {
 } from './delivery-failure';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
+import { notifyLoyaltyTierUpgradeIfNeeded } from '@/lib/services/loyalty';
+import type { LoyaltyTier } from '@/lib/types/database';
 import type {
   OrderWithItems,
   OrderAssignment,
@@ -348,39 +350,20 @@ export async function confirmDelivery(
 
   if (!order) throw new Error('Order not found');
 
-  // If COD, update payment status
+  const { data: customerBefore } = await supabase
+    .from('users')
+    .select('loyalty_tier')
+    .eq('id', order.customer_id)
+    .single();
+  const previousTier = (customerBefore?.loyalty_tier as LoyaltyTier) ?? 'new';
+
+  // If COD, mark paid before delivery stats trigger runs
   if (order.payment_method === 'cod' && order.payment_status !== 'paid') {
     const { error: codError } = await supabase
       .from('orders')
       .update({ payment_status: 'paid' })
       .eq('id', orderId);
     throwIfSupabaseError(codError, 'Failed to update COD payment status');
-
-    // Update customer lifetime spend
-    await supabase.rpc('increment_lifetime_spend', {
-      p_user_id: order.customer_id,
-      p_amount: order.total,
-    }).then(({ error }) => {
-      // Fallback if RPC doesn't exist
-      if (error) {
-        supabase
-          .from('users')
-          .select('lifetime_spend, total_orders')
-          .eq('id', order.customer_id)
-          .single()
-          .then(({ data: customer }) => {
-            if (customer) {
-              supabase
-                .from('users')
-                .update({
-                  lifetime_spend: customer.lifetime_spend + order.total,
-                  total_orders: customer.total_orders + 1,
-                })
-                .eq('id', order.customer_id);
-            }
-          });
-      }
-    });
   }
 
   const { count } = await supabase
@@ -422,26 +405,9 @@ export async function confirmDelivery(
     .eq('id', orderId);
   throwIfSupabaseError(deliveredError, 'Failed to mark order as delivered');
 
-  // Fire-and-forget notification
+  // Fire-and-forget notifications (stats + tier via DB trigger on delivered)
   notifyOrderDelivered(orderId).catch(() => {});
-
-  // Update customer stats for non-COD (COD handled above)
-  if (order.payment_method !== 'cod') {
-    const { data: customer } = await supabase
-      .from('users')
-      .select('total_orders')
-      .eq('id', order.customer_id)
-      .single();
-
-    if (customer) {
-      await supabase
-        .from('users')
-        .update({
-          total_orders: customer.total_orders + 1,
-        })
-        .eq('id', order.customer_id);
-    }
-  }
+  notifyLoyaltyTierUpgradeIfNeeded(order.customer_id, previousTier).catch(() => {});
 
   await writeAuditLog({
     userId: riderId,

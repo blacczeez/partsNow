@@ -30,7 +30,7 @@ export function RunnerOrderCard({ order }: RunnerOrderCardProps) {
     <Link href={`/runner/order/${order.id}`}>
       <div
         className={cn(
-          'rounded-card border bg-white p-4 shadow-sm transition-shadow hover:shadow-md',
+          'rounded-card mt-4 border bg-white p-4 shadow-sm transition-shadow hover:shadow-md',
           order.assignment_status === 'assigned' && 'border-amber-300 bg-amber-50/30'
         )}
       >

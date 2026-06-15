@@ -373,6 +373,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
             <DeliveryFeeBreakdownPanel
               breakdown={order.delivery_fee_breakdown}
               deliveryFee={order.delivery_fee}
+              returnTo={`/order/${order.id}`}
             />
           </div>
         </div>

@@ -14,6 +14,8 @@ import {
   totalWeightFromItems,
   type WhatsAppDeliveryQuote,
 } from '../delivery-quote';
+import { formatWhatsAppLoyaltyLine } from '@/lib/services/loyalty';
+import { getLoyaltyThresholds } from '@/lib/services/loyalty-config';
 import type { User } from '@/lib/types/database';
 
 interface OrderingItem {
@@ -48,6 +50,7 @@ export async function handleOrdering(
 
     const items: OrderingItem[] = [{ description, price: 0, quantity: 1 }];
     const quote = await buildWhatsAppDeliveryQuote(description, 0);
+    const loyaltyThresholds = await getLoyaltyThresholds();
 
     await setConversationState(phone, 'ordering', {
       step: 'confirm_quote',
@@ -60,7 +63,11 @@ export async function handleOrdering(
 
     await sendInteractiveButtons(
       phone,
-      formatWhatsAppDeliveryQuoteMessage(description, quote),
+      formatWhatsAppDeliveryQuoteMessage(
+        description,
+        quote,
+        formatWhatsAppLoyaltyLine(user, loyaltyThresholds)
+      ),
       [
         { id: 'confirm_quote', title: 'Continue' },
         { id: 'cancel_order', title: 'Cancel' },

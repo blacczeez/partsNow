@@ -10,10 +10,12 @@ import { AddressInput } from '@/components/forms/address-input';
 import { PricingSummary } from '@/components/orders/pricing-summary';
 import { PaymentMethodSelect } from '@/components/orders/payment-method-select';
 import { MarketPriceNotice } from '@/components/orders/price-change-notice';
+import { LoyaltyCheckoutBanner } from '@/components/loyalty/loyalty-checkout-banner';
 import { useCart } from '@/lib/hooks/use-cart';
 import { useUser } from '@/lib/hooks/use-user';
 import { calculatePricing, isCodAllowedForCustomer } from '@/lib/utils/pricing';
 import { useDeliveryConfig } from '@/lib/hooks/use-delivery-config';
+import { useLoyaltyConfig } from '@/lib/hooks/use-loyalty-config';
 import { DeliveryWeightSummary } from '@/components/orders/delivery-weight-summary';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from '@/components/ui/toast';
@@ -31,6 +33,7 @@ export default function CheckoutPage() {
   const cart = useCart();
   const { user, wallet, refresh } = useUser();
   const { deliveryConfig } = useDeliveryConfig();
+  const { thresholds: loyaltyThresholds } = useLoyaltyConfig();
 
   const savedAddress = getSavedDeliveryAddress(
     user?.profile as Record<string, unknown> | undefined
@@ -61,7 +64,12 @@ export default function CheckoutPage() {
     quantity: i.quantity,
     weightKg: i.weightKg,
   }));
-  const pricing = calculatePricing(pricingItems, loyaltyTier, deliveryConfig);
+  const pricing = calculatePricing(
+    pricingItems,
+    loyaltyTier,
+    deliveryConfig,
+    loyaltyThresholds
+  );
   const codAllowed = isCodAllowedForCustomer(
     pricing.total,
     user?.profile as Record<string, unknown> | undefined
@@ -131,6 +139,13 @@ export default function CheckoutPage() {
 
       <div className="space-y-4 p-4">
         <MarketPriceNotice />
+
+        <LoyaltyCheckoutBanner
+          tier={loyaltyTier}
+          subtotal={cart.subtotal}
+          loyaltySavings={pricing.loyaltySavings}
+          thresholds={loyaltyThresholds}
+        />
 
         {/* Vehicle Selection */}
         <div>
@@ -206,7 +221,11 @@ export default function CheckoutPage() {
           <DeliveryWeightSummary pricing={pricing} />
           <PricingSummary pricing={pricing} />
           <p className="text-center text-xs text-slate-500">
-            <Link href="/how-delivery-works" className="text-primary hover:underline">
+            <Link href="/how-loyalty-works?from=checkout" className="text-primary hover:underline">
+              How loyalty works
+            </Link>
+            {' · '}
+            <Link href="/how-delivery-works?from=checkout" className="text-primary hover:underline">
               How delivery pricing works
             </Link>
           </p>

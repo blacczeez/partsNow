@@ -31,7 +31,7 @@ export default function RunnerLayout({
           Runner
         </span>
       </header>
-      <main className="flex-1 p-4 pb-20 lg:pb-4">
+      <main className="flex-1 px-4 pt-4 pb-28 lg:pb-6">
         <div className="mx-auto w-full lg:max-w-3xl">{children}</div>
       </main>
       <RunnerBottomNav />

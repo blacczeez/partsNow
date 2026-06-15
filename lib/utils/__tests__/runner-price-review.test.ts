@@ -3,6 +3,7 @@ import {
   getRunnerPriceReviewPhase,
   orderNeedsRunnerPriceReviewPolling,
   runnerPriceReviewBlocksHandoff,
+  runnerOrderBlocksShiftEnd,
 } from '../runner-price-review';
 
 describe('runner-price-review', () => {
@@ -40,5 +41,32 @@ describe('runner-price-review', () => {
       order_items: [{ price_review_status: 'awaiting_customer' }],
     };
     expect(getRunnerPriceReviewPhase(order)).toBe('cancelled');
+  });
+
+  it('does not block shift end while awaiting admin or customer', () => {
+    expect(
+      runnerOrderBlocksShiftEnd({
+        assignment_status: 'in_progress',
+        price_review_status: 'pending',
+      })
+    ).toBe(false);
+    expect(
+      runnerOrderBlocksShiftEnd({
+        assignment_status: 'accepted',
+        price_review_status: 'awaiting_customer',
+      })
+    ).toBe(false);
+    expect(
+      runnerOrderBlocksShiftEnd({
+        assignment_status: 'in_progress',
+        price_review_status: 'none',
+      })
+    ).toBe(true);
+    expect(
+      runnerOrderBlocksShiftEnd({
+        assignment_status: 'assigned',
+        price_review_status: 'pending',
+      })
+    ).toBe(true);
   });
 });

@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VehicleSelect } from '@/components/forms/vehicle-select';
 import { DeliveryWeightSummary } from '@/components/orders/delivery-weight-summary';
+import { LoyaltyCheckoutBanner } from '@/components/loyalty/loyalty-checkout-banner';
 import { useCart } from '@/lib/hooks/use-cart';
 import { useUser } from '@/lib/hooks/use-user';
 import { useDeliveryConfig } from '@/lib/hooks/use-delivery-config';
+import { useLoyaltyConfig } from '@/lib/hooks/use-loyalty-config';
 import { calculatePricing } from '@/lib/utils/pricing';
 import { formatCurrency } from '@/lib/utils/format';
 import type { LoyaltyTier } from '@/lib/types/database';
@@ -26,6 +28,7 @@ export default function CartPage() {
   } = useCart();
   const { user } = useUser();
   const { deliveryConfig } = useDeliveryConfig();
+  const { thresholds: loyaltyThresholds } = useLoyaltyConfig();
 
   const loyaltyTier = (user?.loyalty_tier || 'new') as LoyaltyTier;
   const pricingPreview = calculatePricing(
@@ -35,7 +38,8 @@ export default function CartPage() {
       weightKg: item.weightKg,
     })),
     loyaltyTier,
-    deliveryConfig
+    deliveryConfig,
+    loyaltyThresholds
   );
 
   if (items.length === 0) {
@@ -52,92 +56,142 @@ export default function CartPage() {
   }
 
   return (
-    <div>
+    <div className="lg:px-4">
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 lg:top-[6.5rem]">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 lg:top-[6.5rem] lg:px-0">
         <h1 className="text-lg font-semibold text-slate-900">
           Cart ({itemCount} item{itemCount !== 1 ? 's' : ''})
         </h1>
       </div>
 
-      {/* Vehicle Selection */}
-      <div className="border-b border-slate-200 bg-white px-4 py-3">
-        <p className="mb-2 text-sm font-medium text-slate-700">Vehicle</p>
-        <VehicleSelect
-          selectedId={vehicleId}
-          onSelect={(v) => setVehicle(v?.id)}
-        />
-      </div>
-
-      {/* Items List */}
-      <div className="space-y-2 p-4">
-        {items.map((item) => (
-          <div
-            key={item.partId}
-            className="rounded-card border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900">
-                  {item.name}
-                </p>
-                <Badge variant="default" className="mt-1">
-                  {item.category}
-                </Badge>
-                <p className="mt-1 text-xs text-slate-500">
-                  {item.weightKg} kg each ·{' '}
-                  {(item.weightKg * item.quantity).toFixed(1)} kg line total
-                </p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">
-                  {formatCurrency(item.price)}
-                </p>
-              </div>
-              <button
-                onClick={() => removeItem(item.partId)}
-                className="ml-2 rounded-button p-1.5 text-slate-400 hover:bg-red-50 hover:text-error"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Quantity Controls */}
-            <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => updateQuantity(item.partId, item.quantity - 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-8 text-center font-medium text-slate-900">
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={() => updateQuantity(item.partId, item.quantity + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              <p className="font-semibold text-slate-900">
-                {formatCurrency(item.price * item.quantity)}
-              </p>
-            </div>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 lg:pt-4">
+        <div className="min-w-0">
+          {/* Vehicle Selection */}
+          <div className="border-b border-slate-200 bg-white px-4 py-3 lg:border lg:rounded-card lg:px-4">
+            <p className="mb-2 text-sm font-medium text-slate-700">Vehicle</p>
+            <VehicleSelect
+              selectedId={vehicleId}
+              onSelect={(v) => setVehicle(v?.id)}
+            />
           </div>
-        ))}
+
+          {/* Items List */}
+          <div className="space-y-2 p-4 lg:px-0 lg:pt-4">
+            {items.map((item) => (
+              <div
+                key={item.partId}
+                className="rounded-card border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {item.name}
+                    </p>
+                    <Badge variant="default" className="mt-1">
+                      {item.category}
+                    </Badge>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.weightKg} kg each ·{' '}
+                      {(item.weightKg * item.quantity).toFixed(1)} kg line total
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {formatCurrency(item.price)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => removeItem(item.partId)}
+                    className="ml-2 rounded-button p-1.5 text-slate-400 hover:bg-red-50 hover:text-error"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Quantity Controls */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => updateQuantity(item.partId, item.quantity - 1)}
+                      className="flex h-8 w-8 items-center justify-center rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="w-8 text-center font-medium text-slate-900">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item.partId, item.quantity + 1)}
+                      className="flex h-8 w-8 items-center justify-center rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="font-semibold text-slate-900">
+                    {formatCurrency(item.price * item.quantity)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3 px-4 pb-6 lg:px-0 lg:pb-8">
+            <LoyaltyCheckoutBanner
+              tier={loyaltyTier}
+              subtotal={subtotal}
+              loyaltySavings={pricingPreview.loyaltySavings}
+              thresholds={loyaltyThresholds}
+            />
+            <DeliveryWeightSummary pricing={pricingPreview} />
+            <p className="text-center text-xs text-slate-500 lg:text-left">
+              <Link href="/how-loyalty-works?from=cart" className="text-primary hover:underline">
+                How loyalty works
+              </Link>
+              {' · '}
+              <Link href="/how-delivery-works?from=cart" className="text-primary hover:underline">
+                How delivery pricing works
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop order summary — in document flow, not fixed */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-28 rounded-card border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">Order summary</h2>
+            <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
+              <span>
+                Delivery
+                {pricingPreview.deliveryTierLabel
+                  ? ` (${pricingPreview.deliveryTierLabel})`
+                  : ''}
+              </span>
+              <span>
+                {pricingPreview.deliveryFee === 0
+                  ? 'FREE'
+                  : formatCurrency(pricingPreview.deliveryFee)}
+              </span>
+            </div>
+            <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
+              <span>Total weight</span>
+              <span>{totalWeightKg} kg</span>
+            </div>
+            <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="text-sm text-slate-500">Parts subtotal</span>
+              <span className="text-lg font-bold text-slate-900">
+                {formatCurrency(subtotal)}
+              </span>
+            </div>
+            <Link href="/checkout">
+              <Button fullWidth>
+                Proceed to Checkout
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
+        </aside>
       </div>
 
-      <div className="space-y-3 px-4 pb-36">
-        <DeliveryWeightSummary pricing={pricingPreview} />
-        <p className="text-center text-xs text-slate-500">
-          <Link href="/how-delivery-works" className="text-primary hover:underline">
-            How delivery pricing works
-          </Link>
-        </p>
-      </div>
-
-      {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:bottom-0 lg:left-0">
+      {/* Mobile sticky bottom bar */}
+      <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:hidden">
         <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
           <span>
             Delivery
@@ -168,6 +222,9 @@ export default function CartPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Spacer so mobile content clears the fixed bar */}
+      <div className="h-44 lg:hidden" aria-hidden />
     </div>
   );
 }

@@ -6,6 +6,7 @@ interface DeliveryFeeBreakdownPanelProps {
   breakdown: DeliveryFeeBreakdown | Record<string, unknown> | null;
   deliveryFee: number;
   className?: string;
+  returnTo?: string;
 }
 
 function asBreakdown(
@@ -22,6 +23,7 @@ export function DeliveryFeeBreakdownPanel({
   breakdown,
   deliveryFee,
   className,
+  returnTo,
 }: DeliveryFeeBreakdownPanelProps) {
   const data = asBreakdown(breakdown);
 
@@ -63,7 +65,11 @@ export function DeliveryFeeBreakdownPanel({
         </p>
       )}
       <Link
-        href="/how-delivery-works"
+        href={
+          returnTo
+            ? `/how-delivery-works?returnTo=${encodeURIComponent(returnTo)}`
+            : '/how-delivery-works?from=cart'
+        }
         className="mt-2 inline-block text-sm text-primary hover:underline"
       >
         How delivery pricing works

@@ -124,6 +124,20 @@ export function useRunnerOrderDetail(orderId: string) {
     [orderId, refresh]
   );
 
+  const releaseOrder = useCallback(
+    async (reason?: string) => {
+      const res = await fetch(`/api/runner/orders/${orderId}/release`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reason ? { reason } : {}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to release order');
+      await refresh();
+    },
+    [orderId, refresh]
+  );
+
   const markItemFound = useCallback(
     async (
       itemId: string,
@@ -196,6 +210,7 @@ export function useRunnerOrderDetail(orderId: string) {
     refresh,
     acceptOrder,
     rejectOrder,
+    releaseOrder,
     markItemFound,
     markItemUnavailable,
     requestClarification,

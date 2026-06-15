@@ -42,6 +42,7 @@ export interface User {
   cluster_id: string | null;
   profile: Record<string, unknown>;
   loyalty_tier: LoyaltyTier;
+  loyalty_tier_locked?: boolean;
   total_orders: number;
   lifetime_spend: number;
   is_active: boolean;

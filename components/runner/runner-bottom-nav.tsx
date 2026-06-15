@@ -21,6 +21,9 @@ export function RunnerBottomNav() {
           const isActive =
             pathname === href ||
             (href === '/runner/dashboard' && pathname.startsWith('/runner/order/')) ||
+            (href === '/runner/shift' &&
+              (pathname.startsWith('/runner/shift') ||
+                pathname.startsWith('/runner/shifts'))) ||
             (href === '/runner/account' && pathname.startsWith('/runner/account'));
 
           return (

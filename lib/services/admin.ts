@@ -1161,6 +1161,55 @@ export async function getAdminCustomerDetail(customerId: string) {
   };
 }
 
+export async function updateAdminCustomerLoyalty(
+  adminId: string,
+  customerId: string,
+  input: {
+    loyaltyTier: string;
+    lockTier?: boolean;
+  }
+) {
+  const supabase = await createClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('users')
+    .select('loyalty_tier, loyalty_tier_locked')
+    .eq('id', customerId)
+    .single();
+
+  if (fetchError || !existing) {
+    throw new Error('Customer not found');
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({
+      loyalty_tier: input.loyaltyTier,
+      loyalty_tier_locked: input.lockTier ?? true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', customerId);
+
+  if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId,
+    action: AUDIT_ACTIONS.ADMIN_CUSTOMER_LOYALTY_UPDATED,
+    entityType: 'user',
+    entityId: customerId,
+    oldValues: {
+      loyalty_tier: existing.loyalty_tier,
+      loyalty_tier_locked: existing.loyalty_tier_locked,
+    },
+    newValues: {
+      loyalty_tier: input.loyaltyTier,
+      loyalty_tier_locked: input.lockTier ?? true,
+    },
+  });
+
+  return { success: true };
+}
+
 // ============================================
 // PAYMENTS
 // ============================================

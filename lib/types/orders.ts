@@ -1,4 +1,10 @@
-import type { OrderStatus, PaymentMethod, SourceChannel, DeliveryType } from './database';
+import type {
+  LoyaltyTier,
+  OrderStatus,
+  PaymentMethod,
+  SourceChannel,
+  DeliveryType,
+} from './database';
 
 export interface CreateOrderInput {
   items: Array<{
@@ -43,6 +49,9 @@ export interface PricingBreakdown {
   deliveryFee: number;
   discountAmount: number;
   total: number;
+  loyaltyTier?: LoyaltyTier;
+  markupPercentage?: number;
+  loyaltySavings?: number;
   totalWeightKg?: number;
   deliveryTierLabel?: string;
   deliveryTierId?: string;

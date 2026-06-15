@@ -25,6 +25,7 @@ import { runnerSourcingTargetTotal } from '@/lib/utils/order-pricing-display';
 import {
   getRunnerPriceReviewPhase,
   runnerPriceReviewBlocksHandoff,
+  runnerOrderAwaitingExternalResolution,
 } from '@/lib/utils/runner-price-review';
 import { toast } from '@/components/ui/toast';
 import Link from 'next/link';
@@ -39,6 +40,7 @@ export default function RunnerOrderPage() {
     error,
     acceptOrder,
     rejectOrder,
+    releaseOrder,
     markItemFound,
     markItemUnavailable,
     requestClarification,
@@ -53,8 +55,11 @@ export default function RunnerOrderPage() {
   >(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isReleasing, setIsReleasing] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [releaseReason, setReleaseReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [showReleaseInput, setShowReleaseInput] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
   if (isLoading) {
@@ -84,6 +89,7 @@ export default function RunnerOrderPage() {
   const allResolved = unresolvedCount === 0 && items.length > 0;
   const priceReviewPhase = getRunnerPriceReviewPhase(order);
   const hasPendingPriceReview = runnerPriceReviewBlocksHandoff(priceReviewPhase);
+  const isAwaitingExternal = runnerOrderAwaitingExternalResolution(order);
   const isCancelled = priceReviewPhase === 'cancelled' || order.status === 'cancelled';
 
   const handleAccept = async () => {
@@ -113,6 +119,32 @@ export default function RunnerOrderPage() {
     } finally {
       setIsRejecting(false);
     }
+  };
+
+  const handleRelease = async (reason?: string) => {
+    setIsReleasing(true);
+    try {
+      await releaseOrder(reason);
+      toast(
+        'success',
+        isAwaitingExternal
+          ? 'Order handed off — you can end your shift'
+          : 'Order released — you can end your shift'
+      );
+      router.push('/runner/dashboard');
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to release order');
+    } finally {
+      setIsReleasing(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!releaseReason.trim()) {
+      toast('error', 'Please enter a reason');
+      return;
+    }
+    await handleRelease(releaseReason.trim());
   };
 
   const handleComplete = async () => {
@@ -261,11 +293,88 @@ export default function RunnerOrderPage() {
 
       <RunnerPriceStatusBanner order={order} className="mb-4" />
 
-      {isCancelled && (
-        <div className="mb-4">
-          <Button variant="secondary" fullWidth onClick={() => router.push('/runner/dashboard')}>
-            Back to dashboard
+      {canAct && isAwaitingExternal && (
+        <div className="mb-4 space-y-2 rounded-card border border-slate-200 bg-white p-4">
+          <p className="text-sm text-slate-600">
+            You don&apos;t need to wait here. Hand this to another runner, or end your shift — waiting orders transfer automatically.
+          </p>
+          <Button
+            fullWidth
+            variant="secondary"
+            onClick={() => handleRelease()}
+            isLoading={isReleasing}
+          >
+            Hand off to another runner
           </Button>
+        </div>
+      )}
+
+      {isCancelled && (
+        <div className="mb-4 space-y-3">
+          <Button
+            fullWidth
+            onClick={() => handleRelease()}
+            isLoading={isReleasing}
+            disabled={order.assignment.status === 'failed'}
+          >
+            {order.assignment.status === 'failed'
+              ? 'Order already released'
+              : 'Release order & return to dashboard'}
+          </Button>
+          {order.assignment.status === 'failed' && (
+            <Button variant="secondary" fullWidth onClick={() => router.push('/runner/dashboard')}>
+              Back to dashboard
+            </Button>
+          )}
+        </div>
+      )}
+
+      {canAct && !isCancelled && !isAwaitingExternal && (
+        <div className="mb-4 rounded-card border border-slate-200 bg-white p-4">
+          {!showReleaseInput ? (
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => setShowReleaseInput(true)}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Release order
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600">
+                Only use this if you cannot complete sourcing and have not purchased parts yet.
+              </p>
+              <input
+                type="text"
+                value={releaseReason}
+                onChange={(e) => setReleaseReason(e.target.value)}
+                placeholder="Reason for releasing..."
+                className="w-full rounded-input border border-slate-300 px-3 py-2 text-sm"
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowReleaseInput(false);
+                    setReleaseReason('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  size="sm"
+                  onClick={handleWithdraw}
+                  isLoading={isReleasing}
+                >
+                  Confirm release
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

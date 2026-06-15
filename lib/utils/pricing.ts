@@ -1,6 +1,11 @@
 import type { LoyaltyTier } from '@/lib/types/database';
 import type { PricingBreakdown } from '@/lib/types/orders';
 import type { DeliveryPricingConfig } from '@/lib/types/delivery';
+import {
+  calculateLoyaltySavings,
+  type LoyaltyPricingThresholds,
+} from '@/lib/utils/loyalty';
+import { getDefaultLoyaltyThresholds } from '@/lib/services/loyalty-config';
 import { config } from '@/lib/config';
 import { getDefaultDeliveryPricingConfig } from '@/lib/constants/delivery-tiers';
 import {
@@ -8,7 +13,10 @@ import {
   computeTotalWeightKg,
 } from '@/lib/utils/delivery-pricing';
 
-export function getMarkupPercentage(loyaltyTier: LoyaltyTier): number {
+export function getMarkupPercentage(
+  loyaltyTier: LoyaltyTier,
+  thresholds: LoyaltyPricingThresholds = getDefaultLoyaltyThresholds()
+): number {
   const base = config.business.defaultMarkupPercentage;
 
   if (!config.features.loyaltyDiscounts) {
@@ -17,9 +25,9 @@ export function getMarkupPercentage(loyaltyTier: LoyaltyTier): number {
 
   switch (loyaltyTier) {
     case 'partner':
-      return base - config.loyalty.partnerDiscountPercentage;
+      return base - thresholds.partnerDiscountPercentage;
     case 'trusted':
-      return base - config.loyalty.trustedDiscountPercentage;
+      return base - thresholds.trustedDiscountPercentage;
     default:
       return base;
   }
@@ -28,14 +36,15 @@ export function getMarkupPercentage(loyaltyTier: LoyaltyTier): number {
 export function calculatePricing(
   items: Array<{ price: number; quantity: number; weightKg?: number | null }>,
   loyaltyTier: LoyaltyTier = 'new',
-  deliveryConfig: DeliveryPricingConfig = getDefaultDeliveryPricingConfig()
+  deliveryConfig: DeliveryPricingConfig = getDefaultDeliveryPricingConfig(),
+  thresholds: LoyaltyPricingThresholds = getDefaultLoyaltyThresholds()
 ): PricingBreakdown {
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  const markupPercentage = getMarkupPercentage(loyaltyTier);
+  const markupPercentage = getMarkupPercentage(loyaltyTier, thresholds);
   const markupAmount = Math.round(subtotal * (markupPercentage / 100));
 
   const weightItems = items
@@ -68,6 +77,7 @@ export function calculatePricing(
   }
 
   const discountAmount = 0;
+  const loyaltySavings = calculateLoyaltySavings(subtotal, loyaltyTier, thresholds);
   const total = subtotal + markupAmount + deliveryFee - discountAmount;
 
   return {
@@ -76,6 +86,9 @@ export function calculatePricing(
     deliveryFee,
     discountAmount,
     total,
+    loyaltyTier,
+    markupPercentage,
+    loyaltySavings,
     totalWeightKg,
     deliveryTierLabel,
     deliveryTierId,

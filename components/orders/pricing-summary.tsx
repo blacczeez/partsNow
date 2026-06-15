@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/utils/format';
+import { getLoyaltyServiceFeeLabel } from '@/lib/utils/loyalty';
 import type { PricingBreakdown } from '@/lib/types/orders';
 
 interface PricingSummaryProps {
@@ -20,8 +21,24 @@ export function PricingSummary({ pricing, variant = 'checkout' }: PricingSummary
       </div>
       {showServiceFee && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-500">Service fee</span>
+          <span className="text-slate-500">
+            {pricing.loyaltyTier
+              ? getLoyaltyServiceFeeLabel(
+                  pricing.loyaltyTier,
+                  undefined,
+                  pricing.markupPercentage
+                )
+              : 'Service fee'}
+          </span>
           <span className="text-slate-700">{formatCurrency(pricing.markupAmount)}</span>
+        </div>
+      )}
+      {showServiceFee && (pricing.loyaltySavings ?? 0) > 0 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-success">Loyalty savings</span>
+          <span className="text-success">
+            -{formatCurrency(pricing.loyaltySavings!)}
+          </span>
         </div>
       )}
       {pricing.totalWeightKg != null && (

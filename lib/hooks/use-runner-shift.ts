@@ -76,7 +76,12 @@ export function useRunnerShift() {
       if (!res.ok) throw new Error(data.error || 'Failed to end shift');
 
       await fetchState();
-      return data.shift as RunnerShift;
+      return {
+        shift: data.shift as RunnerShift,
+        transferSummary: data.transferSummary as
+          | { transferred: number; reassigned: number; orphaned: number }
+          | undefined,
+      };
     },
     [fetchState]
   );

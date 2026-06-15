@@ -33,6 +33,7 @@ export const AUDIT_ACTIONS = {
   RIDER_PICKUP_CONFIRMED: 'rider.pickup_confirmed',
   RIDER_DELIVERY_COMPLETED: 'rider.delivery_completed',
   USER_COD_DISABLED: 'user.cod_disabled',
+  ADMIN_CUSTOMER_LOYALTY_UPDATED: 'admin.customer_loyalty_updated',
   VENDOR_CREATED: 'vendor.created',
   VENDOR_UPDATED: 'vendor.updated',
   PART_CREATED: 'part.created',

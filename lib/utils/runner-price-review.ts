@@ -50,3 +50,29 @@ export function orderNeedsRunnerPriceReviewPolling(
   const phase = getRunnerPriceReviewPhase(order);
   return phase === 'admin_review' || phase === 'customer_decision';
 }
+
+/** Runner is waiting on admin or customer — no sourcing action required. */
+export function runnerOrderAwaitingExternalResolution(order: {
+  price_review_status: string;
+}): boolean {
+  return (
+    order.price_review_status === 'pending' ||
+    order.price_review_status === 'awaiting_customer'
+  );
+}
+
+/** Orders that still need runner action before clocking out. */
+export function runnerOrderBlocksShiftEnd(order: {
+  assignment_status: string;
+  price_review_status: string;
+}): boolean {
+  if (order.assignment_status === 'assigned') return true;
+  if (!['accepted', 'in_progress'].includes(order.assignment_status)) return false;
+  return !runnerOrderAwaitingExternalResolution(order);
+}
+
+export function countRunnerShiftBlockingOrders(
+  orders: Array<{ assignment_status: string; price_review_status: string }>
+): number {
+  return orders.filter(runnerOrderBlocksShiftEnd).length;
+}

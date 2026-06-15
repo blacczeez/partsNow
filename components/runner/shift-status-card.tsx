@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, AlertTriangle, Wallet, Package, Clock } from 'lucide-react';
+import { Play, AlertTriangle, Wallet, Package, Clock, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils/format';
@@ -10,8 +10,11 @@ interface ShiftStatusCardProps {
   shift: RunnerShift | null;
   float: RunnerFloat | null;
   activeOrderCount?: number;
+  /** Orders waiting on admin/customer — do not block end shift */
+  awaitingOrderCount?: number;
   isStarting: boolean;
   onStartShift: () => void;
+  onEndShift?: () => void;
 }
 
 function formatDuration(startedAt: string): string {
@@ -27,11 +30,14 @@ export function ShiftStatusCard({
   shift,
   float,
   activeOrderCount = 0,
+  awaitingOrderCount = 0,
   isStarting,
   onStartShift,
+  onEndShift,
 }: ShiftStatusCardProps) {
   const minFloat = 50000;
   const hasInsufficientFloat = !float || float.balance < minFloat;
+  const canEndShift = activeOrderCount === 0;
 
   if (!shift) {
     return (
@@ -96,6 +102,11 @@ export function ShiftStatusCard({
             <p className="text-xs text-slate-500">Active</p>
             <p className="text-sm font-semibold text-slate-900">
               {activeOrderCount}
+              {awaitingOrderCount > 0 && (
+                <span className="block text-xs font-normal text-slate-500">
+                  +{awaitingOrderCount} waiting
+                </span>
+              )}
             </p>
           </div>
           <div className="rounded-button bg-white p-3 text-center shadow-sm">
@@ -111,6 +122,27 @@ export function ShiftStatusCard({
             </p>
           </div>
         </div>
+
+        {onEndShift && (
+          <div className="mt-4 border-t border-success/20 pt-4">
+            {!canEndShift && (
+              <p className="mb-2 text-center text-xs text-slate-500">
+                {awaitingOrderCount > 0
+                  ? 'Finish orders that need sourcing or handoff. Waiting orders will transfer when you end shift.'
+                  : 'Complete or release active orders before ending your shift'}
+              </p>
+            )}
+            <Button
+              variant="destructive"
+              fullWidth
+              onClick={onEndShift}
+              disabled={!canEndShift}
+            >
+              <Square className="mr-2 h-4 w-4" />
+              End Shift
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

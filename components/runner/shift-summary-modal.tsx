@@ -13,6 +13,8 @@ interface ShiftSummaryModalProps {
   shift: RunnerShift;
   float: RunnerFloat | null;
   onConfirmEnd: (notes?: string) => Promise<void>;
+  footerHint?: string;
+  confirmLabel?: string;
 }
 
 function formatDuration(startedAt: string): string {
@@ -30,6 +32,8 @@ export function ShiftSummaryModal({
   shift,
   float,
   onConfirmEnd,
+  footerHint,
+  confirmLabel = 'End Shift',
 }: ShiftSummaryModalProps) {
   const [notes, setNotes] = useState('');
   const [isEnding, setIsEnding] = useState(false);
@@ -122,6 +126,10 @@ export function ShiftSummaryModal({
           />
         </div>
 
+        {footerHint && (
+          <p className="text-sm text-slate-500">{footerHint}</p>
+        )}
+
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1" onClick={onClose}>
             Cancel
@@ -132,7 +140,7 @@ export function ShiftSummaryModal({
             onClick={handleEnd}
             isLoading={isEnding}
           >
-            End Shift
+            {confirmLabel}
           </Button>
         </div>
       </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, Wallet, Package, TrendingUp, Loader2 } from 'lucide-react';
+import { Clock, Wallet, Package, TrendingUp, Loader2, History } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShiftSummaryModal } from '@/components/runner/shift-summary-modal';
@@ -33,7 +34,16 @@ export default function ShiftPage() {
   if (!shift) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Shift</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-slate-900">Shift</h1>
+          <Link
+            href="/runner/shifts"
+            className="flex items-center gap-1.5 rounded-button border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <History className="h-4 w-4" />
+            History
+          </Link>
+        </div>
 
         <Card>
           <CardContent className="p-5">
@@ -67,8 +77,17 @@ export default function ShiftPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Current Shift</h1>
+    <div className="flex flex-col gap-6 pb-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">Current Shift</h1>
+        <Link
+          href="/runner/shifts"
+          className="flex items-center gap-1.5 rounded-button border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <History className="h-4 w-4" />
+          History
+        </Link>
+      </div>
 
       {/* Shift Status */}
       <Card className="border-success/30">

@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
-import type { OrderStatus } from '@/lib/types/database';
+import { toast } from '@/components/ui/toast';
+import type { LoyaltyTier, OrderStatus } from '@/lib/types/database';
 
 interface CustomerDetailSheetProps {
   customerId: string | null;
@@ -19,7 +21,8 @@ interface CustomerDetail {
   phone: string;
   email: string | null;
   user_type: string;
-  loyalty_tier: string;
+  loyalty_tier: LoyaltyTier;
+  loyalty_tier_locked?: boolean;
   total_orders: number;
   lifetime_spend: number;
   is_active: boolean;
@@ -41,18 +44,47 @@ const tierVariants: Record<string, 'default' | 'primary' | 'success' | 'warning'
   partner: 'success',
 };
 
+const LOYALTY_TIERS: LoyaltyTier[] = ['new', 'verified', 'trusted', 'partner'];
+
 export function CustomerDetailSheet({ customerId, isOpen, onClose }: CustomerDetailSheetProps) {
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [tierDraft, setTierDraft] = useState<LoyaltyTier>('new');
+  const [lockTier, setLockTier] = useState(true);
+  const [isSavingTier, setIsSavingTier] = useState(false);
 
   useEffect(() => {
     if (!customerId || !isOpen) return;
     setIsLoading(true);
     fetch(`/api/admin/customers/${customerId}`)
       .then((r) => r.json())
-      .then(setCustomer)
+      .then((data: CustomerDetail) => {
+        setCustomer(data);
+        setTierDraft(data.loyalty_tier);
+        setLockTier(data.loyalty_tier_locked ?? false);
+      })
       .finally(() => setIsLoading(false));
   }, [customerId, isOpen]);
+
+  async function handleSaveLoyalty() {
+    if (!customerId) return;
+    setIsSavingTier(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}/loyalty`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loyaltyTier: tierDraft, lockTier }),
+      });
+      if (!res.ok) throw new Error('Failed to update loyalty');
+      toast('success', 'Loyalty tier updated');
+      const refreshed = await fetch(`/api/admin/customers/${customerId}`).then((r) => r.json());
+      setCustomer(refreshed);
+    } catch {
+      toast('error', 'Failed to update loyalty tier');
+    } finally {
+      setIsSavingTier(false);
+    }
+  }
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Customer Details">
@@ -77,6 +109,37 @@ export function CustomerDetailSheet({ customerId, isOpen, onClose }: CustomerDet
             <p className="mt-1 text-xs text-slate-400">
               Type: {customer.user_type} | Joined: {new Date(customer.created_at).toLocaleDateString()}
             </p>
+          </div>
+
+          <div className="rounded-card border border-slate-200 p-3">
+            <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Loyalty tier</h4>
+            <div className="flex flex-wrap items-end gap-2">
+              <select
+                value={tierDraft}
+                onChange={(e) => setTierDraft(e.target.value as LoyaltyTier)}
+                className="rounded-input border border-slate-300 px-3 py-2 text-sm"
+              >
+                {LOYALTY_TIERS.map((tier) => (
+                  <option key={tier} value={tier}>
+                    {tier}
+                  </option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={lockTier}
+                  onChange={(e) => setLockTier(e.target.checked)}
+                />
+                Lock tier (skip auto-promotion)
+              </label>
+              <Button size="sm" isLoading={isSavingTier} onClick={handleSaveLoyalty}>
+                Save
+              </Button>
+            </div>
+            {customer.loyalty_tier_locked && (
+              <p className="mt-2 text-xs text-amber-700">Tier is manually locked</p>
+            )}
           </div>
 
           {/* Stats */}

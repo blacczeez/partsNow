@@ -19,6 +19,7 @@ const CUSTOMER_PREFIXES = [
   '/wallet',
   '/account',
   '/how-delivery-works',
+  '/how-loyalty-works',
 ];
 
 /** Default landing path after login (or when leaving auth routes). */

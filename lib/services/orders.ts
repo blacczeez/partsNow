@@ -6,6 +6,7 @@ import {
   isCodAllowedForCustomer,
 } from '@/lib/utils/pricing';
 import { getDeliveryPricingConfig } from '@/lib/services/delivery-config';
+import { getLoyaltyThresholds } from '@/lib/services/loyalty-config';
 import {
   calculateDeliveryFee,
   toDeliveryFeeBreakdown,
@@ -61,7 +62,8 @@ export async function createOrder(
   );
 
   const loyaltyTier = customer.loyalty_tier as LoyaltyTier;
-  const markupPercentage = getMarkupPercentage(loyaltyTier);
+  const loyaltyThresholds = await getLoyaltyThresholds();
+  const markupPercentage = getMarkupPercentage(loyaltyTier, loyaltyThresholds);
   const deliveryConfig = await getDeliveryPricingConfig();
   const itemsWithWeight = await resolveOrderItemWeights(supabase, input.items);
   const pricing = calculatePricing(
@@ -71,7 +73,8 @@ export async function createOrder(
       weightKg: item.weightKg,
     })),
     loyaltyTier,
-    deliveryConfig
+    deliveryConfig,
+    loyaltyThresholds
   );
   const deliveryBreakdown =
     pricing.totalWeightKg != null
@@ -219,15 +222,6 @@ export async function createOrder(
       })
       .eq('id', order.id);
 
-    // Update customer stats
-    await supabase
-      .from('users')
-      .update({
-        total_orders: customer.total_orders + 1,
-        lifetime_spend: customer.lifetime_spend + pricing.total,
-      })
-      .eq('id', customerId);
-
     // Auto-assign runner
     try {
       await assignRunner(order.id, clusterId);
@@ -271,14 +265,6 @@ export async function createOrder(
         confirmed_at: new Date().toISOString(),
       })
       .eq('id', order.id);
-
-    // Update customer stats
-    await supabase
-      .from('users')
-      .update({
-        total_orders: customer.total_orders + 1,
-      })
-      .eq('id', customerId);
 
     // Auto-assign runner
     try {

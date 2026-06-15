@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Loader2, Scale, Truck, MapPin } from 'lucide-react';
+import { Suspense, useEffect, useState } from 'react';
+import { Loader2, Scale, Truck, MapPin } from 'lucide-react';
+import { PageBackButton } from '@/components/layout/page-back-button';
 import { formatCurrency } from '@/lib/utils/format';
 import type { DeliveryWeightTier } from '@/lib/types/delivery';
 
@@ -13,6 +13,20 @@ interface DeliveryConfigResponse {
 }
 
 export default function HowDeliveryWorksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <HowDeliveryWorksContent />
+    </Suspense>
+  );
+}
+
+function HowDeliveryWorksContent() {
   const [config, setConfig] = useState<DeliveryConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,9 +47,7 @@ export default function HowDeliveryWorksPage() {
   return (
     <div className="px-4 py-6">
       <div className="mb-6 flex items-center gap-3">
-        <Link href="/" className="rounded-button p-1 hover:bg-slate-100">
-          <ArrowLeft className="h-5 w-5 text-slate-600" />
-        </Link>
+        <PageBackButton fallbackHref="/cart" />
         <h1 className="text-xl font-bold text-slate-900">How delivery pricing works</h1>
       </div>
 

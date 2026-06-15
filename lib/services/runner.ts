@@ -14,6 +14,9 @@ import {
   notifyClarificationRequest,
 } from './notifications';
 import { recordVendorPartPrice } from './vendor-parts';
+import { shiftDurationMinutes } from '@/lib/utils/shift';
+import { runnerAssignmentReleaseAction } from '@/lib/utils/runner-assignments';
+import { runnerOrderAwaitingExternalResolution } from '@/lib/utils/runner-price-review';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import type {
@@ -147,13 +150,20 @@ export async function startShift(
 export async function endShift(
   runnerId: string,
   notes?: string
-): Promise<RunnerShift> {
+): Promise<{
+  shift: RunnerShift;
+  transferSummary: { transferred: number; reassigned: number; orphaned: number };
+}> {
   const supabase = await createClient();
 
   const shift = await getActiveShift(runnerId);
   if (!shift) {
     throw new Error('No active shift found');
   }
+
+  await cleanupStaleRunnerAssignments(runnerId);
+
+  const transferSummary = await transferAwaitingOrdersOnShiftEnd(runnerId);
 
   // Check for active assignments
   const { data: activeAssignments } = await supabase
@@ -164,7 +174,9 @@ export async function endShift(
     .in('status', ['assigned', 'accepted', 'in_progress']);
 
   if (activeAssignments && activeAssignments.length > 0) {
-    throw new Error('You have active orders. Complete or reject them before ending your shift');
+    throw new Error(
+      'You still have orders that need sourcing or handoff. Complete them or release them before ending your shift.'
+    );
   }
 
   // Get current float
@@ -192,10 +204,216 @@ export async function endShift(
       shiftId: shift.id,
       endingFloat: float?.balance ?? 0,
       notes: notes ?? null,
+      ordersTransferred: transferSummary.transferred,
+      ordersOrphaned: transferSummary.orphaned,
     }),
   });
 
-  return updated as RunnerShift;
+  return { shift: updated as RunnerShift, transferSummary };
+}
+
+export interface RunnerShiftListItem {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  orders_completed: number;
+  total_sourced: number;
+  commission_earned: number;
+  starting_float: number;
+  ending_float: number | null;
+  is_reconciled: boolean;
+  discrepancy_amount: number;
+  cluster_name: string;
+  is_active: boolean;
+  duration_minutes: number;
+}
+
+export interface RunnerShiftOrderActivity {
+  order_id: string;
+  order_number: string;
+  order_status: string;
+  assignment_status: string;
+  assigned_at: string;
+  completed_at: string | null;
+  rejection_reason: string | null;
+  total_sourced: number;
+}
+
+export interface RunnerShiftDetail extends RunnerShiftListItem {
+  discrepancy_notes: string | null;
+  /** Live wallet balance while shift is active; null after clock-out. */
+  current_float: number | null;
+  float_spent: number | null;
+  orders_per_hour: number | null;
+  avg_sourced_per_order: number | null;
+  assignments_total: number;
+  assignments_completed: number;
+  assignments_rejected: number;
+  assignments_in_progress: number;
+  orders: RunnerShiftOrderActivity[];
+}
+
+export async function getRunnerShiftHistory(
+  runnerId: string,
+  options?: { page?: number; limit?: number }
+): Promise<{ shifts: RunnerShiftListItem[]; total: number }> {
+  const supabase = await createClient();
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 20;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
+    .from('runner_shifts')
+    .select('*, clusters:cluster_id(name)', { count: 'exact' })
+    .eq('runner_id', runnerId)
+    .order('started_at', { ascending: false })
+    .range(from, to);
+
+  if (error) throw new Error(error.message);
+
+  const shifts: RunnerShiftListItem[] = (data ?? []).map((row) => {
+    const cluster = row.clusters as { name: string } | null;
+    return {
+      id: row.id,
+      started_at: row.started_at,
+      ended_at: row.ended_at,
+      orders_completed: row.orders_completed,
+      total_sourced: Number(row.total_sourced),
+      commission_earned: Number(row.commission_earned),
+      starting_float: Number(row.starting_float),
+      ending_float: row.ending_float != null ? Number(row.ending_float) : null,
+      is_reconciled: row.is_reconciled,
+      discrepancy_amount: Number(row.discrepancy_amount ?? 0),
+      cluster_name: cluster?.name ?? 'Unknown market',
+      is_active: row.ended_at == null,
+      duration_minutes: shiftDurationMinutes(row.started_at, row.ended_at),
+    };
+  });
+
+  return { shifts, total: count ?? shifts.length };
+}
+
+export async function getRunnerShiftDetail(
+  runnerId: string,
+  shiftId: string
+): Promise<RunnerShiftDetail | null> {
+  const supabase = await createClient();
+
+  const { data: shift, error } = await supabase
+    .from('runner_shifts')
+    .select('*, clusters:cluster_id(name)')
+    .eq('id', shiftId)
+    .eq('runner_id', runnerId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!shift) return null;
+
+  const windowEnd = shift.ended_at ?? new Date().toISOString();
+
+  const { data: assignments } = await supabase
+    .from('order_assignments')
+    .select(
+      `
+      order_id,
+      status,
+      assigned_at,
+      completed_at,
+      rejection_reason,
+      orders:order_id (
+        order_number,
+        status,
+        order_items (vendor_price, is_found)
+      )
+    `
+    )
+    .eq('assignee_id', runnerId)
+    .eq('role', 'runner')
+    .gte('assigned_at', shift.started_at)
+    .lte('assigned_at', windowEnd)
+    .order('assigned_at', { ascending: false });
+
+  const orders: RunnerShiftOrderActivity[] = (assignments ?? []).map((row) => {
+    const order = row.orders as unknown as {
+      order_number: string;
+      status: string;
+      order_items: Array<{ vendor_price: number | null; is_found: boolean }>;
+    } | null;
+    const items = order?.order_items ?? [];
+    const totalSourced = items
+      .filter((item) => item.is_found && item.vendor_price != null)
+      .reduce((sum, item) => sum + Number(item.vendor_price), 0);
+
+    return {
+      order_id: row.order_id,
+      order_number: order?.order_number ?? '—',
+      order_status: order?.status ?? 'unknown',
+      assignment_status: row.status,
+      assigned_at: row.assigned_at,
+      completed_at: row.completed_at,
+      rejection_reason: row.rejection_reason,
+      total_sourced: totalSourced,
+    };
+  });
+
+  const assignmentsCompleted = orders.filter((o) => o.assignment_status === 'completed').length;
+  const assignmentsRejected = orders.filter((o) => o.assignment_status === 'failed').length;
+  const assignmentsInProgress = orders.filter((o) =>
+    ['assigned', 'accepted', 'in_progress'].includes(o.assignment_status)
+  ).length;
+
+  const durationMinutes = shiftDurationMinutes(shift.started_at, shift.ended_at);
+  const ordersCompleted = shift.orders_completed;
+  const totalSourced = Number(shift.total_sourced);
+  const startingFloat = Number(shift.starting_float);
+  const endingFloat =
+    shift.ending_float != null ? Number(shift.ending_float) : null;
+  const cluster = shift.clusters as { name: string } | null;
+  const isActive = shift.ended_at == null;
+
+  let currentFloat: number | null = null;
+  if (isActive) {
+    const float = await getRunnerFloat(runnerId);
+    currentFloat = float?.balance ?? null;
+  }
+
+  const floatSpent =
+    endingFloat != null
+      ? Math.max(0, startingFloat - endingFloat)
+      : currentFloat != null
+        ? Math.max(0, startingFloat - currentFloat)
+        : null;
+
+  return {
+    id: shift.id,
+    started_at: shift.started_at,
+    ended_at: shift.ended_at,
+    orders_completed: ordersCompleted,
+    total_sourced: totalSourced,
+    commission_earned: Number(shift.commission_earned),
+    starting_float: startingFloat,
+    ending_float: endingFloat,
+    is_reconciled: shift.is_reconciled,
+    discrepancy_amount: Number(shift.discrepancy_amount ?? 0),
+    discrepancy_notes: shift.discrepancy_notes,
+    cluster_name: cluster?.name ?? 'Unknown market',
+    is_active: isActive,
+    duration_minutes: durationMinutes,
+    current_float: currentFloat,
+    float_spent: floatSpent,
+    orders_per_hour:
+      durationMinutes > 0 && ordersCompleted > 0
+        ? Math.round((ordersCompleted / durationMinutes) * 60 * 10) / 10
+        : null,
+    avg_sourced_per_order:
+      ordersCompleted > 0 ? Math.round(totalSourced / ordersCompleted) : null,
+    assignments_total: orders.length,
+    assignments_completed: assignmentsCompleted,
+    assignments_rejected: assignmentsRejected,
+    assignments_in_progress: assignmentsInProgress,
+    orders,
+  };
 }
 
 // ===== Orders =====
@@ -220,6 +438,8 @@ export interface RunnerOrderSummary {
 export async function getRunnerOrders(runnerId: string): Promise<RunnerOrderSummary[]> {
   const supabase = await createClient();
 
+  await cleanupStaleRunnerAssignments(runnerId);
+
   // Get active assignments for this runner
   const { data: assignments, error: assignError } = await supabase
     .from('order_assignments')
@@ -242,8 +462,18 @@ export async function getRunnerOrders(runnerId: string): Promise<RunnerOrderSumm
 
   if (ordersError || !orders) return [];
 
-  // Merge assignment data
-  const assignmentMap = new Map(assignments.map((a) => [a.order_id, a]));
+  // Merge assignment data — use latest active assignment per order
+  const assignmentMap = new Map<string, (typeof assignments)[0]>();
+  for (const assignment of assignments) {
+    const existing = assignmentMap.get(assignment.order_id);
+    if (
+      !existing ||
+      new Date(assignment.assigned_at).getTime() >
+        new Date(existing.assigned_at).getTime()
+    ) {
+      assignmentMap.set(assignment.order_id, assignment);
+    }
+  }
 
   return orders.map((order) => {
     const assignment = assignmentMap.get(order.id)!;
@@ -275,6 +505,8 @@ export async function getRunnerOrderDetail(
   orderId: string
 ): Promise<RunnerOrderDetail> {
   const supabase = await createClient();
+
+  await cleanupStaleRunnerAssignments(runnerId);
 
   // Include failed assignments so runner can see cancellation after price decline
   const { data: assignment, error: assignError } = await supabase
@@ -331,17 +563,100 @@ export async function getRunnerOrderDetail(
 
 // ===== Order Actions =====
 
-export async function acceptOrder(runnerId: string, orderId: string): Promise<void> {
-  const supabase = await createClient();
+type RunnerAssignmentStatus = OrderAssignment['status'];
 
-  // Get assignment
-  const { data: assignment } = await supabase
+async function findRunnerAssignment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  runnerId: string,
+  orderId: string,
+  statuses: RunnerAssignmentStatus[]
+): Promise<{ id: string; status: RunnerAssignmentStatus } | null> {
+  const { data, error } = await supabase
     .from('order_assignments')
     .select('id, status')
     .eq('assignee_id', runnerId)
     .eq('order_id', orderId)
     .eq('role', 'runner')
-    .single();
+    .in('status', statuses)
+    .order('assigned_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data as { id: string; status: RunnerAssignmentStatus } | null;
+}
+
+const ACTIVE_RUNNER_ASSIGNMENT_STATUSES = ['assigned', 'accepted', 'in_progress'] as const;
+
+type ActiveRunnerAssignmentRow = {
+  id: string;
+  order_id: string;
+  orders:
+    | { status: string; price_review_status: string | null }
+    | { status: string; price_review_status: string | null }[];
+};
+
+function assignmentOrderMeta(
+  row: ActiveRunnerAssignmentRow
+): { status: string; price_review_status: string | null } {
+  return Array.isArray(row.orders) ? row.orders[0] : row.orders;
+}
+
+/**
+ * Close runner assignments that are still active but tied to orders that have
+ * already been cancelled, completed, or otherwise moved past sourcing.
+ */
+export async function cleanupStaleRunnerAssignments(runnerId: string): Promise<number> {
+  const supabase = await createClient();
+
+  const { data: rows, error } = await supabase
+    .from('order_assignments')
+    .select('id, order_id, orders!inner(status, price_review_status)')
+    .eq('assignee_id', runnerId)
+    .eq('role', 'runner')
+    .in('status', [...ACTIVE_RUNNER_ASSIGNMENT_STATUSES]);
+
+  if (error) throw new Error(error.message);
+  if (!rows?.length) return 0;
+
+  let released = 0;
+  const now = new Date().toISOString();
+
+  for (const row of rows as ActiveRunnerAssignmentRow[]) {
+    const order = assignmentOrderMeta(row);
+    const action = runnerAssignmentReleaseAction(
+      order.status,
+      order.price_review_status
+    );
+    if (!action) continue;
+
+    const update =
+      action === 'complete'
+        ? { status: 'completed' as const, completed_at: now }
+        : {
+            status: 'failed' as const,
+            completed_at: now,
+            rejection_reason:
+              order.price_review_status === 'cancelled'
+                ? 'Order cancelled after price review'
+                : `Order ${order.status} — assignment auto-released`,
+          };
+
+    const { error: updateError } = await supabase
+      .from('order_assignments')
+      .update(update)
+      .eq('id', row.id);
+
+    if (!updateError) released++;
+  }
+
+  return released;
+}
+
+export async function acceptOrder(runnerId: string, orderId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, ['assigned']);
 
   if (!assignment) throw new Error('Order not assigned to you');
   if (assignment.status !== 'assigned') throw new Error('Order already accepted or completed');
@@ -401,13 +716,7 @@ export async function rejectOrder(
 ): Promise<void> {
   const supabase = await createClient();
 
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('id, status')
-    .eq('assignee_id', runnerId)
-    .eq('order_id', orderId)
-    .eq('role', 'runner')
-    .single();
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, ['assigned']);
 
   if (!assignment) throw new Error('Order not assigned to you');
   if (assignment.status !== 'assigned') throw new Error('Can only reject pending assignments');
@@ -430,7 +739,9 @@ export async function rejectOrder(
       .single();
 
     if (order) {
-      await assignRunner(orderId, order.cluster_id);
+      await assignRunner(orderId, order.cluster_id, {
+        excludeRunnerIds: [runnerId],
+      });
     }
   }
 
@@ -443,6 +754,240 @@ export async function rejectOrder(
   });
 }
 
+/** Release a stuck assignment — cancelled orders, or withdraw before sourcing parts. */
+export async function transferRunnerOrder(
+  runnerId: string,
+  orderId: string,
+  reason: string
+): Promise<{ reassigned: boolean }> {
+  const supabase = await createClient();
+
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
+    'assigned',
+    'accepted',
+    'in_progress',
+  ]);
+
+  if (!assignment) throw new Error('Order not assigned to you');
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('status, price_review_status, cluster_id')
+    .eq('id', orderId)
+    .single();
+
+  if (orderError || !order) throw new Error('Order not found');
+
+  const { error: failError } = await supabase
+    .from('order_assignments')
+    .update({
+      status: 'failed',
+      completed_at: new Date().toISOString(),
+      rejection_reason: reason,
+    })
+    .eq('id', assignment.id);
+  throwIfSupabaseError(failError, 'Failed to transfer assignment');
+
+  let reassigned = false;
+  if (config.runner.autoReassignEnabled && order.cluster_id) {
+    const assignmentId = await assignRunner(orderId, order.cluster_id, {
+      excludeRunnerIds: [runnerId],
+    });
+    reassigned = assignmentId !== null;
+  }
+
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_ORDER_REJECTED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Runner transferred order to another runner', {
+      reason,
+      reassigned,
+      priceReviewStatus: order.price_review_status,
+    }),
+  });
+
+  return { reassigned };
+}
+
+/**
+ * When a runner clocks out, orders waiting on admin/customer are transferred
+ * so the runner is not blocked. If no other runner is on shift, the order
+ * stays in sourcing until the next runner clocks in.
+ */
+export async function transferAwaitingOrdersOnShiftEnd(
+  runnerId: string
+): Promise<{ transferred: number; reassigned: number; orphaned: number }> {
+  const supabase = await createClient();
+
+  const { data: rows, error } = await supabase
+    .from('order_assignments')
+    .select('id, order_id, orders!inner(price_review_status)')
+    .eq('assignee_id', runnerId)
+    .eq('role', 'runner')
+    .in('status', [...ACTIVE_RUNNER_ASSIGNMENT_STATUSES]);
+
+  if (error) throw new Error(error.message);
+  if (!rows?.length) {
+    return { transferred: 0, reassigned: 0, orphaned: 0 };
+  }
+
+  let transferred = 0;
+  let reassigned = 0;
+  let orphaned = 0;
+
+  for (const row of rows as Array<{
+    id: string;
+    order_id: string;
+    orders:
+      | { price_review_status: string | null }
+      | { price_review_status: string | null }[];
+  }>) {
+    const orderMeta = Array.isArray(row.orders) ? row.orders[0] : row.orders;
+    if (!runnerOrderAwaitingExternalResolution({ price_review_status: orderMeta.price_review_status ?? '' })) {
+      continue;
+    }
+
+    const result = await transferRunnerOrder(
+      runnerId,
+      row.order_id,
+      'Runner ended shift while awaiting admin/customer'
+    );
+    transferred++;
+    if (result.reassigned) reassigned++;
+    else orphaned++;
+  }
+
+  return { transferred, reassigned, orphaned };
+}
+
+export async function releaseRunnerOrder(
+  runnerId: string,
+  orderId: string,
+  reason?: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
+    'assigned',
+    'accepted',
+    'in_progress',
+  ]);
+
+  if (!assignment) throw new Error('Order not assigned to you');
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('status, price_review_status, cluster_id')
+    .eq('id', orderId)
+    .single();
+
+  if (orderError || !order) throw new Error('Order not found');
+
+  const autoRelease = runnerAssignmentReleaseAction(
+    order.status,
+    order.price_review_status
+  );
+
+  if (autoRelease) {
+    const now = new Date().toISOString();
+    const update =
+      autoRelease === 'complete'
+        ? { status: 'completed' as const, completed_at: now }
+        : {
+            status: 'failed' as const,
+            completed_at: now,
+            rejection_reason:
+              order.price_review_status === 'cancelled'
+                ? 'Order cancelled after price review'
+                : `Order ${order.status}`,
+          };
+
+    const { error: releaseError } = await supabase
+      .from('order_assignments')
+      .update(update)
+      .eq('id', assignment.id);
+    throwIfSupabaseError(releaseError, 'Failed to release assignment');
+
+    await writeAuditLog({
+      userId: runnerId,
+      action: AUDIT_ACTIONS.RUNNER_ORDER_REJECTED,
+      entityType: 'order',
+      entityId: orderId,
+      newValues: auditDetails('Runner released stale order assignment', {
+        orderStatus: order.status,
+      }),
+    });
+    return;
+  }
+
+  if (runnerOrderAwaitingExternalResolution(order)) {
+    await transferRunnerOrder(
+      runnerId,
+      orderId,
+      reason?.trim() || 'Runner handed off while awaiting admin/customer'
+    );
+    return;
+  }
+
+  if (assignment.status === 'assigned') {
+    if (!reason?.trim()) throw new Error('Reason is required');
+    await rejectOrder(runnerId, orderId, reason.trim());
+    return;
+  }
+
+  if (!reason?.trim()) {
+    throw new Error('Reason is required to release an order you have accepted');
+  }
+
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('is_found')
+    .eq('order_id', orderId);
+
+  if (items?.some((item) => item.is_found)) {
+    throw new Error(
+      'Cannot release after sourcing parts. Complete handoff or contact ops.'
+    );
+  }
+
+  const { error: failError } = await supabase
+    .from('order_assignments')
+    .update({
+      status: 'failed',
+      completed_at: new Date().toISOString(),
+      rejection_reason: reason.trim(),
+    })
+    .eq('id', assignment.id);
+  throwIfSupabaseError(failError, 'Failed to release assignment');
+
+  if (order.status === 'sourcing') {
+    const { error: revertError } = await supabase
+      .from('orders')
+      .update({
+        status: 'confirmed',
+        sourcing_started_at: null,
+      })
+      .eq('id', orderId);
+    throwIfSupabaseError(revertError, 'Failed to revert order status');
+  }
+
+  if (config.runner.autoReassignEnabled && order.cluster_id) {
+    await assignRunner(orderId, order.cluster_id, {
+      excludeRunnerIds: [runnerId],
+    });
+  }
+
+  await writeAuditLog({
+    userId: runnerId,
+    action: AUDIT_ACTIONS.RUNNER_ORDER_REJECTED,
+    entityType: 'order',
+    entityId: orderId,
+    newValues: auditDetails('Runner withdrew from accepted order', { reason: reason.trim() }),
+  });
+}
+
 export async function markItemFound(
   runnerId: string,
   orderId: string,
@@ -451,15 +996,10 @@ export async function markItemFound(
 ): Promise<PriceEscalationResult> {
   const supabase = await createClient();
 
-  // Verify assignment
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('status')
-    .eq('assignee_id', runnerId)
-    .eq('order_id', orderId)
-    .eq('role', 'runner')
-    .in('status', ['accepted', 'in_progress'])
-    .single();
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
+    'accepted',
+    'in_progress',
+  ]);
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
 
@@ -511,9 +1051,7 @@ export async function markItemFound(
     const { error: progressError } = await supabase
       .from('order_assignments')
       .update({ status: 'in_progress' })
-      .eq('assignee_id', runnerId)
-      .eq('order_id', orderId)
-      .eq('role', 'runner');
+      .eq('id', assignment.id);
     throwIfSupabaseError(progressError, 'Failed to update assignment progress');
   }
 
@@ -528,15 +1066,10 @@ export async function markItemUnavailable(
 ): Promise<void> {
   const supabase = await createClient();
 
-  // Verify assignment
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('status')
-    .eq('assignee_id', runnerId)
-    .eq('order_id', orderId)
-    .eq('role', 'runner')
-    .in('status', ['accepted', 'in_progress'])
-    .single();
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
+    'accepted',
+    'in_progress',
+  ]);
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
 
@@ -555,9 +1088,7 @@ export async function markItemUnavailable(
     await supabase
       .from('order_assignments')
       .update({ status: 'in_progress' })
-      .eq('assignee_id', runnerId)
-      .eq('order_id', orderId)
-      .eq('role', 'runner');
+      .eq('id', assignment.id);
   }
 }
 
@@ -568,15 +1099,10 @@ export async function requestClarification(
 ): Promise<void> {
   const supabase = await createClient();
 
-  // Verify assignment
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('status')
-    .eq('assignee_id', runnerId)
-    .eq('order_id', orderId)
-    .eq('role', 'runner')
-    .in('status', ['accepted', 'in_progress'])
-    .single();
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
+    'accepted',
+    'in_progress',
+  ]);
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
 
@@ -614,15 +1140,10 @@ export async function requestClarification(
 export async function completeOrder(runnerId: string, orderId: string): Promise<void> {
   const supabase = await createClient();
 
-  // Verify assignment
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('id, status')
-    .eq('assignee_id', runnerId)
-    .eq('order_id', orderId)
-    .eq('role', 'runner')
-    .in('status', ['accepted', 'in_progress'])
-    .single();
+  const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
+    'accepted',
+    'in_progress',
+  ]);
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
 

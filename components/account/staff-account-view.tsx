@@ -8,9 +8,10 @@ import { formatPhone } from '@/lib/utils/format';
 
 interface StaffAccountViewProps {
   roleLabel: string;
+  logoutButton?: React.ReactNode;
 }
 
-export function StaffAccountView({ roleLabel }: StaffAccountViewProps) {
+export function StaffAccountView({ roleLabel, logoutButton }: StaffAccountViewProps) {
   const { user, isLoading } = useUser();
   const { logout, isLoggingOut } = useLogout();
 
@@ -48,15 +49,17 @@ export function StaffAccountView({ roleLabel }: StaffAccountViewProps) {
         </div>
       </div>
 
-      <Button
-        variant="destructive"
-        fullWidth
-        isLoading={isLoggingOut}
-        onClick={() => logout()}
-      >
-        <LogOut className="mr-2 h-4 w-4" />
-        Log out
-      </Button>
+      {logoutButton ?? (
+        <Button
+          variant="destructive"
+          fullWidth
+          isLoading={isLoggingOut}
+          onClick={() => logout()}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Log out
+        </Button>
+      )}
     </div>
   );
 }

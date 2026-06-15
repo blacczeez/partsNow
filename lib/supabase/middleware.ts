@@ -71,7 +71,7 @@ export async function updateSession(request: NextRequest) {
 
   const isApiRoute = pathname.startsWith('/api');
   const isPublicRoute =
-    isAuthRoute || pathname === '/' || pathname === '/how-delivery-works';
+    isAuthRoute || pathname === '/' || pathname === '/how-delivery-works' || pathname === '/how-loyalty-works';
 
   if (!user && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();

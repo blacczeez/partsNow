@@ -113,7 +113,8 @@ export async function buildWhatsAppDeliveryQuote(
 
 export function formatWhatsAppDeliveryQuoteMessage(
   description: string,
-  quote: WhatsAppDeliveryQuote
+  quote: WhatsAppDeliveryQuote,
+  loyaltyLine = ''
 ): string {
   const weightNote = quote.weight.matchedPartName
     ? `Est. weight: ~${quote.weight.totalWeightKg} kg (based on ${quote.weight.matchedPartName})`
@@ -133,7 +134,8 @@ export function formatWhatsAppDeliveryQuoteMessage(
     `${partsNote}` +
     `${weightNote}\n` +
     `${feeLine}\n` +
-    `ETA: ~${quote.promisedMinutes} mins (${quote.deliveryType})\n\n` +
+    `ETA: ~${quote.promisedMinutes} mins (${quote.deliveryType})` +
+    `${loyaltyLine}\n\n` +
     `Final delivery fee may adjust if actual weight differs after sourcing.`
   );
 }

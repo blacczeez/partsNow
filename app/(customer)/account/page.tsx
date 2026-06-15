@@ -28,7 +28,7 @@ import {
   type UpdateProfileInput,
   type SetupProfileInput,
 } from '@/lib/validators/user';
-import { formatPhone } from '@/lib/utils/format';
+import { formatPhone, formatCurrency } from '@/lib/utils/format';
 import Link from 'next/link';
 
 function SetupForm({ phone, onComplete }: { phone?: string; onComplete: () => void }) {
@@ -362,14 +362,18 @@ export default function AccountPage() {
           <ChevronRight className="h-5 w-5 text-slate-400" />
         </Link>
         <Link
-          href="/orders"
+          href="/account/loyalty"
           className="flex items-center justify-between border-b border-slate-100 px-4 py-4"
         >
           <div className="flex items-center gap-3">
             <Award className="h-5 w-5 text-slate-400" />
-            <span className="text-sm font-medium text-slate-700">
-              Loyalty: {user.loyalty_tier.charAt(0).toUpperCase() + user.loyalty_tier.slice(1)} Tier
-            </span>
+            <div>
+              <span className="text-sm font-medium text-slate-700">Loyalty program</span>
+              <p className="text-xs text-slate-500">
+                {user.loyalty_tier.charAt(0).toUpperCase() + user.loyalty_tier.slice(1)} tier ·{' '}
+                {formatCurrency(user.lifetime_spend)} spent
+              </p>
+            </div>
           </div>
           <ChevronRight className="h-5 w-5 text-slate-400" />
         </Link>

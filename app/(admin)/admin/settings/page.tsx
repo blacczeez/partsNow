@@ -44,6 +44,43 @@ const CONFIG_GROUPS: ConfigGroup[] = [
     ],
   },
   {
+    label: 'Loyalty Tiers',
+    keys: [
+      {
+        key: 'loyalty_verified_min_orders',
+        label: 'Verified — min delivered orders',
+        type: 'number',
+      },
+      {
+        key: 'loyalty_trusted_min_orders',
+        label: 'Trusted — min delivered orders',
+        type: 'number',
+      },
+      {
+        key: 'loyalty_partner_min_orders',
+        label: 'Partner — min delivered orders',
+        type: 'number',
+      },
+      {
+        key: 'loyalty_partner_min_lifetime_spend',
+        label: 'Partner — min lifetime spend (NGN)',
+        type: 'number',
+      },
+      {
+        key: 'loyalty_trusted_discount_percentage',
+        label: 'Trusted — markup discount (percentage points)',
+        type: 'number',
+        description: 'Points subtracted from default markup (e.g. 5 → 15% becomes 10%)',
+      },
+      {
+        key: 'loyalty_partner_discount_percentage',
+        label: 'Partner — markup discount (percentage points)',
+        type: 'number',
+        description: 'Points subtracted from default markup (e.g. 8 → 15% becomes 7%)',
+      },
+    ],
+  },
+  {
     label: 'Features',
     keys: [
       { key: 'feature_car_owner_web_app', label: 'Car Owner Web App', type: 'boolean' },

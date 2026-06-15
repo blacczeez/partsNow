@@ -10,9 +10,15 @@ import {
 import { riderVehicleTypesForOrder } from '@/lib/utils/delivery-pricing';
 import type { DeliveryVehicleType } from '@/lib/types/delivery';
 
+export interface AssignRunnerOptions {
+  /** Runners who must not receive this assignment (e.g. who just rejected). */
+  excludeRunnerIds?: string[];
+}
+
 export async function assignRunner(
   orderId: string,
-  clusterId: string
+  clusterId: string,
+  options?: AssignRunnerOptions
 ): Promise<string | null> {
   const supabase = createServiceClient();
 
@@ -70,6 +76,21 @@ export async function assignRunner(
 
   if (existingAssignment) return null;
 
+  // Never re-offer to runners who already rejected/failed this order
+  const { data: priorFailures } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .eq('order_id', orderId)
+    .eq('role', 'runner')
+    .eq('status', 'failed');
+
+  const excludeSet = new Set<string>([
+    ...(options?.excludeRunnerIds ?? []),
+    ...((priorFailures ?? []) as Array<{ assignee_id: string }>).map(
+      (row) => row.assignee_id
+    ),
+  ]);
+
   // Count active assignments per runner
   const { data: assignments } = await supabase
     .from('order_assignments')
@@ -83,13 +104,15 @@ export async function assignRunner(
     assignmentCounts[id] = 0;
   }
   if (assignments) {
-    for (const a of (assignments ?? []) as { assignee_id: string }[]) {
+    const assignmentRows = Array.isArray(assignments) ? assignments : [];
+    for (const a of assignmentRows as { assignee_id: string }[]) {
       assignmentCounts[a.assignee_id] = (assignmentCounts[a.assignee_id] || 0) + 1;
     }
   }
 
   // Find eligible runners (under max concurrent) sorted by fewest assignments
   const eligible = fundedRunnerIds
+    .filter((id) => !excludeSet.has(id))
     .filter((id) => (assignmentCounts[id] || 0) < config.runner.maxConcurrentOrders)
     .sort((a, b) => (assignmentCounts[a] || 0) - (assignmentCounts[b] || 0));
 
@@ -128,7 +151,7 @@ export async function assignRunner(
   return assignment.id as string;
 }
 
-/** Assign confirmed orders in a cluster that have no active runner yet. */
+/** Assign confirmed or in-progress sourcing orders in a cluster with no active runner. */
 export async function assignUnassignedOrdersInCluster(
   clusterId: string
 ): Promise<number> {
@@ -138,7 +161,7 @@ export async function assignUnassignedOrdersInCluster(
     .from('orders')
     .select('id')
     .eq('cluster_id', clusterId)
-    .eq('status', 'confirmed')
+    .in('status', ['confirmed', 'sourcing'])
     .order('created_at', { ascending: true });
 
   if (!orders?.length) return 0;

@@ -77,14 +77,14 @@ describe('assignRunner', () => {
       if (table === 'order_assignments') {
         assignmentCallCount++;
         if (assignmentCallCount === 1) {
-          // Check for existing assignment on this order
           return createChain(null);
         }
         if (assignmentCallCount === 2) {
-          // Count assignments per runner
+          return createChain([]);
+        }
+        if (assignmentCallCount === 3) {
           return createChain([{ assignee_id: 'r1' }, { assignee_id: 'r1' }]);
         }
-        // Insert
         return createChain({ id: 'assignment-1' });
       }
       return originalFrom(table);
@@ -116,6 +116,9 @@ describe('assignRunner', () => {
             return createChain(null);
           }
           if (assignmentCallCount === 2) {
+            return createChain([]);
+          }
+          if (assignmentCallCount === 3) {
             // r1 has 2 assignments, r2 has 0
             return createChain([{ assignee_id: 'r1' }, { assignee_id: 'r1' }]);
           }
@@ -188,6 +191,7 @@ describe('assignRunner', () => {
   it('returns null when all runners are at max concurrent orders', async () => {
     const { mockSupabase } = setupMock();
 
+    let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
         case 'runner_shifts':
@@ -198,6 +202,13 @@ describe('assignRunner', () => {
           return createChain([{ runner_id: 'r1' }]);
         case 'order_assignments':
           // r1 has 3 assignments (max is 3)
+          assignmentCallCount++;
+          if (assignmentCallCount === 1) {
+            return createChain(null);
+          }
+          if (assignmentCallCount === 2) {
+            return createChain([]);
+          }
           return createChain([
             { assignee_id: 'r1' },
             { assignee_id: 'r1' },
@@ -210,6 +221,43 @@ describe('assignRunner', () => {
 
     const { assignRunner } = await getModule();
     const result = await assignRunner('order-1', 'cluster-1');
+    expect(result).toBeNull();
+  });
+
+  it('does not reassign to runners who previously failed this order', async () => {
+    const { mockSupabase } = setupMock();
+
+    let assignmentCallCount = 0;
+    mockSupabase.from.mockImplementation((table: string) => {
+      switch (table) {
+        case 'runner_shifts':
+          return createChain([{ runner_id: 'r1' }]);
+        case 'users':
+          return createChain([{ id: 'r1' }]);
+        case 'runner_floats':
+          return createChain([{ runner_id: 'r1' }]);
+        case 'order_assignments':
+          assignmentCallCount++;
+          if (assignmentCallCount === 1) {
+            return createChain(null);
+          }
+          if (assignmentCallCount === 2) {
+            return createChain([{ assignee_id: 'r1' }]);
+          }
+          if (assignmentCallCount === 3) {
+            return createChain([]);
+          }
+          return createChain({ id: 'should-not-insert' });
+        default:
+          return createChain(null);
+      }
+    });
+
+    const { assignRunner } = await getModule();
+    const result = await assignRunner('order-1', 'cluster-1', {
+      excludeRunnerIds: ['r1'],
+    });
+
     expect(result).toBeNull();
   });
 
@@ -229,7 +277,7 @@ describe('assignRunner', () => {
           assignmentCallCount++;
           if (assignmentCallCount === 1) return createChain(null);
           if (assignmentCallCount === 2) return createChain([]);
-          // Insert fails
+          if (assignmentCallCount === 3) return createChain([]);
           return createChain(null, { message: 'Insert error' });
         default:
           return createChain(null);
@@ -256,7 +304,8 @@ describe('assignRunner', () => {
         case 'order_assignments':
           assignmentCallCount++;
           if (assignmentCallCount === 1) return createChain(null);
-          if (assignmentCallCount === 2) return createChain(null);
+          if (assignmentCallCount === 2) return createChain([]);
+          if (assignmentCallCount === 3) return createChain(null);
           return createChain({ id: 'assignment-null' });
         default:
           return createChain(null);

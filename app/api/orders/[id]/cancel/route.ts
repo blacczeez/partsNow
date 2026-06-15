@@ -56,6 +56,17 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to cancel order' }, { status: 500 });
   }
 
+  await supabase
+    .from('order_assignments')
+    .update({
+      status: 'failed',
+      completed_at: new Date().toISOString(),
+      rejection_reason: 'Cancelled by customer',
+    })
+    .eq('order_id', id)
+    .eq('role', 'runner')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
   // Refund wallet if paid
   if (order.payment_status === 'paid' && order.payment_method === 'wallet') {
     await creditWallet(
