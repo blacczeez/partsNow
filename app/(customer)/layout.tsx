@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Search, Package, Wallet, User, Loader2 } from 'lucide-react';
+import { Home, Search, Package, Wallet, User } from 'lucide-react';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { TopNav } from '@/components/layout/top-nav';
 import { SetupRedirect } from '@/components/auth/setup-redirect';
@@ -37,16 +37,10 @@ function CustomerTopNav() {
 function CustomerShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading, needsSetup } = useUser();
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Unauthenticated — landing page, no app chrome
-  if (!user && !needsSetup) {
+  // Loading or unauthenticated — render children bare (no app chrome).
+  // The page component shows <LandingPage /> when there's no user,
+  // so unauthenticated visitors never see a spinner.
+  if (isLoading || (!user && !needsSetup)) {
     return <>{children}</>;
   }
 
