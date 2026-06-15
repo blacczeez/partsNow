@@ -25,6 +25,24 @@ export function formatRelativeTime(date: string | Date): string {
   });
 }
 
+export function formatDateTime(date: string | Date): string {
+  return new Date(date).toLocaleString('en-NG', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function formatShortDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString('en-NG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
 export function formatPhone(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.startsWith('234')) {

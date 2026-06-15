@@ -64,7 +64,6 @@ export async function POST(
       rejection_reason: 'Cancelled by customer',
     })
     .eq('order_id', id)
-    .eq('role', 'runner')
     .in('status', ['assigned', 'accepted', 'in_progress']);
 
   // Refund wallet if paid

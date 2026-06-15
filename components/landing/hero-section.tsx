@@ -9,7 +9,7 @@ const trustIndicators = [
 
 export function HeroSection() {
   return (
-    <section className="bg-gradient-to-br from-primary to-primary-dark px-4 py-16 text-white sm:px-6 sm:py-24">
+    <section className="px-4 py-16 text-white sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl text-center">
         <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
           Stop Losing 3 Hours at Ladipo.

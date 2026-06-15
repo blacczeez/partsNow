@@ -11,6 +11,7 @@ import {
   requiresFailurePhoto,
   type DeliveryFailureReason,
 } from '@/lib/constants/delivery-failure';
+import { findStaffAssignment } from './order-assignments';
 import { initiateDeliverySettlement } from './delivery-settlement';
 import {
   notifyDeliveryAttempt,
@@ -165,14 +166,9 @@ export async function reportDeliveryFailure(
 ): Promise<{ outcome: 'retry' | 'admin_review' | 'terminal' }> {
   const supabase = await createClient();
 
-  const { data: assignment } = await supabase
-    .from('order_assignments')
-    .select('id, status')
-    .eq('assignee_id', riderId)
-    .eq('order_id', orderId)
-    .eq('role', 'rider')
-    .eq('status', 'in_progress')
-    .single();
+  const assignment = await findStaffAssignment(supabase, riderId, orderId, 'rider', [
+    'in_progress',
+  ]);
 
   if (!assignment) {
     throw new Error('Pickup must be confirmed before reporting a delivery issue');

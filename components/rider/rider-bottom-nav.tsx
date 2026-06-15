@@ -21,6 +21,7 @@ export function RiderBottomNav() {
           const isActive =
             pathname === href ||
             (href === '/rider/dashboard' && pathname.startsWith('/rider/delivery/')) ||
+            (href === '/rider/history' && pathname.startsWith('/rider/history')) ||
             (href === '/rider/account' && pathname.startsWith('/rider/account'));
 
           return (

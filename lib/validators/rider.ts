@@ -36,3 +36,9 @@ export const updateLocationSchema = z.object({
 });
 
 export type UpdateLocationInput = z.infer<typeof updateLocationSchema>;
+
+export const rejectRiderDeliverySchema = z.object({
+  reason: z.string().min(1, 'Reason is required').max(500),
+});
+
+export type RejectRiderDeliveryInput = z.infer<typeof rejectRiderDeliverySchema>;

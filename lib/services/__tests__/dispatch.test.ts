@@ -330,10 +330,28 @@ describe('assignRider', () => {
     return { mockSupabase, mockRpc };
   }
 
+  /** Shared counter across order_assignments queries in assignRider */
+  function makeAssignmentRouter(
+    counts: unknown,
+    insertResult: ReturnType<typeof createChain>
+  ) {
+    let callCount = 0;
+    return () => {
+      callCount++;
+      if (callCount === 1) return createChain(null);
+      if (callCount === 2) return createChain([]);
+      if (callCount === 3) return createChain(counts);
+      return insertResult;
+    };
+  }
+
   it('selects the least-loaded rider and returns assignment id', async () => {
     const { mockSupabase } = setupMock();
+    const routeAssignments = makeAssignmentRouter(
+      [{ assignee_id: 'rider1' }],
+      createChain({ id: 'rider-assignment-1' })
+    );
 
-    let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
         case 'orders':
@@ -341,11 +359,7 @@ describe('assignRider', () => {
         case 'users':
           return createChain([{ id: 'rider1' }, { id: 'rider2' }]);
         case 'order_assignments':
-          assignmentCallCount++;
-          if (assignmentCallCount === 1) {
-            return createChain([{ assignee_id: 'rider1' }]);
-          }
-          return createChain({ id: 'rider-assignment-1' });
+          return routeAssignments();
         default:
           return createChain(null);
       }
@@ -360,8 +374,11 @@ describe('assignRider', () => {
   it('picks rider with fewer assignments (load balancing)', async () => {
     const { mockSupabase } = setupMock();
 
-    let assignmentCallCount = 0;
     const insertChain = createChain({ id: 'rider-lb' });
+    const routeAssignments = makeAssignmentRouter(
+      [{ assignee_id: 'rider1' }, { assignee_id: 'rider1' }],
+      insertChain
+    );
 
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
@@ -370,12 +387,7 @@ describe('assignRider', () => {
         case 'users':
           return createChain([{ id: 'rider1' }, { id: 'rider2' }]);
         case 'order_assignments':
-          assignmentCallCount++;
-          if (assignmentCallCount === 1) {
-            // rider1 has 2 assignments, rider2 has 0
-            return createChain([{ assignee_id: 'rider1' }, { assignee_id: 'rider1' }]);
-          }
-          return insertChain;
+          return routeAssignments();
         default:
           return createChain(null);
       }
@@ -419,6 +431,14 @@ describe('assignRider', () => {
 
   it('returns null when all riders are at max concurrent deliveries', async () => {
     const { mockSupabase } = setupMock();
+    const routeAssignments = makeAssignmentRouter(
+      [
+        { assignee_id: 'rider1' },
+        { assignee_id: 'rider1' },
+        { assignee_id: 'rider1' },
+      ],
+      createChain({ id: 'unused' })
+    );
 
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
@@ -427,11 +447,7 @@ describe('assignRider', () => {
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
-          return createChain([
-            { assignee_id: 'rider1' },
-            { assignee_id: 'rider1' },
-            { assignee_id: 'rider1' },
-          ]);
+          return routeAssignments();
         default:
           return createChain(null);
       }
@@ -444,8 +460,11 @@ describe('assignRider', () => {
 
   it('returns null when assignment insert fails', async () => {
     const { mockSupabase } = setupMock();
+    const routeAssignments = makeAssignmentRouter(
+      [],
+      createChain(null, { message: 'Insert error' })
+    );
 
-    let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
         case 'orders':
@@ -453,9 +472,7 @@ describe('assignRider', () => {
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
-          assignmentCallCount++;
-          if (assignmentCallCount === 1) return createChain([]);
-          return createChain(null, { message: 'Insert error' });
+          return routeAssignments();
         default:
           return createChain(null);
       }
@@ -468,8 +485,8 @@ describe('assignRider', () => {
 
   it('handles null assignments data gracefully', async () => {
     const { mockSupabase } = setupMock();
+    const routeAssignments = makeAssignmentRouter(null, createChain({ id: 'rider-a-null' }));
 
-    let assignmentCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
         case 'orders':
@@ -477,9 +494,7 @@ describe('assignRider', () => {
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
-          assignmentCallCount++;
-          if (assignmentCallCount === 1) return createChain(null); // null
-          return createChain({ id: 'rider-a-null' });
+          return routeAssignments();
         default:
           return createChain(null);
       }
@@ -493,8 +508,8 @@ describe('assignRider', () => {
   it('creates assignment with correct role and status', async () => {
     const { mockSupabase } = setupMock();
 
-    let assignmentCallCount = 0;
     const insertChain = createChain({ id: 'rider-correct' });
+    const routeAssignments = makeAssignmentRouter([], insertChain);
 
     mockSupabase.from.mockImplementation((table: string) => {
       switch (table) {
@@ -503,9 +518,7 @@ describe('assignRider', () => {
         case 'users':
           return createChain([{ id: 'rider1' }]);
         case 'order_assignments':
-          assignmentCallCount++;
-          if (assignmentCallCount === 1) return createChain([]);
-          return insertChain;
+          return routeAssignments();
         default:
           return createChain(null);
       }
@@ -522,6 +535,21 @@ describe('assignRider', () => {
     });
   });
 
+  it('returns null when order already has an active rider assignment', async () => {
+    const { mockSupabase } = setupMock();
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'order_assignments') {
+        return createChain({ id: 'existing' });
+      }
+      return createChain(null);
+    });
+
+    const { assignRider } = await getModule();
+    const result = await assignRider('order-1', 'cluster-1');
+    expect(result).toBeNull();
+  });
+
   it('routes partner-only orders to Kwik dispatch', async () => {
     const { mockSupabase } = setupMock();
     const { assignPartnerDelivery } = await import('../partner-dispatch');
@@ -534,6 +562,9 @@ describe('assignRider', () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'orders') {
         return createChain({ delivery_vehicle_type: 'partner' });
+      }
+      if (table === 'order_assignments') {
+        return createChain(null);
       }
       return createChain(null);
     });

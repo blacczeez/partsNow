@@ -12,8 +12,10 @@ import { CtaSection } from './cta-section';
 export function LandingPage() {
   return (
     <div className="min-h-screen">
-      <LandingNav />
-      <HeroSection />
+      <div className="bg-gradient-to-br from-primary to-primary-dark">
+        <LandingNav />
+        <HeroSection />
+      </div>
       <HowItWorksSection />
       <TestimonialsSection />
       <FeaturesSection />

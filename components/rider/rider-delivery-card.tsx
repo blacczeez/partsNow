@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin, ChevronRight, Banknote, ShieldAlert } from 'lucide-react';
+import { MapPin, ChevronRight, Banknote, ShieldAlert, Phone } from 'lucide-react';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import { riderPriceReviewBadgeLabel } from '@/components/rider/rider-price-status-banner';
+import { CustomerPhoneLink } from '@/components/rider/customer-phone-link';
 import { cn } from '@/lib/utils/cn';
 import type { RiderDeliverySummary } from '@/lib/services/rider';
 
@@ -21,10 +23,16 @@ export function RiderDeliveryCard({ delivery }: RiderDeliveryCardProps) {
     label: delivery.assignment_status,
     color: 'text-slate-600 bg-slate-50',
   };
+  const priceBadge = riderPriceReviewBadgeLabel(delivery);
 
   return (
-    <Link href={`/rider/delivery/${delivery.id}`}>
-      <div className="rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <article className="relative rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <Link
+        href={`/rider/delivery/${delivery.id}`}
+        className="absolute inset-0 z-0 rounded-card"
+        aria-label={`View delivery ${delivery.order_number}`}
+      />
+      <div className="relative z-10 pointer-events-none">
         <div className="mb-3 flex items-start justify-between">
           <div>
             <p className="text-sm text-slate-500">{delivery.order_number}</p>
@@ -41,16 +49,36 @@ export function RiderDeliveryCard({ delivery }: RiderDeliveryCardProps) {
             {status.label}
           </span>
         </div>
+        {priceBadge && (
+          <span
+            className={cn(
+              'mb-3 inline-block rounded-pill px-2.5 py-0.5 text-xs font-medium',
+              priceBadge === 'Ready for pickup'
+                ? 'bg-success-light text-success'
+                : priceBadge === 'Cancelled'
+                  ? 'bg-error-light text-error'
+                  : 'bg-warning-light text-warning'
+            )}
+          >
+            {priceBadge}
+          </span>
+        )}
 
         <div className="mb-3 flex items-start gap-1.5 text-sm text-slate-600">
-          <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="line-clamp-2">{delivery.delivery_address}</span>
         </div>
 
-        <div className="mb-3 text-sm text-slate-600">
-          <span className="text-slate-500">Customer:</span>{' '}
-          {delivery.customer_name} &middot; {delivery.item_count} item
-          {delivery.item_count !== 1 ? 's' : ''}
+        <div className="mb-3 space-y-1 text-sm text-slate-600">
+          <div>
+            <span className="text-slate-500">Customer:</span>{' '}
+            {delivery.customer_name} &middot; {delivery.item_count} item
+            {delivery.item_count !== 1 ? 's' : ''}
+          </div>
+          <div className="pointer-events-auto flex items-center gap-1.5">
+            <Phone className="h-4 w-4 shrink-0 text-slate-400" />
+            <CustomerPhoneLink phone={delivery.customer_phone} />
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
@@ -74,6 +102,6 @@ export function RiderDeliveryCard({ delivery }: RiderDeliveryCardProps) {
           </div>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }

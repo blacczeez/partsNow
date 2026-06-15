@@ -32,6 +32,7 @@ export const AUDIT_ACTIONS = {
   RUNNER_ORDER_COMPLETED: 'runner.order_completed',
   RIDER_PICKUP_CONFIRMED: 'rider.pickup_confirmed',
   RIDER_DELIVERY_COMPLETED: 'rider.delivery_completed',
+  RIDER_DELIVERY_DECLINED: 'rider.delivery_declined',
   USER_COD_DISABLED: 'user.cod_disabled',
   ADMIN_CUSTOMER_LOYALTY_UPDATED: 'admin.customer_loyalty_updated',
   VENDOR_CREATED: 'vendor.created',
@@ -85,6 +86,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   [AUDIT_ACTIONS.RUNNER_ORDER_COMPLETED]: 'Runner completed sourcing',
   [AUDIT_ACTIONS.RIDER_PICKUP_CONFIRMED]: 'Rider confirmed pickup',
   [AUDIT_ACTIONS.RIDER_DELIVERY_COMPLETED]: 'Rider completed delivery',
+  [AUDIT_ACTIONS.RIDER_DELIVERY_DECLINED]: 'Rider declined or transferred delivery',
   [AUDIT_ACTIONS.USER_COD_DISABLED]: 'COD disabled on customer',
   [AUDIT_ACTIONS.VENDOR_CREATED]: 'Vendor created',
   [AUDIT_ACTIONS.VENDOR_UPDATED]: 'Vendor updated',
@@ -97,6 +99,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   [AUDIT_ACTIONS.CLUSTER_CREATED]: 'Market created',
   [AUDIT_ACTIONS.CLUSTER_UPDATED]: 'Market updated',
   [AUDIT_ACTIONS.SYSTEM_CONFIG_UPDATED]: 'System config updated',
+  [AUDIT_ACTIONS.ADMIN_CUSTOMER_LOYALTY_UPDATED]: 'Customer loyalty tier updated',
 };
 
 export function normalizeAuditAction(action: string): AuditAction | null {

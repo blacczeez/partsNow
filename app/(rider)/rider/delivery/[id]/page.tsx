@@ -19,9 +19,16 @@ import { DeliveryStatusBar } from '@/components/rider/delivery-status-bar';
 import { PickupConfirmationSheet } from '@/components/rider/pickup-confirmation-sheet';
 import { DeliveryConfirmationSheet } from '@/components/rider/delivery-confirmation-sheet';
 import { DeliveryFailureSheet } from '@/components/rider/delivery-failure-sheet';
+import { RiderPriceStatusBanner } from '@/components/rider/rider-price-status-banner';
+import { CustomerPhoneLink } from '@/components/rider/customer-phone-link';
 import { useRiderDeliveryDetail } from '@/lib/hooks/use-rider-delivery-detail';
 import { useLocationTracking } from '@/lib/hooks/use-location-tracking';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import {
+  getRunnerPriceReviewPhase,
+  runnerPriceReviewBlocksHandoff,
+  runnerOrderAwaitingExternalResolution,
+} from '@/lib/utils/runner-price-review';
 import { toast } from '@/components/ui/toast';
 
 export default function DeliveryDetailPage() {
@@ -33,7 +40,14 @@ export default function DeliveryDetailPage() {
     error,
     confirmPickup,
     confirmDelivery,
+    rejectDelivery,
+    releaseDelivery,
   } = useRiderDeliveryDetail(id);
+
+  const [declineReason, setDeclineReason] = useState('');
+  const [showDeclineInput, setShowDeclineInput] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [isReleasing, setIsReleasing] = useState(false);
 
   const isInProgress = delivery?.assignment.status === 'in_progress';
   const { isTracking, startTracking, stopTracking } = useLocationTracking(
@@ -80,6 +94,11 @@ export default function DeliveryDetailPage() {
 
   const isAssigned = delivery.assignment.status === 'assigned';
   const isCod = delivery.payment_method === 'cod';
+  const priceReviewPhase = getRunnerPriceReviewPhase(delivery);
+  const pickupBlocked = runnerPriceReviewBlocksHandoff(priceReviewPhase);
+  const isAwaitingExternal = runnerOrderAwaitingExternalResolution(delivery);
+  const isCancelled =
+    priceReviewPhase === 'cancelled' || delivery.status === 'cancelled';
   const items = delivery.order_items || [];
   const itemsSummary = items
     .map((item) => `${item.quantity}x ${item.description}`)
@@ -92,6 +111,36 @@ export default function DeliveryDetailPage() {
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to confirm pickup');
       throw err;
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!declineReason.trim()) {
+      toast('error', 'Please enter a reason');
+      return;
+    }
+    setIsDeclining(true);
+    try {
+      await rejectDelivery(declineReason.trim());
+      toast('info', 'Delivery declined');
+      router.push('/rider/dashboard');
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to decline');
+    } finally {
+      setIsDeclining(false);
+    }
+  };
+
+  const handleRelease = async (reason?: string) => {
+    setIsReleasing(true);
+    try {
+      await releaseDelivery(reason);
+      toast('success', 'Delivery released');
+      router.push('/rider/dashboard');
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to release delivery');
+    } finally {
+      setIsReleasing(false);
     }
   };
 
@@ -188,6 +237,85 @@ export default function DeliveryDetailPage() {
         </div>
       )}
 
+      <RiderPriceStatusBanner order={delivery} className="mb-4" />
+
+      {isCancelled && (
+        <div className="mb-4">
+          <Button
+            fullWidth
+            onClick={() => handleRelease()}
+            isLoading={isReleasing}
+            disabled={delivery.assignment.status === 'failed'}
+          >
+            {delivery.assignment.status === 'failed'
+              ? 'Delivery already released'
+              : 'Release delivery & return to dashboard'}
+          </Button>
+        </div>
+      )}
+
+      {isAssigned && isAwaitingExternal && !isCancelled && (
+        <div className="mb-4 space-y-2 rounded-card border border-slate-200 bg-white p-4">
+          <p className="text-sm text-slate-600">
+            Pickup is blocked until admin or customer resolves pricing. Hand this off to
+            another rider if you cannot wait.
+          </p>
+          <Button
+            fullWidth
+            variant="secondary"
+            onClick={() => handleRelease()}
+            isLoading={isReleasing}
+          >
+            Hand off to another rider
+          </Button>
+        </div>
+      )}
+
+      {isAssigned && !isAwaitingExternal && !isCancelled && (
+        <div className="mb-4 rounded-card border border-slate-200 bg-white p-4">
+          {!showDeclineInput ? (
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => setShowDeclineInput(true)}
+            >
+              Decline delivery
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Reason for declining..."
+                className="w-full rounded-input border border-slate-300 px-3 py-2 text-sm"
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowDeclineInput(false);
+                    setDeclineReason('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  size="sm"
+                  onClick={handleDecline}
+                  isLoading={isDeclining}
+                >
+                  Confirm decline
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Order Info */}
       <div className="mb-4 space-y-2 rounded-card border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
@@ -220,9 +348,7 @@ export default function DeliveryDetailPage() {
           <Phone className="h-4 w-4 flex-shrink-0" />
           <span>
             {delivery.customer_name} &middot;{' '}
-            <a href={`tel:${delivery.customer_phone}`} className="text-primary">
-              {delivery.customer_phone}
-            </a>
+            <CustomerPhoneLink phone={delivery.customer_phone} />
           </span>
         </div>
         <div className="flex items-start gap-1.5 text-sm text-slate-600">
@@ -286,9 +412,14 @@ export default function DeliveryDetailPage() {
             fullWidth
             size="lg"
             onClick={() => setActiveSheet('pickup')}
+            disabled={pickupBlocked}
           >
             <CheckCircle className="mr-2 h-5 w-5" />
-            Confirm Pickup
+            {pickupBlocked
+              ? priceReviewPhase === 'customer_decision'
+                ? 'Waiting for customer price decision'
+                : 'Waiting for admin price review'
+              : 'Confirm Pickup'}
           </Button>
         )}
 

@@ -188,10 +188,53 @@ export async function assignUnassignedOrdersInCluster(
   return assignedCount;
 }
 
+/** Assign picked orders in a cluster that have no active rider yet. */
+export async function assignUnassignedDeliveriesInCluster(
+  clusterId: string
+): Promise<number> {
+  const supabase = createServiceClient();
+
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('cluster_id', clusterId)
+    .eq('status', 'picked')
+    .order('picked_at', { ascending: true });
+
+  if (!orders?.length) return 0;
+
+  const orderIds = orders.map((o: { id: string }) => o.id);
+  const { data: activeAssignments } = await supabase
+    .from('order_assignments')
+    .select('order_id')
+    .in('order_id', orderIds)
+    .eq('role', 'rider')
+    .in('status', ['assigned', 'accepted', 'in_progress']);
+
+  const assignedOrderIds = new Set(
+    (activeAssignments ?? []).map((a: { order_id: string }) => a.order_id)
+  );
+
+  let assignedCount = 0;
+  for (const order of orders as { id: string }[]) {
+    if (assignedOrderIds.has(order.id)) continue;
+    const assignmentId = await assignRider(order.id, clusterId);
+    if (assignmentId) assignedCount++;
+  }
+
+  return assignedCount;
+}
+
+export interface AssignRiderOptions {
+  /** Riders who must not receive this assignment (e.g. who just declined). */
+  excludeRiderIds?: string[];
+}
+
 async function selectInternalRiderId(
   orderId: string,
   clusterId: string,
-  orderVehicleType: DeliveryVehicleType
+  orderVehicleType: DeliveryVehicleType,
+  excludeRiderIds?: string[]
 ): Promise<string | null> {
   const supabase = createServiceClient();
   const allowedVehicleTypes = riderVehicleTypesForOrder(orderVehicleType);
@@ -223,6 +266,20 @@ async function selectInternalRiderId(
 
   const riderIds: string[] = riderPool.map((r) => r.id);
 
+  const { data: priorFailures } = await supabase
+    .from('order_assignments')
+    .select('assignee_id')
+    .eq('order_id', orderId)
+    .eq('role', 'rider')
+    .eq('status', 'failed');
+
+  const excludeSet = new Set<string>([
+    ...(excludeRiderIds ?? []),
+    ...((Array.isArray(priorFailures) ? priorFailures : []) as Array<{
+      assignee_id: string;
+    }>).map((row) => row.assignee_id),
+  ]);
+
   const { data: assignments } = await supabase
     .from('order_assignments')
     .select('assignee_id')
@@ -241,6 +298,7 @@ async function selectInternalRiderId(
   }
 
   const eligible = riderIds
+    .filter((id) => !excludeSet.has(id))
     .filter((id) => (assignmentCounts[id] || 0) < config.dispatch.riderMaxConcurrentDeliveries)
     .sort((a, b) => (assignmentCounts[a] || 0) - (assignmentCounts[b] || 0));
 
@@ -285,9 +343,20 @@ async function createRiderAssignment(
 
 export async function assignRider(
   orderId: string,
-  clusterId: string
+  clusterId: string,
+  options?: AssignRiderOptions
 ): Promise<string | null> {
   const supabase = createServiceClient();
+
+  const { data: existingAssignment } = await supabase
+    .from('order_assignments')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('role', 'rider')
+    .in('status', ['assigned', 'accepted', 'in_progress'])
+    .maybeSingle();
+
+  if (existingAssignment) return null;
 
   const { data: order } = await supabase
     .from('orders')
@@ -310,7 +379,8 @@ export async function assignRider(
     const selectedRiderId = await selectInternalRiderId(
       orderId,
       clusterId,
-      orderVehicleType
+      orderVehicleType,
+      options?.excludeRiderIds
     );
     if (selectedRiderId) {
       return createRiderAssignment(orderId, selectedRiderId);
