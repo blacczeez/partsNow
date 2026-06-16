@@ -205,3 +205,41 @@ export async function runScheduledJobs(): Promise<{
 
   return { runnerAcceptTimeouts, paymentHoldExpiry };
 }
+
+const SCHEDULED_JOBS_LOCK_KEY = 'scheduled_jobs_last_run_at';
+const SCHEDULED_JOBS_INTERVAL_MS = 2 * 60 * 1000;
+
+/**
+ * Throttled job runner for Hobby / no-cron deployments.
+ * Called from high-traffic ops APIs (runner orders, admin dashboard).
+ */
+export async function maybeRunScheduledJobs(): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { data: row } = await supabase
+      .from('system_config')
+      .select('value')
+      .eq('key', SCHEDULED_JOBS_LOCK_KEY)
+      .maybeSingle();
+
+    const lastRunMs = row?.value ? Date.parse(String(row.value)) : 0;
+    if (lastRunMs && Date.now() - lastRunMs < SCHEDULED_JOBS_INTERVAL_MS) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    await supabase.from('system_config').upsert(
+      {
+        key: SCHEDULED_JOBS_LOCK_KEY,
+        value: now,
+        description: 'Last opportunistic scheduled job run',
+        updated_at: now,
+      },
+      { onConflict: 'key' }
+    );
+
+    await runScheduledJobs();
+  } catch (error) {
+    console.error('maybeRunScheduledJobs failed:', error);
+  }
+}

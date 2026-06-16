@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/lib/utils/admin-auth';
 import { getDashboardStats } from '@/lib/services/admin';
+import { maybeRunScheduledJobs } from '@/lib/services/scheduled-jobs';
 
 export async function GET() {
   const auth = await verifyAdminAuth();
   if (auth.error) return auth.error;
+
+  void maybeRunScheduledJobs();
 
   try {
     const stats = await getDashboardStats();
