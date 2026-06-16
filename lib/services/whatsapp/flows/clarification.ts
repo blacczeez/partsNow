@@ -59,6 +59,10 @@ export async function handleClarification(
     })
     .eq('id', orderId);
 
+  // Resume SLA timer — customer responded
+  const { resumeSlaTimer } = await import('@/lib/services/sla');
+  resumeSlaTimer(orderId).catch(() => {});
+
   await resetConversation(phone);
 
   await sendTextMessage(

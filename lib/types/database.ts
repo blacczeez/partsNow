@@ -281,6 +281,10 @@ export interface OrderAssignment {
   notes: string | null;
   pickup_confirmed_at: string | null;
   pickup_photo_url: string | null;
+  sla_deadline_at: string | null;
+  sla_paused_at: string | null;
+  sla_pause_accumulated_seconds: number;
+  sla_breached: boolean;
 }
 
 export interface DeliveryTracking {

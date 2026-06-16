@@ -428,10 +428,16 @@ export interface RunnerOrderSummary {
   item_count: number;
   assignment_status: string;
   assigned_at: string;
+  accepted_at: string | null;
   price_review_status: string;
   price_topup_amount: number;
   original_total: number | null;
   revised_total: number | null;
+  clarification_status: string | null;
+  sla_deadline_at: string | null;
+  sla_paused_at: string | null;
+  sla_pause_accumulated_seconds: number;
+  sla_breached: boolean;
   order_items: OrderItem[];
 }
 
@@ -443,7 +449,7 @@ export async function getRunnerOrders(runnerId: string): Promise<RunnerOrderSumm
   // Get active assignments for this runner
   const { data: assignments, error: assignError } = await supabase
     .from('order_assignments')
-    .select('order_id, status, assigned_at')
+    .select('order_id, status, assigned_at, accepted_at, sla_deadline_at, sla_paused_at, sla_pause_accumulated_seconds, sla_breached')
     .eq('assignee_id', runnerId)
     .eq('role', 'runner')
     .in('status', ['assigned', 'accepted', 'in_progress']);
@@ -455,7 +461,7 @@ export async function getRunnerOrders(runnerId: string): Promise<RunnerOrderSumm
   const { data: orders, error: ordersError } = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, total, delivery_address, created_at, price_review_status, price_topup_amount, original_total, revised_total, order_items(*)'
+      'id, order_number, status, total, delivery_address, created_at, price_review_status, price_topup_amount, original_total, revised_total, clarification_status, order_items(*)'
     )
     .in('id', orderIds)
     .order('created_at', { ascending: false });
@@ -482,6 +488,11 @@ export async function getRunnerOrders(runnerId: string): Promise<RunnerOrderSumm
       item_count: order.order_items?.length ?? 0,
       assignment_status: assignment.status,
       assigned_at: assignment.assigned_at,
+      accepted_at: assignment.accepted_at ?? null,
+      sla_deadline_at: assignment.sla_deadline_at ?? null,
+      sla_paused_at: assignment.sla_paused_at ?? null,
+      sla_pause_accumulated_seconds: assignment.sla_pause_accumulated_seconds ?? 0,
+      sla_breached: assignment.sla_breached ?? false,
     };
   }) as RunnerOrderSummary[];
 }
@@ -565,15 +576,25 @@ export async function getRunnerOrderDetail(
 
 type RunnerAssignmentStatus = OrderAssignment['status'];
 
+interface RunnerAssignmentRow {
+  id: string;
+  status: RunnerAssignmentStatus;
+  accepted_at: string | null;
+  sla_deadline_at: string | null;
+  sla_paused_at: string | null;
+  sla_pause_accumulated_seconds: number;
+  sla_breached: boolean;
+}
+
 async function findRunnerAssignment(
   supabase: Awaited<ReturnType<typeof createClient>>,
   runnerId: string,
   orderId: string,
   statuses: RunnerAssignmentStatus[]
-): Promise<{ id: string; status: RunnerAssignmentStatus } | null> {
+): Promise<RunnerAssignmentRow | null> {
   const { data, error } = await supabase
     .from('order_assignments')
-    .select('id, status')
+    .select('id, status, accepted_at, sla_deadline_at, sla_paused_at, sla_pause_accumulated_seconds, sla_breached')
     .eq('assignee_id', runnerId)
     .eq('order_id', orderId)
     .eq('role', 'runner')
@@ -583,7 +604,7 @@ async function findRunnerAssignment(
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data as { id: string; status: RunnerAssignmentStatus } | null;
+  return data as RunnerAssignmentRow | null;
 }
 
 const ACTIVE_RUNNER_ASSIGNMENT_STATUSES = ['assigned', 'accepted', 'in_progress'] as const;
@@ -679,11 +700,15 @@ export async function acceptOrder(runnerId: string, orderId: string): Promise<vo
     throw new Error('Insufficient float to accept order');
   }
 
+  const now = new Date();
+  const slaDeadline = new Date(now.getTime() + config.sourcing.slaMinutes * 60 * 1000);
+
   const { error: acceptAssignmentError } = await supabase
     .from('order_assignments')
     .update({
       status: 'accepted',
-      accepted_at: new Date().toISOString(),
+      accepted_at: now.toISOString(),
+      sla_deadline_at: slaDeadline.toISOString(),
     })
     .eq('id', assignment.id);
   throwIfSupabaseError(acceptAssignmentError, 'Failed to accept assignment');
@@ -1133,6 +1158,10 @@ export async function requestClarification(
     })
     .eq('id', orderId);
 
+  // Pause SLA while waiting for customer
+  const { pauseSlaTimer } = await import('./sla');
+  pauseSlaTimer(orderId).catch(() => {});
+
   // Fire-and-forget notification
   notifyClarificationRequest(orderId, message).catch(() => {});
 }
@@ -1237,6 +1266,22 @@ export async function completeOrder(runnerId: string, orderId: string): Promise<
         commission_earned: shift.commission_earned + config.runner.commissionPerOrder,
       })
       .eq('id', shift.id);
+  }
+
+  // Check SLA breach on completion
+  const { computeSlaTimerState } = await import('@/lib/utils/sla-timer');
+  const { markSlaBreached } = await import('./sla');
+  const slaState = computeSlaTimerState(
+    assignment.sla_deadline_at ?? null,
+    assignment.sla_paused_at ?? null,
+    assignment.sla_pause_accumulated_seconds ?? 0,
+    assignment.accepted_at ?? null,
+    assignment.sla_breached ?? false,
+    config.sourcing.slaWarningAmberPercent,
+    config.sourcing.slaWarningRedPercent
+  );
+  if (slaState && slaState.remainingSeconds <= 0 && !assignment.sla_breached) {
+    markSlaBreached(assignment.id, orderId, runnerId).catch(() => {});
   }
 
   await writeAuditLog({

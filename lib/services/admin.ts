@@ -600,12 +600,24 @@ export async function getAdminRunnerDetail(runnerId: string) {
     .order('assigned_at', { ascending: false })
     .limit(10);
 
+  // SLA stats
+  const { data: slaStatsRows } = await supabase
+    .rpc('admin_runner_sla_stats', { p_runner_id: runnerId });
+
+  const slaStats = slaStatsRows?.[0] ?? {
+    total_completed: 0,
+    total_breached: 0,
+    breach_rate: 0,
+    avg_sourcing_seconds: 0,
+  };
+
   return {
     ...runner,
     float,
     currentShift,
     recentShifts: recentShifts ?? [],
     recentAssignments: recentAssignments ?? [],
+    slaStats,
   };
 }
 

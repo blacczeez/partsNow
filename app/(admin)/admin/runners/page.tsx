@@ -143,6 +143,35 @@ export default function AdminRunnersPage() {
               </div>
             )}
 
+            {/* Sourcing SLA Performance */}
+            {runnerDetail.slaStats.total_completed > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Sourcing SLA Performance</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-button bg-slate-50 p-3 text-center">
+                    <p className={`text-xl font-bold ${
+                      runnerDetail.slaStats.breach_rate > 20
+                        ? 'text-error'
+                        : runnerDetail.slaStats.breach_rate > 10
+                          ? 'text-warning'
+                          : 'text-success'
+                    }`}>
+                      {runnerDetail.slaStats.breach_rate}%
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Breach Rate ({runnerDetail.slaStats.total_breached} of {runnerDetail.slaStats.total_completed})
+                    </p>
+                  </div>
+                  <div className="rounded-button bg-slate-50 p-3 text-center">
+                    <p className="text-xl font-bold text-slate-900">
+                      {Math.round(runnerDetail.slaStats.avg_sourcing_seconds / 60)} min
+                    </p>
+                    <p className="text-xs text-slate-500">Avg Sourcing Time</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Recent Shifts */}
             {runnerDetail.recentShifts.length > 0 && (
               <div>

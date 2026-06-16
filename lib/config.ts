@@ -92,6 +92,8 @@ export const config = {
   sourcing: {
     timeoutMinutes: getEnvNumber('SOURCING_TIMEOUT_MINUTES', 45),
     slaMinutes: getEnvNumber('SOURCING_SLA_MINUTES', 30),
+    slaWarningAmberPercent: getEnvNumber('SLA_WARNING_AMBER_PERCENTAGE', 50),
+    slaWarningRedPercent: getEnvNumber('SLA_WARNING_RED_PERCENTAGE', 80),
     requireQcPhoto: getEnvBoolean('REQUIRE_QC_PHOTO', true),
   },
 

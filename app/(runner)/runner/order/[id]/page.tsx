@@ -16,10 +16,12 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { OrderItemCard } from '@/components/runner/order-item-card';
 import { RunnerPriceStatusBanner } from '@/components/runner/runner-price-status-banner';
+import { SlaCountdown } from '@/components/runner/sla-countdown';
 import { MarkFoundSheet } from '@/components/runner/mark-found-sheet';
 import { MarkUnavailableSheet } from '@/components/runner/mark-unavailable-sheet';
 import { ClarificationSheet } from '@/components/runner/clarification-sheet';
 import { useRunnerOrderDetail } from '@/lib/hooks/use-runner-order-detail';
+import { useSlaCountdown } from '@/lib/hooks/use-sla-countdown';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
 import { runnerSourcingTargetTotal } from '@/lib/utils/order-pricing-display';
 import {
@@ -61,6 +63,16 @@ export default function RunnerOrderPage() {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [showReleaseInput, setShowReleaseInput] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+
+  const slaState = useSlaCountdown({
+    slaDeadlineAt: order?.assignment?.sla_deadline_at ?? null,
+    slaPausedAt: order?.assignment?.sla_paused_at ?? null,
+    slaPauseAccumulatedSeconds: order?.assignment?.sla_pause_accumulated_seconds ?? 0,
+    acceptedAt: order?.assignment?.accepted_at ?? null,
+    slaBreached: order?.assignment?.sla_breached ?? false,
+    priceReviewStatus: order?.price_review_status ?? null,
+    clarificationStatus: order?.clarification_status ?? null,
+  });
 
   if (isLoading) {
     return (
@@ -243,6 +255,13 @@ export default function RunnerOrderPage() {
           <OrderVehicleSummary vehicle={order.vehicle} className="pt-1" />
         )}
       </div>
+
+      {/* SLA Countdown Timer */}
+      {canAct && slaState && (
+        <div className="mb-4">
+          <SlaCountdown state={slaState} />
+        </div>
+      )}
 
       {/* Accept/Reject for new assignments */}
       {isAssigned && (

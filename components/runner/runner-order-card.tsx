@@ -4,6 +4,8 @@ import { Package, ChevronRight, Clock, MapPin } from 'lucide-react';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
 import { runnerSourcingTargetTotal } from '@/lib/utils/order-pricing-display';
 import { runnerPriceReviewBadgeLabel } from '@/components/runner/runner-price-status-banner';
+import { SlaCountdown } from '@/components/runner/sla-countdown';
+import { useSlaCountdown } from '@/lib/hooks/use-sla-countdown';
 import { cn } from '@/lib/utils/cn';
 import Link from 'next/link';
 import type { RunnerOrderSummary } from '@/lib/services/runner';
@@ -25,6 +27,16 @@ export function RunnerOrderCard({ order }: RunnerOrderCardProps) {
   };
   const sourcingTarget = runnerSourcingTargetTotal(order.order_items ?? []);
   const priceBadge = runnerPriceReviewBadgeLabel(order);
+  const slaState = useSlaCountdown({
+    slaDeadlineAt: order.sla_deadline_at,
+    slaPausedAt: order.sla_paused_at,
+    slaPauseAccumulatedSeconds: order.sla_pause_accumulated_seconds,
+    acceptedAt: order.accepted_at,
+    slaBreached: order.sla_breached,
+    priceReviewStatus: order.price_review_status,
+    clarificationStatus: order.clarification_status,
+  });
+  const showSla = order.assignment_status !== 'assigned' && slaState;
 
   return (
     <Link href={`/runner/order/${order.id}`}>
@@ -68,9 +80,12 @@ export function RunnerOrderCard({ order }: RunnerOrderCardProps) {
           </div>
         </div>
 
-        <div className="mb-3 flex items-center gap-1.5 text-sm text-slate-600">
-          <Package className="h-4 w-4 flex-shrink-0" />
-          <span>{order.item_count} item{order.item_count !== 1 ? 's' : ''}</span>
+        <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
+          <div className="flex items-center gap-1.5">
+            <Package className="h-4 w-4 flex-shrink-0" />
+            <span>{order.item_count} item{order.item_count !== 1 ? 's' : ''}</span>
+          </div>
+          {showSla && <SlaCountdown state={slaState} compact />}
         </div>
 
         <div className="mb-3 flex items-start gap-1.5 text-sm text-slate-500">

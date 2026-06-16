@@ -106,6 +106,16 @@ export async function syncOrderPriceReviewStatus(
     .eq('id', orderId);
 
   throwIfSupabaseError(updateError, 'Failed to update order price review status');
+
+  // Sync SLA pause state based on new price review status
+  const { syncSlaPauseState } = await import('./sla');
+  // Read current clarification status for the combined pause check
+  const { data: orderForSla } = await supabase
+    .from('orders')
+    .select('clarification_status')
+    .eq('id', orderId)
+    .single();
+  syncSlaPauseState(orderId, nextStatus, orderForSla?.clarification_status ?? null).catch(() => {});
 }
 
 export interface PriceEscalationResult {
@@ -178,6 +188,10 @@ export async function handleVendorPriceEntry(
     .eq('id', params.orderId);
 
   throwIfSupabaseError(orderError, 'Failed to flag order for price review');
+
+  // Pause SLA timer while awaiting admin review
+  const { pauseSlaTimer } = await import('./sla');
+  pauseSlaTimer(params.orderId).catch(() => {});
 
   const incidentDescription =
     `Vendor price ₦${params.vendorPrice} exceeds target budget ₦${budget.expectedVendorPrice}. ` +
@@ -513,6 +527,10 @@ export async function finalizeCustomerPriceAcceptance(
     .eq('id', orderId);
 
   throwIfSupabaseError(orderError, 'Failed to resolve price review');
+
+  // Resume SLA timer — price review resolved
+  const { resumeSlaTimer } = await import('./sla');
+  resumeSlaTimer(orderId).catch(() => {});
 }
 
 export async function discardCustomerPriceChange(

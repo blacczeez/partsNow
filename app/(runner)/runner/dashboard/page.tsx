@@ -19,30 +19,28 @@ export default function RunnerDashboardPage() {
   const handleStartShift = () => {
     setIsStarting(true);
 
+    const doStart = async (lat: number, lng: number) => {
+      try {
+        await startShift(lat, lng);
+        toast('success', 'Shift started!');
+      } catch (err) {
+        toast('error', err instanceof Error ? err.message : 'Failed to start shift');
+      } finally {
+        setIsStarting(false);
+      }
+    };
+
     if (!navigator.geolocation) {
-      toast('error', 'Geolocation is not supported by your browser');
-      setIsStarting(false);
+      // Fallback: send dummy coordinates, server-side skipClockInGeoCheck handles the rest
+      doStart(0, 0);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          await startShift(pos.coords.latitude, pos.coords.longitude);
-          toast('success', 'Shift started!');
-        } catch (err) {
-          toast('error', err instanceof Error ? err.message : 'Failed to start shift');
-        } finally {
-          setIsStarting(false);
-        }
-      },
-      (err) => {
-        let message = 'Failed to get location';
-        if (err.code === err.PERMISSION_DENIED) {
-          message = 'Location permission denied. Please enable location access.';
-        }
-        toast('error', message);
-        setIsStarting(false);
+      (pos) => doStart(pos.coords.latitude, pos.coords.longitude),
+      () => {
+        // Geolocation failed — send dummy coordinates so the server can decide
+        doStart(0, 0);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );

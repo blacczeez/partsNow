@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+interface RunnerSlaStats {
+  total_completed: number;
+  total_breached: number;
+  breach_rate: number;
+  avg_sourcing_seconds: number;
+}
+
 interface RunnerDetail {
   id: string;
   full_name: string;
@@ -35,14 +42,50 @@ interface RunnerDetail {
     assigned_at: string;
     completed_at: string | null;
   }>;
+  slaStats: RunnerSlaStats;
 }
 
 export function useAdminRunnerDetail(runnerId: string | null) {
   const [runner, setRunner] = useState<RunnerDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(Boolean(runnerId));
+  const [prevRunnerId, setPrevRunnerId] = useState(runnerId);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchRunner = useCallback(async () => {
+  if (runnerId !== prevRunnerId) {
+    setPrevRunnerId(runnerId);
+    setIsLoading(Boolean(runnerId));
+    if (!runnerId) {
+      setRunner(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!runnerId) return;
+
+    let cancelled = false;
+
+    async function loadRunner() {
+      try {
+        const res = await fetch(`/api/admin/runners/${runnerId}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setRunner(data);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadRunner();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runnerId]);
+
+  const refresh = useCallback(async () => {
     if (!runnerId) return;
     setIsLoading(true);
     try {
@@ -56,10 +99,6 @@ export function useAdminRunnerDetail(runnerId: string | null) {
     }
   }, [runnerId]);
 
-  useEffect(() => {
-    fetchRunner();
-  }, [fetchRunner]);
-
   const topUpFloat = async (amount: number) => {
     if (!runnerId) return false;
     setActionLoading(true);
@@ -70,7 +109,7 @@ export function useAdminRunnerDetail(runnerId: string | null) {
         body: JSON.stringify({ amount }),
       });
       if (res.ok) {
-        await fetchRunner();
+        await refresh();
         return true;
       }
       return false;
@@ -79,5 +118,5 @@ export function useAdminRunnerDetail(runnerId: string | null) {
     }
   };
 
-  return { runner, isLoading, actionLoading, topUpFloat, refresh: fetchRunner };
+  return { runner, isLoading, actionLoading, topUpFloat, refresh };
 }
