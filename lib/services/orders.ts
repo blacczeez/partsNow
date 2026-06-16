@@ -7,6 +7,7 @@ import {
 } from '@/lib/utils/pricing';
 import { getDeliveryPricingConfig } from '@/lib/services/delivery-config';
 import { getLoyaltyThresholds } from '@/lib/services/loyalty-config';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import {
   calculateDeliveryFee,
   toDeliveryFeeBreakdown,
@@ -62,9 +63,19 @@ export async function createOrder(
   );
 
   const loyaltyTier = customer.loyalty_tier as LoyaltyTier;
-  const loyaltyThresholds = await getLoyaltyThresholds();
-  const markupPercentage = getMarkupPercentage(loyaltyTier, loyaltyThresholds);
-  const deliveryConfig = await getDeliveryPricingConfig();
+  const runtime = await getRuntimeConfig();
+  const loyaltyThresholds = runtime.loyalty;
+  const pricingRuntime = {
+    defaultMarkupPercentage: runtime.business.defaultMarkupPercentage,
+    loyaltyDiscountsEnabled: runtime.features.loyaltyDiscounts,
+    standardDeliveryFee: runtime.business.standardDeliveryFee,
+  };
+  const markupPercentage = getMarkupPercentage(
+    loyaltyTier,
+    loyaltyThresholds,
+    pricingRuntime
+  );
+  const deliveryConfig = runtime.deliveryPricing;
   const itemsWithWeight = await resolveOrderItemWeights(supabase, input.items);
   const pricing = calculatePricing(
     itemsWithWeight.map((item) => ({
@@ -74,7 +85,8 @@ export async function createOrder(
     })),
     loyaltyTier,
     deliveryConfig,
-    loyaltyThresholds
+    loyaltyThresholds,
+    pricingRuntime
   );
   const deliveryBreakdown =
     pricing.totalWeightKg != null
@@ -132,7 +144,7 @@ export async function createOrder(
       payment_status: 'pending' as const,
       source_channel: input.sourceChannel || 'web',
       promised_delivery_minutes:
-        deliveryBreakdown?.promisedMinutes ?? config.delivery.expressPromiseMinutes,
+        deliveryBreakdown?.promisedMinutes ?? runtime.delivery.expressPromiseMinutes,
       payment_hold_expires_at: new Date(
         Date.now() + config.payments.paymentHoldExpiryMinutes * 60 * 1000
       ).toISOString(),

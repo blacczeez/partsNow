@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { sendTemplateMessage, sendTextMessage, sendInteractiveButtons } from '@/lib/integrations/wati';
 import { formatCurrency } from '@/lib/utils/format';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import { config } from '@/lib/config';
 
 interface OrderData {
@@ -45,10 +46,13 @@ export async function notifyOrderConfirmed(orderId: string) {
     const data = await getOrderWithCustomerPhone(orderId);
     if (!data) return;
 
+    const runtime = await getRuntimeConfig();
     await sendTemplateMessage(data.customer.phone, 'order_confirmed', {
       '1': data.order.order_number,
       '2': formatCurrency(data.order.total),
-      '3': String(data.order.promised_delivery_minutes ?? config.delivery.expressPromiseMinutes),
+      '3': String(
+        data.order.promised_delivery_minutes ?? runtime.delivery.expressPromiseMinutes
+      ),
     });
   } catch (error) {
     console.error('Notification error (order_confirmed):', error);
@@ -122,10 +126,13 @@ export async function notifyOrderDispatched(
       }
     }
 
+    const runtime = await getRuntimeConfig();
     await sendTemplateMessage(data.customer.phone, 'order_dispatched', {
       '1': data.order.order_number,
       '2': resolvedRiderName,
-      '3': String(config.delivery.expressPromiseMinutes),
+      '3': String(
+        data.order.promised_delivery_minutes ?? runtime.delivery.expressPromiseMinutes
+      ),
       '4': trackingUrl ?? `${config.app.url}/order/${orderId}`,
       '5': riderPhone || 'N/A',
     });

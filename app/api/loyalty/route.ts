@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLoyaltyThresholds } from '@/lib/services/loyalty-config';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import {
   buildLoyaltyTierDefinitions,
   getLoyaltyProgress,
 } from '@/lib/utils/loyalty';
-import { config } from '@/lib/config';
 import type { LoyaltyTier } from '@/lib/types/database';
 
 export async function GET() {
-  const thresholds = await getLoyaltyThresholds();
+  const [thresholds, runtime] = await Promise.all([
+    getLoyaltyThresholds(),
+    getRuntimeConfig(),
+  ]);
   const tiers = buildLoyaltyTierDefinitions(thresholds);
 
   const supabase = await createClient();
@@ -36,7 +39,8 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    enabled: config.features.loyaltyDiscounts,
+    enabled: runtime.features.loyaltyDiscounts,
+    baseMarkupPercentage: runtime.business.defaultMarkupPercentage,
     thresholds,
     tiers,
     progress,

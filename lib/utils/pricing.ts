@@ -13,13 +13,21 @@ import {
   computeTotalWeightKg,
 } from '@/lib/utils/delivery-pricing';
 
+export interface PricingRuntimeOptions {
+  defaultMarkupPercentage?: number;
+  loyaltyDiscountsEnabled?: boolean;
+  standardDeliveryFee?: number;
+}
+
 export function getMarkupPercentage(
   loyaltyTier: LoyaltyTier,
-  thresholds: LoyaltyPricingThresholds = getDefaultLoyaltyThresholds()
+  thresholds: LoyaltyPricingThresholds = getDefaultLoyaltyThresholds(),
+  runtime?: PricingRuntimeOptions
 ): number {
-  const base = config.business.defaultMarkupPercentage;
+  const base = runtime?.defaultMarkupPercentage ?? config.business.defaultMarkupPercentage;
+  const loyaltyOn = runtime?.loyaltyDiscountsEnabled ?? config.features.loyaltyDiscounts;
 
-  if (!config.features.loyaltyDiscounts) {
+  if (!loyaltyOn) {
     return base;
   }
 
@@ -37,21 +45,22 @@ export function calculatePricing(
   items: Array<{ price: number; quantity: number; weightKg?: number | null }>,
   loyaltyTier: LoyaltyTier = 'new',
   deliveryConfig: DeliveryPricingConfig = getDefaultDeliveryPricingConfig(),
-  thresholds: LoyaltyPricingThresholds = getDefaultLoyaltyThresholds()
+  thresholds: LoyaltyPricingThresholds = getDefaultLoyaltyThresholds(),
+  runtime?: PricingRuntimeOptions
 ): PricingBreakdown {
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  const markupPercentage = getMarkupPercentage(loyaltyTier, thresholds);
+  const markupPercentage = getMarkupPercentage(loyaltyTier, thresholds, runtime);
   const markupAmount = Math.round(subtotal * (markupPercentage / 100));
 
   const weightItems = items
     .filter((item) => item.weightKg != null && item.weightKg > 0)
     .map((item) => ({ weight_kg: item.weightKg as number, quantity: item.quantity }));
 
-  let deliveryFee = config.business.standardDeliveryFee;
+  let deliveryFee = runtime?.standardDeliveryFee ?? config.business.standardDeliveryFee;
   let totalWeightKg: number | undefined;
   let deliveryTierLabel: string | undefined;
   let deliveryTierId: string | undefined;

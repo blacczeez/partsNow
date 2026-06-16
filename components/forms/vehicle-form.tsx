@@ -1,11 +1,13 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { createVehicleSchema, type CreateVehicleInput } from '@/lib/validators/user';
+import { VEHICLE_MAKES, getModelsForMake, getAllModels } from '@/lib/data/vehicle-makes-models';
 import type { Vehicle } from '@/lib/types/database';
 
 const specs = ['American', 'European', 'Nigerian', 'Japanese', 'Other'] as const;
@@ -20,6 +22,8 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
   const {
     register,
     handleSubmit,
+    control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateVehicleInput>({
     resolver: zodResolver(createVehicleSchema),
@@ -35,21 +39,42 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
       : { is_primary: false },
   });
 
+  const selectedMake = watch('make');
+  const modelOptions = selectedMake
+    ? getModelsForMake(selectedMake)
+    : getAllModels();
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Input
-        label="Make"
-        id="make"
-        placeholder="e.g. Toyota"
-        error={errors.make?.message}
-        {...register('make')}
+      <Controller
+        name="make"
+        control={control}
+        render={({ field }) => (
+          <Combobox
+            label="Make"
+            id="make"
+            placeholder="e.g. Toyota"
+            options={VEHICLE_MAKES}
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            error={errors.make?.message}
+          />
+        )}
       />
-      <Input
-        label="Model"
-        id="model"
-        placeholder="e.g. Camry"
-        error={errors.model?.message}
-        {...register('model')}
+      <Controller
+        name="model"
+        control={control}
+        render={({ field }) => (
+          <Combobox
+            label="Model"
+            id="model"
+            placeholder="e.g. Camry"
+            options={modelOptions}
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            error={errors.model?.message}
+          />
+        )}
       />
       <Input
         label="Year"

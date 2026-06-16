@@ -11,14 +11,12 @@ interface OrderItemCardProps {
   item: OrderItem;
   canAct: boolean;
   onMarkFound: (itemId: string) => void;
-  onMarkUnavailable: (itemId: string) => void;
 }
 
 export function OrderItemCard({
   item,
   canAct,
   onMarkFound,
-  onMarkUnavailable,
 }: OrderItemCardProps) {
   const isResolved = item.is_found || item.is_unavailable;
 
@@ -113,24 +111,15 @@ export function OrderItemCard({
 
       {/* Action buttons */}
       {!isResolved && canAct && (
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3">
           <Button
             size="sm"
             variant="primary"
-            className="flex-1"
+            fullWidth
             onClick={() => onMarkFound(item.id)}
           >
             <Search className="mr-1.5 h-4 w-4" />
             Found
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="flex-1"
-            onClick={() => onMarkUnavailable(item.id)}
-          >
-            <XCircle className="mr-1.5 h-4 w-4" />
-            Unavailable
           </Button>
         </div>
       )}

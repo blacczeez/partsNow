@@ -8,7 +8,8 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { User, Wallet, LoyaltyTier } from '@/lib/types/database';
+import { createClient } from '@/lib/supabase/client';
+import type { User, Wallet } from '@/lib/types/database';
 
 interface UserState {
   user: User | null;
@@ -59,8 +60,79 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+    let cancelled = false;
+
+    async function loadUser() {
+      try {
+        const res = await fetch('/api/users/me');
+        if (!res.ok) {
+          if (res.status === 401) {
+            if (!cancelled) {
+              setUser(null);
+              setWallet(null);
+              setNeedsSetup(false);
+            }
+            return;
+          }
+          throw new Error('Failed to fetch user');
+        }
+
+        const data = await res.json();
+
+        if (!cancelled) {
+          if (data.needsSetup) {
+            setNeedsSetup(true);
+            setUser(null);
+            setWallet(null);
+          } else {
+            setUser(data.user);
+            setWallet(data.wallet);
+            setNeedsSetup(false);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null);
+          setWallet(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`customer-wallet-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'wallets',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void fetchUser();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchUser]);
 
   return (
     <UserContext.Provider

@@ -17,7 +17,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
 import { formatShiftDateRange, formatShiftDuration } from '@/lib/utils/shift';
-import { config } from '@/lib/config';
 import type { RunnerShiftDetail } from '@/lib/services/runner';
 
 const assignmentStatusLabels: Record<string, string> = {
@@ -31,6 +30,7 @@ const assignmentStatusLabels: Record<string, string> = {
 export default function RunnerShiftDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [shift, setShift] = useState<RunnerShiftDetail | null>(null);
+  const [commissionPerOrder, setCommissionPerOrder] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,6 +40,7 @@ export default function RunnerShiftDetailPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load shift');
         setShift(data.shift);
+        setCommissionPerOrder(data.commissionPerOrder ?? 0);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load shift');
@@ -145,7 +146,7 @@ export default function RunnerShiftDetailPage() {
           />
           <DetailRow
             label="Commission per order"
-            value={formatCurrency(config.runner.commissionPerOrder)}
+            value={formatCurrency(commissionPerOrder)}
           />
           <DetailRow
             label="Assignments received"

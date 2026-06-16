@@ -33,7 +33,12 @@ export default function CheckoutPage() {
   const cart = useCart();
   const { user, wallet, refresh } = useUser();
   const { deliveryConfig } = useDeliveryConfig();
-  const { thresholds: loyaltyThresholds } = useLoyaltyConfig();
+  const { thresholds: loyaltyThresholds, enabled, baseMarkupPercentage } =
+    useLoyaltyConfig();
+  const pricingRuntime = {
+    defaultMarkupPercentage: baseMarkupPercentage,
+    loyaltyDiscountsEnabled: enabled,
+  };
 
   const savedAddress = getSavedDeliveryAddress(
     user?.profile as Record<string, unknown> | undefined
@@ -68,7 +73,8 @@ export default function CheckoutPage() {
     pricingItems,
     loyaltyTier,
     deliveryConfig,
-    loyaltyThresholds
+    loyaltyThresholds,
+    pricingRuntime
   );
   const codAllowed = isCodAllowedForCustomer(
     pricing.total,
@@ -145,6 +151,8 @@ export default function CheckoutPage() {
           subtotal={cart.subtotal}
           loyaltySavings={pricing.loyaltySavings}
           thresholds={loyaltyThresholds}
+          loyaltyDiscountsEnabled={enabled}
+          baseMarkupPercentage={baseMarkupPercentage}
         />
 
         {/* Vehicle Selection */}

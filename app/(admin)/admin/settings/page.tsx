@@ -1,119 +1,73 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAdminSettings } from '@/lib/hooks/use-admin-settings';
+import { DELIVERY_TIERS_CARD } from '@/lib/constants/admin-settings';
 import { toast } from '@/components/ui/toast';
+import type { AdminSettingsGroup } from '@/lib/hooks/use-admin-settings';
 
-interface ConfigGroup {
-  label: string;
-  keys: Array<{
-    key: string;
-    label: string;
-    type: 'number' | 'boolean' | 'string';
-    description?: string;
-  }>;
+type EffectiveByKey = NonNullable<
+  ReturnType<typeof useAdminSettings>['effectiveByKey']
+>;
+
+function formatSettingValue(value: unknown, type: 'number' | 'boolean' | 'string'): string {
+  if (type === 'boolean') return String(value === true);
+  if (value == null) return '';
+  return String(value);
 }
 
-const CONFIG_GROUPS: ConfigGroup[] = [
-  {
-    label: 'Business Model',
-    keys: [
-      { key: 'default_markup_percentage', label: 'Default Markup %', type: 'number' },
-      { key: 'free_delivery_threshold', label: 'Free Delivery Threshold (NGN)', type: 'number' },
-      { key: 'standard_delivery_fee', label: 'Standard Delivery Fee (NGN)', type: 'number' },
-    ],
-  },
-  {
-    label: 'Delivery',
-    keys: [
-      { key: 'express_delivery_radius_km', label: 'Express Delivery Radius (km)', type: 'number' },
-      { key: 'express_delivery_promise_minutes', label: 'Express Promise (minutes)', type: 'number' },
-      { key: 'standard_delivery_promise_minutes', label: 'Standard Promise (minutes)', type: 'number' },
-    ],
-  },
-  {
-    label: 'Runner Settings',
-    keys: [
-      { key: 'runner_accept_timeout_minutes', label: 'Accept Timeout (minutes)', type: 'number' },
-      { key: 'runner_max_concurrent_orders', label: 'Max Concurrent Orders', type: 'number' },
-      { key: 'runner_daily_float_limit', label: 'Daily Float Limit (NGN)', type: 'number' },
-      { key: 'runner_commission_per_order', label: 'Commission Per Order (NGN)', type: 'number' },
-    ],
-  },
-  {
-    label: 'Loyalty Tiers',
-    keys: [
-      {
-        key: 'loyalty_verified_min_orders',
-        label: 'Verified — min delivered orders',
-        type: 'number',
-      },
-      {
-        key: 'loyalty_trusted_min_orders',
-        label: 'Trusted — min delivered orders',
-        type: 'number',
-      },
-      {
-        key: 'loyalty_partner_min_orders',
-        label: 'Partner — min delivered orders',
-        type: 'number',
-      },
-      {
-        key: 'loyalty_partner_min_lifetime_spend',
-        label: 'Partner — min lifetime spend (NGN)',
-        type: 'number',
-      },
-      {
-        key: 'loyalty_trusted_discount_percentage',
-        label: 'Trusted — markup discount (percentage points)',
-        type: 'number',
-        description: 'Points subtracted from default markup (e.g. 5 → 15% becomes 10%)',
-      },
-      {
-        key: 'loyalty_partner_discount_percentage',
-        label: 'Partner — markup discount (percentage points)',
-        type: 'number',
-        description: 'Points subtracted from default markup (e.g. 8 → 15% becomes 7%)',
-      },
-    ],
-  },
-  {
-    label: 'Features',
-    keys: [
-      { key: 'feature_car_owner_web_app', label: 'Car Owner Web App', type: 'boolean' },
-      { key: 'feature_mechanic_web_app', label: 'Mechanic Web App', type: 'boolean' },
-      { key: 'feature_credit_system', label: 'Credit System', type: 'boolean' },
-      { key: 'feature_loyalty_discounts', label: 'Loyalty Discounts', type: 'boolean' },
-      { key: 'maintenance_mode', label: 'Maintenance Mode', type: 'boolean' },
-    ],
-  },
-];
+function buildLocalValues(
+  effectiveByKey: EffectiveByKey,
+  groups: AdminSettingsGroup[]
+): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const [key, setting] of Object.entries(effectiveByKey)) {
+    const field = groups
+      .flatMap((group) => group.keys)
+      .find((item) => item.key === key);
+    values[key] = formatSettingValue(setting.value, field?.type ?? 'string');
+  }
+  return values;
+}
 
-export default function AdminSettingsPage() {
-  const { config, isLoading, actionLoading, updateConfig } = useAdminSettings();
-  const [localValues, setLocalValues] = useState<Record<string, string>>({});
-  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
+function getSettingsFormKey(effectiveByKey: EffectiveByKey): string {
+  return Object.entries(effectiveByKey)
+    .map(([key, meta]) => `${key}:${JSON.stringify(meta.value)}`)
+    .sort()
+    .join('|');
+}
 
-  // Populate local values from config
-  useEffect(() => {
-    const values: Record<string, string> = {};
-    config.forEach((c) => {
-      values[c.key] = String(c.value ?? '');
-    });
-    setLocalValues(values);
-    setDirtyKeys(new Set());
-  }, [config]);
+interface AdminSettingsFormProps {
+  groups: AdminSettingsGroup[];
+  effectiveByKey: EffectiveByKey;
+  actionLoading: boolean;
+  updateConfig: (key: string, value: unknown) => Promise<boolean>;
+}
+
+function AdminSettingsForm({
+  groups,
+  effectiveByKey,
+  actionLoading,
+  updateConfig,
+}: AdminSettingsFormProps) {
+  const [localValues, setLocalValues] = useState(() =>
+    buildLocalValues(effectiveByKey, groups)
+  );
+  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(() => new Set());
 
   const handleChange = (key: string, value: string) => {
     setLocalValues((prev) => ({ ...prev, [key]: value }));
     setDirtyKeys((prev) => new Set(prev).add(key));
   };
 
-  const handleSaveGroup = async (keys: string[]) => {
-    const keysToSave = keys.filter((k) => dirtyKeys.has(k));
+  const handleSaveGroup = async (group: AdminSettingsGroup) => {
+    const keysToSave = group.keys
+      .map((field) => field.key)
+      .filter((key) => dirtyKeys.has(key));
+
     if (keysToSave.length === 0) {
       toast('info', 'No changes to save');
       return;
@@ -121,11 +75,11 @@ export default function AdminSettingsPage() {
 
     let allSuccess = true;
     for (const key of keysToSave) {
-      const groupKey = CONFIG_GROUPS.flatMap((g) => g.keys).find((k) => k.key === key);
+      const field = group.keys.find((item) => item.key === key);
       let value: unknown = localValues[key];
-      if (groupKey?.type === 'number') {
+      if (field?.type === 'number') {
         value = parseFloat(localValues[key]);
-      } else if (groupKey?.type === 'boolean') {
+      } else if (field?.type === 'boolean') {
         value = localValues[key] === 'true';
       }
 
@@ -137,7 +91,7 @@ export default function AdminSettingsPage() {
       toast('success', 'Settings saved');
       setDirtyKeys((prev) => {
         const next = new Set(prev);
-        keysToSave.forEach((k) => next.delete(k));
+        keysToSave.forEach((key) => next.delete(key));
         return next;
       });
     } else {
@@ -145,10 +99,109 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (isLoading) {
+  return (
+    <div className="space-y-6">
+      {groups.map((group) => {
+        const hasDirty = group.keys.some((field) => dirtyKeys.has(field.key));
+
+        return (
+          <div
+            key={group.id}
+            className="rounded-card border border-slate-200 bg-white p-5"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="max-w-3xl">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {group.label}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">{group.description}</p>
+              </div>
+              <Button
+                size="sm"
+                disabled={!hasDirty}
+                isLoading={actionLoading}
+                onClick={() => handleSaveGroup(group)}
+              >
+                Save
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {group.keys.map((field) => {
+                const meta = effectiveByKey[field.key];
+                const sourceLabel =
+                  meta?.source === 'database' ? 'Saved in admin' : 'Env default';
+
+                if (field.type === 'boolean') {
+                  return (
+                    <label
+                      key={field.key}
+                      className="flex items-start gap-3 rounded-button border border-slate-200 bg-slate-50 px-4 py-3"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={localValues[field.key] === 'true'}
+                        onChange={(e) =>
+                          handleChange(field.key, String(e.target.checked))
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-slate-800">
+                          {field.label}
+                        </span>
+                        <span className="mt-1 block text-xs text-slate-500">
+                          {field.description}
+                        </span>
+                        <span className="mt-1 block text-xs text-slate-400">
+                          {sourceLabel}
+                          {meta?.envDefault != null &&
+                            meta.source === 'env' &&
+                            ` · ${String(meta.envDefault)}`}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                }
+
+                return (
+                  <div key={field.key} className="space-y-1">
+                    <Input
+                      label={field.label}
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      value={localValues[field.key] ?? ''}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
+                    />
+                    <p className="text-xs text-slate-500">{field.description}</p>
+                    <p className="text-xs text-slate-400">
+                      {sourceLabel}
+                      {meta?.envDefault != null &&
+                        meta.source === 'env' &&
+                        ` · ${String(meta.envDefault)}`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function AdminSettingsPage() {
+  const { groups, effectiveByKey, isLoading, actionLoading, updateConfig } =
+    useAdminSettings();
+
+  if (isLoading || !effectiveByKey) {
     return (
       <div className="p-6">
-        <h1 className="mb-6 text-2xl font-bold text-slate-900">Settings</h1>
+        <h1 className="mb-2 text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="mb-6 text-sm text-slate-500">
+          Platform configuration. Saved values in the database override environment
+          defaults.
+        </p>
         <div className="space-y-6">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-40 animate-pulse rounded-card bg-slate-100" />
@@ -160,14 +213,22 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Settings</h1>
+      <h1 className="mb-2 text-2xl font-bold text-slate-900">Settings</h1>
+      <p className="mb-6 max-w-3xl text-sm text-slate-600">
+        Configure pricing, delivery, runner operations, loyalty, and feature flags.
+        Values you save here are the <strong>source of truth</strong> and take effect
+        immediately. If a setting has never been saved, the app uses the environment
+        default shown below each field.
+      </p>
 
       <div className="mb-6 rounded-card border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Weight-based delivery</h2>
-            <p className="text-sm text-slate-500">
-              Configure Lagos delivery tiers, fees, and free-delivery rules
+            <h2 className="text-lg font-semibold text-slate-900">
+              {DELIVERY_TIERS_CARD.title}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {DELIVERY_TIERS_CARD.description}
             </p>
           </div>
           <Link href="/admin/settings/delivery">
@@ -178,55 +239,13 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        {CONFIG_GROUPS.map((group) => {
-          const groupKeys = group.keys.map((k) => k.key);
-          const hasDirty = groupKeys.some((k) => dirtyKeys.has(k));
-
-          return (
-            <div key={group.label} className="rounded-card border border-slate-200 bg-white p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">{group.label}</h2>
-                <Button
-                  size="sm"
-                  disabled={!hasDirty}
-                  isLoading={actionLoading}
-                  onClick={() => handleSaveGroup(groupKeys)}
-                >
-                  Save
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {group.keys.map((field) => {
-                  if (field.type === 'boolean') {
-                    return (
-                      <label key={field.key} className="flex items-center gap-3 rounded-button bg-slate-50 px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={localValues[field.key] === 'true'}
-                          onChange={(e) => handleChange(field.key, String(e.target.checked))}
-                          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-slate-700">{field.label}</span>
-                      </label>
-                    );
-                  }
-
-                  return (
-                    <Input
-                      key={field.key}
-                      label={field.label}
-                      type={field.type === 'number' ? 'number' : 'text'}
-                      value={localValues[field.key] ?? ''}
-                      onChange={(e) => handleChange(field.key, e.target.value)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <AdminSettingsForm
+        key={getSettingsFormKey(effectiveByKey)}
+        groups={groups}
+        effectiveByKey={effectiveByKey}
+        actionLoading={actionLoading}
+        updateConfig={updateConfig}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { config } from '@/lib/config';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
 import {
   handleVendorPriceEntry,
@@ -676,6 +677,7 @@ export async function cleanupStaleRunnerAssignments(runnerId: string): Promise<n
 
 export async function acceptOrder(runnerId: string, orderId: string): Promise<void> {
   const supabase = await createClient();
+  const runtime = await getRuntimeConfig();
 
   const assignment = await findRunnerAssignment(supabase, runnerId, orderId, ['assigned']);
 
@@ -690,8 +692,8 @@ export async function acceptOrder(runnerId: string, orderId: string): Promise<vo
     .eq('role', 'runner')
     .in('status', ['accepted', 'in_progress']);
 
-  if ((count ?? 0) >= config.runner.maxConcurrentOrders) {
-    throw new Error(`You can only handle ${config.runner.maxConcurrentOrders} orders at a time`);
+  if ((count ?? 0) >= runtime.runner.maxConcurrentOrders) {
+    throw new Error(`You can only handle ${runtime.runner.maxConcurrentOrders} orders at a time`);
   }
 
   // Check float
@@ -1258,12 +1260,13 @@ export async function completeOrder(runnerId: string, orderId: string): Promise<
   // Update shift stats
   const shift = await getActiveShift(runnerId);
   if (shift) {
+    const runtime = await getRuntimeConfig();
     await supabase
       .from('runner_shifts')
       .update({
         orders_completed: shift.orders_completed + 1,
         total_sourced: shift.total_sourced + totalVendorCost,
-        commission_earned: shift.commission_earned + config.runner.commissionPerOrder,
+        commission_earned: shift.commission_earned + runtime.runner.commissionPerOrder,
       })
       .eq('id', shift.id);
   }

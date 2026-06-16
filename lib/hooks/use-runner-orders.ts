@@ -24,12 +24,34 @@ async function fetchRunnerOrders(): Promise<{
   };
 }
 
-export function useRunnerOrders() {
+export function useRunnerOrders(shiftActive = true) {
   const [orders, setOrders] = useState<RunnerOrderSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(shiftActive);
   const [error, setError] = useState<string | null>(null);
+  const [prevShiftActive, setPrevShiftActive] = useState(shiftActive);
+
+  if (shiftActive !== prevShiftActive) {
+    setPrevShiftActive(shiftActive);
+    if (!shiftActive) {
+      setOrders([]);
+      setIsLoading(false);
+      setError(null);
+    } else {
+      setIsLoading(true);
+    }
+  }
+
+  const refresh = useCallback(async () => {
+    if (!shiftActive) return;
+    const result = await fetchRunnerOrders();
+    setOrders(result.orders);
+    setError(result.error);
+    setIsLoading(false);
+  }, [shiftActive]);
 
   useEffect(() => {
+    if (!shiftActive) return;
+
     let cancelled = false;
 
     async function loadOrders() {
@@ -51,16 +73,11 @@ export function useRunnerOrders() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [shiftActive]);
 
-  const refresh = useCallback(async () => {
-    const result = await fetchRunnerOrders();
-    setOrders(result.orders);
-    setError(result.error);
-  }, []);
-
-  // Subscribe to realtime changes on order_assignments
   useEffect(() => {
+    if (!shiftActive) return;
+
     const supabase = createClient();
 
     const channel = supabase
@@ -92,7 +109,7 @@ export function useRunnerOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refresh]);
+  }, [shiftActive, refresh]);
 
   return { orders, isLoading, error, refresh };
 }

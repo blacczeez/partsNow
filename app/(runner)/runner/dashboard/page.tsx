@@ -12,35 +12,40 @@ import { countRunnerShiftBlockingOrders } from '@/lib/utils/runner-price-review'
 
 export default function RunnerDashboardPage() {
   const { shift, float, isLoading: shiftLoading, startShift, endShift } = useRunnerShift();
-  const { orders, isLoading: ordersLoading } = useRunnerOrders();
+  const { orders, isLoading: ordersLoading, refresh: refreshOrders } = useRunnerOrders(
+    Boolean(shift)
+  );
   const [isStarting, setIsStarting] = useState(false);
   const [showEndShift, setShowEndShift] = useState(false);
 
   const handleStartShift = () => {
     setIsStarting(true);
 
-    const doStart = async (lat: number, lng: number) => {
-      try {
-        await startShift(lat, lng);
-        toast('success', 'Shift started!');
-      } catch (err) {
-        toast('error', err instanceof Error ? err.message : 'Failed to start shift');
-      } finally {
-        setIsStarting(false);
-      }
-    };
-
     if (!navigator.geolocation) {
-      // Fallback: send dummy coordinates, server-side skipClockInGeoCheck handles the rest
-      doStart(0, 0);
+      toast('error', 'Geolocation is not supported by your browser');
+      setIsStarting(false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => doStart(pos.coords.latitude, pos.coords.longitude),
-      () => {
-        // Geolocation failed — send dummy coordinates so the server can decide
-        doStart(0, 0);
+      async (pos) => {
+        try {
+          await startShift(pos.coords.latitude, pos.coords.longitude);
+          await refreshOrders();
+          toast('success', 'Shift started!');
+        } catch (err) {
+          toast('error', err instanceof Error ? err.message : 'Failed to start shift');
+        } finally {
+          setIsStarting(false);
+        }
+      },
+      (err) => {
+        let message = 'Failed to get location';
+        if (err.code === err.PERMISSION_DENIED) {
+          message = 'Location permission denied. Please enable location access.';
+        }
+        toast('error', message);
+        setIsStarting(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );

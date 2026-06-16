@@ -7,6 +7,7 @@ import {
   Loader2,
   AlertTriangle,
   Package,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
   const [realtimeStatus, setRealtimeStatus] = useState<OrderStatus | null>(null);
   const [prevFetchedStatus, setPrevFetchedStatus] = useState<OrderStatus | undefined>();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [priceActionLoading, setPriceActionLoading] = useState(false);
@@ -93,7 +95,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       }
       toast('success', 'Order cancelled');
       setShowCancelModal(false);
-      refresh();
+      await Promise.all([refresh(), refreshUser()]);
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to cancel');
     } finally {
@@ -141,13 +143,6 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
   }
 
   async function handleDiscardPriceChange() {
-    if (
-      !window.confirm(
-        'Cancel this order and receive a full refund to your wallet?'
-      )
-    ) {
-      return;
-    }
     setPriceActionLoading(true);
     try {
       const res = await fetch(`/api/orders/${orderId}/price-response`, {
@@ -158,7 +153,8 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to cancel order');
       toast('success', 'Order cancelled — full refund credited to your wallet');
-      refresh();
+      setShowRefundModal(false);
+      await Promise.all([refresh(), refreshUser()]);
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to cancel');
     } finally {
@@ -272,7 +268,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
             walletBalance={wallet?.balance}
             isSubmitting={priceActionLoading}
             onAccept={handleAcceptPriceChange}
-            onDiscard={handleDiscardPriceChange}
+            onDiscard={() => setShowRefundModal(true)}
           />
         )}
 
@@ -406,6 +402,16 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
           </div>
         )}
 
+        {/* View Receipt */}
+        {displayStatus === 'delivered' && (
+          <Link href={`/order/${orderId}/receipt`}>
+            <Button variant="secondary" fullWidth>
+              <FileText className="mr-2 h-4 w-4" />
+              View Receipt
+            </Button>
+          </Link>
+        )}
+
         {/* Cancel Button */}
         {canCancel && (
           <Button
@@ -447,6 +453,37 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
             onClick={handleCancel}
           >
             Cancel Order
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showRefundModal}
+        onClose={() => !priceActionLoading && setShowRefundModal(false)}
+        title="Cancel for full refund"
+        closeOnBackdropClick={!priceActionLoading}
+      >
+        <p className="mb-4 text-sm text-slate-600">
+          Cancel this order and receive a full refund of{' '}
+          {formatCurrency(order.original_total ?? order.total)} to your wallet?
+          This action cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            fullWidth
+            disabled={priceActionLoading}
+            onClick={() => setShowRefundModal(false)}
+          >
+            Keep order
+          </Button>
+          <Button
+            variant="destructive"
+            fullWidth
+            isLoading={priceActionLoading}
+            onClick={handleDiscardPriceChange}
+          >
+            Cancel & refund
           </Button>
         </div>
       </Modal>

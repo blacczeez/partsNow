@@ -2,7 +2,6 @@ import { Award } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/format';
 import { formatLoyaltyTier, type LoyaltyPricingThresholds } from '@/lib/utils/loyalty';
 import type { LoyaltyTier } from '@/lib/types/database';
-import { config } from '@/lib/config';
 import { getMarkupPercentage } from '@/lib/utils/pricing';
 
 interface LoyaltyCheckoutBannerProps {
@@ -10,6 +9,8 @@ interface LoyaltyCheckoutBannerProps {
   subtotal: number;
   loyaltySavings?: number;
   thresholds?: LoyaltyPricingThresholds;
+  loyaltyDiscountsEnabled?: boolean;
+  baseMarkupPercentage?: number;
 }
 
 export function LoyaltyCheckoutBanner({
@@ -17,11 +18,16 @@ export function LoyaltyCheckoutBanner({
   subtotal,
   loyaltySavings = 0,
   thresholds,
+  loyaltyDiscountsEnabled = true,
+  baseMarkupPercentage = 15,
 }: LoyaltyCheckoutBannerProps) {
-  if (!config.features.loyaltyDiscounts) return null;
+  if (!loyaltyDiscountsEnabled) return null;
 
-  const markup = getMarkupPercentage(tier, thresholds);
-  const base = config.business.defaultMarkupPercentage;
+  const markup = getMarkupPercentage(tier, thresholds, {
+    defaultMarkupPercentage: baseMarkupPercentage,
+    loyaltyDiscountsEnabled,
+  });
+  const base = baseMarkupPercentage;
 
   return (
     <div className="flex items-start gap-3 rounded-card border border-primary/20 bg-primary/5 p-3">

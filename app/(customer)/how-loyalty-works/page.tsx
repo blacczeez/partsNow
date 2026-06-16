@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { Loader2, Award, PackageCheck, Wallet } from 'lucide-react';
 import { PageBackButton } from '@/components/layout/page-back-button';
 import { formatCurrency } from '@/lib/utils/format';
-import { config } from '@/lib/config';
 import type { LoyaltyTierDefinition } from '@/lib/constants/loyalty';
-import type { LoyaltyThresholds } from '@/lib/services/loyalty-config';
+import type { LoyaltyThresholds } from '@/lib/types/loyalty-thresholds';
 
 interface LoyaltyConfigResponse {
   enabled: boolean;
+  baseMarkupPercentage: number;
   thresholds: LoyaltyThresholds;
   tiers: LoyaltyTierDefinition[];
 }
@@ -47,7 +47,7 @@ function HowLoyaltyWorksContent() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const baseMarkup = config.business.defaultMarkupPercentage;
+  const baseMarkup = data?.baseMarkupPercentage ?? 15;
   const thresholds = data?.thresholds;
 
   return (

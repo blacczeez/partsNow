@@ -2,9 +2,20 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { sendTextMessage } from '@/lib/integrations/wati';
 import type { LoyaltyTier, User } from '@/lib/types/database';
-import { getLoyaltyThresholds } from '@/lib/services/loyalty-config';
-import { formatLoyaltyTier, isLoyaltyUpgrade } from '@/lib/utils/loyalty';
-import { getMarkupPercentage } from '@/lib/utils/pricing';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
+import {
+  getDefaultLoyaltyThresholds,
+  getLoyaltyThresholds,
+} from '@/lib/services/loyalty-config';
+import type { LoyaltyThresholds } from '@/lib/types/loyalty-thresholds';
+import {
+  formatLoyaltyTier,
+  isLoyaltyUpgrade,
+} from '@/lib/utils/loyalty';
+import {
+  getMarkupPercentage,
+  type PricingRuntimeOptions,
+} from '@/lib/utils/pricing';
 import { config } from '@/lib/config';
 
 export async function getCustomerLoyaltyTier(
@@ -38,11 +49,16 @@ export async function notifyLoyaltyTierUpgradeIfNeeded(
     if (!isLoyaltyUpgrade(previousTier, newTier)) return;
 
     const thresholds = await getLoyaltyThresholds();
-    const markup = getMarkupPercentage(newTier, thresholds);
+    const runtime = await getRuntimeConfig();
+    const markup = getMarkupPercentage(newTier, thresholds, {
+      defaultMarkupPercentage: runtime.business.defaultMarkupPercentage,
+      loyaltyDiscountsEnabled: runtime.features.loyaltyDiscounts,
+    });
     const message =
       `Congratulations ${customer.full_name.split(' ')[0]}! ` +
       `You've reached ${formatLoyaltyTier(newTier)} tier on PartsNow. ` +
-      (config.features.loyaltyDiscounts && markup < config.business.defaultMarkupPercentage
+      (runtime.features.loyaltyDiscounts &&
+      markup < runtime.business.defaultMarkupPercentage
         ? `Your service fee is now ${markup}% on parts orders. `
         : '') +
       `Thank you for ordering with us.`;
@@ -55,16 +71,17 @@ export async function notifyLoyaltyTierUpgradeIfNeeded(
 
 export function formatWhatsAppLoyaltyLine(
   user: Pick<User, 'loyalty_tier'>,
-  thresholds = {
-    trustedDiscountPercentage: config.loyalty.trustedDiscountPercentage,
-    partnerDiscountPercentage: config.loyalty.partnerDiscountPercentage,
-  }
+  thresholds: LoyaltyThresholds = getDefaultLoyaltyThresholds(),
+  runtime?: PricingRuntimeOptions
 ): string {
-  if (!config.features.loyaltyDiscounts) return '';
+  const loyaltyOn =
+    runtime?.loyaltyDiscountsEnabled ?? config.features.loyaltyDiscounts;
+  if (!loyaltyOn) return '';
 
   const tier = user.loyalty_tier as LoyaltyTier;
-  const markup = getMarkupPercentage(tier, thresholds);
-  const base = config.business.defaultMarkupPercentage;
+  const markup = getMarkupPercentage(tier, thresholds, runtime);
+  const base =
+    runtime?.defaultMarkupPercentage ?? config.business.defaultMarkupPercentage;
 
   if (markup >= base) {
     if (tier === 'verified') {

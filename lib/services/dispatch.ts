@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { config } from '@/lib/config';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import {
@@ -21,6 +22,7 @@ export async function assignRunner(
   options?: AssignRunnerOptions
 ): Promise<string | null> {
   const supabase = createServiceClient();
+  const runtime = await getRuntimeConfig();
 
   // Find eligible runners:
   // - Same cluster
@@ -113,7 +115,7 @@ export async function assignRunner(
   // Find eligible runners (under max concurrent) sorted by fewest assignments
   const eligible = fundedRunnerIds
     .filter((id) => !excludeSet.has(id))
-    .filter((id) => (assignmentCounts[id] || 0) < config.runner.maxConcurrentOrders)
+    .filter((id) => (assignmentCounts[id] || 0) < runtime.runner.maxConcurrentOrders)
     .sort((a, b) => (assignmentCounts[a] || 0) - (assignmentCounts[b] || 0));
 
   if (eligible.length === 0) return null;

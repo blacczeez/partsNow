@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/lib/utils/admin-auth';
 import { getSystemConfig, updateSystemConfig } from '@/lib/services/admin';
+import { getEffectiveAdminSettings } from '@/lib/services/runtime-config';
+import { ADMIN_SETTINGS_GROUPS } from '@/lib/constants/admin-settings';
 import { updateConfigSchema } from '@/lib/validators/admin';
 
 export async function GET() {
@@ -8,8 +10,21 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
-    const config = await getSystemConfig();
-    return NextResponse.json(config);
+    const [rawConfig, effectiveSettings] = await Promise.all([
+      getSystemConfig(),
+      getEffectiveAdminSettings(),
+    ]);
+
+    const effectiveByKey = Object.fromEntries(
+      effectiveSettings.map((setting) => [setting.key, setting])
+    );
+
+    return NextResponse.json({
+      groups: ADMIN_SETTINGS_GROUPS,
+      settings: effectiveSettings,
+      effectiveByKey,
+      rawConfig,
+    });
   } catch (error) {
     console.error('Settings error:', error);
     return NextResponse.json(
@@ -19,7 +34,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request: Request) {
   const auth = await verifyAdminAuth();
   if (auth.error) return auth.error;
 

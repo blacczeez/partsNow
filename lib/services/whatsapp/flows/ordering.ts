@@ -16,6 +16,7 @@ import {
 } from '../delivery-quote';
 import { formatWhatsAppLoyaltyLine } from '@/lib/services/loyalty';
 import { getLoyaltyThresholds } from '@/lib/services/loyalty-config';
+import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import type { User } from '@/lib/types/database';
 
 interface OrderingItem {
@@ -50,7 +51,14 @@ export async function handleOrdering(
 
     const items: OrderingItem[] = [{ description, price: 0, quantity: 1 }];
     const quote = await buildWhatsAppDeliveryQuote(description, 0);
-    const loyaltyThresholds = await getLoyaltyThresholds();
+    const [loyaltyThresholds, runtime] = await Promise.all([
+      getLoyaltyThresholds(),
+      getRuntimeConfig(),
+    ]);
+    const loyaltyLine = formatWhatsAppLoyaltyLine(user, loyaltyThresholds, {
+      defaultMarkupPercentage: runtime.business.defaultMarkupPercentage,
+      loyaltyDiscountsEnabled: runtime.features.loyaltyDiscounts,
+    });
 
     await setConversationState(phone, 'ordering', {
       step: 'confirm_quote',
@@ -66,7 +74,7 @@ export async function handleOrdering(
       formatWhatsAppDeliveryQuoteMessage(
         description,
         quote,
-        formatWhatsAppLoyaltyLine(user, loyaltyThresholds)
+        loyaltyLine
       ),
       [
         { id: 'confirm_quote', title: 'Continue' },

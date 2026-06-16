@@ -1,16 +1,31 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  ADMIN_SETTINGS_GROUPS,
+  type AdminSettingsGroup,
+} from '@/lib/constants/admin-settings';
+type ConfigValueSource = 'database' | 'env';
 
-interface ConfigEntry {
+export type { AdminSettingsGroup };
+
+interface EffectiveSettingMeta {
   key: string;
   value: unknown;
-  description: string | null;
-  updated_at: string;
+  source: ConfigValueSource;
+  envDefault: unknown;
+}
+
+interface AdminSettingsResponse {
+  groups: AdminSettingsGroup[];
+  effectiveByKey: Record<string, EffectiveSettingMeta>;
 }
 
 export function useAdminSettings() {
-  const [config, setConfig] = useState<ConfigEntry[]>([]);
+  const [groups, setGroups] = useState<AdminSettingsGroup[]>(ADMIN_SETTINGS_GROUPS);
+  const [effectiveByKey, setEffectiveByKey] = useState<
+    Record<string, EffectiveSettingMeta> | null
+  >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -19,8 +34,9 @@ export function useAdminSettings() {
     try {
       const res = await fetch('/api/admin/settings');
       if (res.ok) {
-        const data = await res.json();
-        setConfig(data);
+        const data = (await res.json()) as AdminSettingsResponse;
+        setGroups(data.groups ?? ADMIN_SETTINGS_GROUPS);
+        setEffectiveByKey(data.effectiveByKey ?? {});
       }
     } finally {
       setIsLoading(false);
@@ -28,8 +44,30 @@ export function useAdminSettings() {
   }, []);
 
   useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
+    let cancelled = false;
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/admin/settings');
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as AdminSettingsResponse;
+        if (!cancelled) {
+          setGroups(data.groups ?? ADMIN_SETTINGS_GROUPS);
+          setEffectiveByKey(data.effectiveByKey ?? {});
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const updateConfig = async (key: string, value: unknown) => {
     setActionLoading(true);
@@ -49,5 +87,12 @@ export function useAdminSettings() {
     }
   };
 
-  return { config, isLoading, actionLoading, updateConfig, refresh: fetchConfig };
+  return {
+    groups,
+    effectiveByKey,
+    isLoading,
+    actionLoading,
+    updateConfig,
+    refresh: fetchConfig,
+  };
 }

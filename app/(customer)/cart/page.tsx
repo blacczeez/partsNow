@@ -28,7 +28,12 @@ export default function CartPage() {
   } = useCart();
   const { user } = useUser();
   const { deliveryConfig } = useDeliveryConfig();
-  const { thresholds: loyaltyThresholds } = useLoyaltyConfig();
+  const { thresholds: loyaltyThresholds, enabled, baseMarkupPercentage } =
+    useLoyaltyConfig();
+  const pricingRuntime = {
+    defaultMarkupPercentage: baseMarkupPercentage,
+    loyaltyDiscountsEnabled: enabled,
+  };
 
   const loyaltyTier = (user?.loyalty_tier || 'new') as LoyaltyTier;
   const pricingPreview = calculatePricing(
@@ -39,7 +44,8 @@ export default function CartPage() {
     })),
     loyaltyTier,
     deliveryConfig,
-    loyaltyThresholds
+    loyaltyThresholds,
+    pricingRuntime
   );
 
   if (items.length === 0) {
@@ -139,6 +145,8 @@ export default function CartPage() {
               subtotal={subtotal}
               loyaltySavings={pricingPreview.loyaltySavings}
               thresholds={loyaltyThresholds}
+              loyaltyDiscountsEnabled={enabled}
+              baseMarkupPercentage={baseMarkupPercentage}
             />
             <DeliveryWeightSummary pricing={pricingPreview} />
             <p className="text-center text-xs text-slate-500 lg:text-left">

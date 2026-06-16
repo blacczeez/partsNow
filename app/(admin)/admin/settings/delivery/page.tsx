@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { toast } from '@/components/ui/toast';
 import type { DeliveryWeightTier } from '@/lib/types/delivery';
+import { DELIVERY_SETTINGS_COPY } from '@/lib/constants/admin-settings';
 
 const VEHICLE_OPTIONS = [
   { value: 'bike', label: 'Bike' },
@@ -29,6 +30,36 @@ const emptyTier = (sortOrder: number): DeliveryWeightTier => ({
   is_active: true,
 });
 
+interface DeliverySettingsData {
+  tiers: DeliveryWeightTier[];
+  freeDeliveryThreshold: string;
+  freeDeliveryEligibleTiers: string[];
+}
+
+async function fetchDeliverySettings(): Promise<DeliverySettingsData | null> {
+  try {
+    const res = await fetch('/api/admin/delivery-tiers');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load');
+    return {
+      tiers: data.tiers ?? [],
+      freeDeliveryThreshold:
+        data.freeDeliveryThreshold != null
+          ? String(data.freeDeliveryThreshold)
+          : '50000',
+      freeDeliveryEligibleTiers: Array.isArray(data.freeDeliveryEligibleTiers)
+        ? data.freeDeliveryEligibleTiers
+        : ['light', 'medium'],
+    };
+  } catch (err) {
+    toast(
+      'error',
+      err instanceof Error ? err.message : 'Failed to load delivery settings'
+    );
+    return null;
+  }
+}
+
 export default function AdminDeliverySettingsPage() {
   const [tiers, setTiers] = useState<DeliveryWeightTier[]>([]);
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState('50000');
@@ -39,29 +70,44 @@ export default function AdminDeliverySettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSettings() {
+      try {
+        const data = await fetchDeliverySettings();
+        if (!cancelled && data) {
+          setTiers(data.tiers);
+          setFreeDeliveryThreshold(data.freeDeliveryThreshold);
+          setFreeDeliveryEligibleTiers(data.freeDeliveryEligibleTiers);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function refreshSettings() {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/delivery-tiers');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load');
-      setTiers(data.tiers ?? []);
-      if (data.freeDeliveryThreshold != null) {
-        setFreeDeliveryThreshold(String(data.freeDeliveryThreshold));
-      }
-      if (Array.isArray(data.freeDeliveryEligibleTiers)) {
+      const data = await fetchDeliverySettings();
+      if (data) {
+        setTiers(data.tiers);
+        setFreeDeliveryThreshold(data.freeDeliveryThreshold);
         setFreeDeliveryEligibleTiers(data.freeDeliveryEligibleTiers);
       }
-    } catch (err) {
-      toast('error', err instanceof Error ? err.message : 'Failed to load delivery settings');
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  }
 
   function updateTier(index: number, patch: Partial<DeliveryWeightTier>) {
     setTiers((prev) =>
@@ -90,7 +136,7 @@ export default function AdminDeliverySettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save');
       toast('success', 'Delivery settings saved');
-      await load();
+      await refreshSettings();
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -114,23 +160,33 @@ export default function AdminDeliverySettingsPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Delivery tiers</h1>
-          <p className="text-sm text-slate-500">
-            Lagos weight-based delivery fees and vehicle routing
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">
+            {DELIVERY_SETTINGS_COPY.intro}
           </p>
         </div>
       </div>
 
       <div className="mb-6 rounded-card border border-slate-200 bg-white p-4 space-y-4">
         <h2 className="font-semibold text-slate-900">Free delivery rules</h2>
+        <p className="text-sm text-slate-500">
+          These rules work together with the flat fee on the main Settings page.
+          Database values override environment defaults.
+        </p>
         <Input
           label="Free delivery threshold (NGN parts subtotal)"
           type="number"
           value={freeDeliveryThreshold}
           onChange={(e) => setFreeDeliveryThreshold(e.target.value)}
         />
+        <p className="text-xs text-slate-500">
+          {DELIVERY_SETTINGS_COPY.freeDelivery.threshold}
+        </p>
         <div>
           <p className="mb-2 text-sm font-medium text-slate-700">
             Eligible tiers (free delivery applies only on these tiers)
+          </p>
+          <p className="mb-2 text-xs text-slate-500">
+            {DELIVERY_SETTINGS_COPY.freeDelivery.eligibleTiers}
           </p>
           <div className="flex flex-wrap gap-2">
             {tiers.map((tier) => (
@@ -168,89 +224,143 @@ export default function AdminDeliverySettingsPage() {
               </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="ID (slug)"
-                value={tier.id}
-                onChange={(e) => updateTier(index, { id: e.target.value })}
-              />
-              <Input
-                label="Label"
-                value={tier.label}
-                onChange={(e) => updateTier(index, { label: e.target.value })}
-              />
-              <Input
-                label="Min kg"
-                type="number"
-                value={String(tier.min_kg)}
-                onChange={(e) => updateTier(index, { min_kg: parseFloat(e.target.value) || 0 })}
-              />
-              <Input
-                label="Max kg (empty = unlimited)"
-                type="number"
-                value={tier.max_kg ?? ''}
-                onChange={(e) =>
-                  updateTier(index, {
-                    max_kg: e.target.value ? parseFloat(e.target.value) : null,
-                  })
-                }
-              />
-              <Input
-                label="Delivery fee (NGN)"
-                type="number"
-                value={String(tier.delivery_fee)}
-                onChange={(e) =>
-                  updateTier(index, { delivery_fee: parseFloat(e.target.value) || 0 })
-                }
-              />
-              <Input
-                label="Promise (minutes)"
-                type="number"
-                value={String(tier.promise_minutes)}
-                onChange={(e) =>
-                  updateTier(index, {
-                    promise_minutes: parseInt(e.target.value, 10) || 45,
-                  })
-                }
-              />
-              <Select
-                label="Vehicle type"
-                value={tier.vehicle_type}
-                onChange={(e) =>
-                  updateTier(index, {
-                    vehicle_type: e.target.value as DeliveryWeightTier['vehicle_type'],
-                  })
-                }
-              >
-                {VEHICLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Sort order"
-                type="number"
-                value={String(tier.sort_order)}
-                onChange={(e) =>
-                  updateTier(index, { sort_order: parseInt(e.target.value, 10) || 0 })
-                }
-              />
+              <div>
+                <Input
+                  label="ID (slug)"
+                  value={tier.id}
+                  onChange={(e) => updateTier(index, { id: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.id}
+                </p>
+              </div>
+              <div>
+                <Input
+                  label="Label"
+                  value={tier.label}
+                  onChange={(e) => updateTier(index, { label: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.label}
+                </p>
+              </div>
+              <div>
+                <Input
+                  label="Min kg"
+                  type="number"
+                  value={String(tier.min_kg)}
+                  onChange={(e) =>
+                    updateTier(index, { min_kg: parseFloat(e.target.value) || 0 })
+                  }
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.minKg}
+                </p>
+              </div>
+              <div>
+                <Input
+                  label="Max kg (empty = unlimited)"
+                  type="number"
+                  value={tier.max_kg ?? ''}
+                  onChange={(e) =>
+                    updateTier(index, {
+                      max_kg: e.target.value ? parseFloat(e.target.value) : null,
+                    })
+                  }
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.maxKg}
+                </p>
+              </div>
+              <div>
+                <Input
+                  label="Delivery fee (NGN)"
+                  type="number"
+                  value={String(tier.delivery_fee)}
+                  onChange={(e) =>
+                    updateTier(index, { delivery_fee: parseFloat(e.target.value) || 0 })
+                  }
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.deliveryFee}
+                </p>
+              </div>
+              <div>
+                <Input
+                  label="Promise (minutes)"
+                  type="number"
+                  value={String(tier.promise_minutes)}
+                  onChange={(e) =>
+                    updateTier(index, {
+                      promise_minutes: parseInt(e.target.value, 10) || 45,
+                    })
+                  }
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.promiseMinutes}
+                </p>
+              </div>
+              <div>
+                <Select
+                  label="Vehicle type"
+                  value={tier.vehicle_type}
+                  onChange={(e) =>
+                    updateTier(index, {
+                      vehicle_type: e.target.value as DeliveryWeightTier['vehicle_type'],
+                    })
+                  }
+                >
+                  {VEHICLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.vehicleType}
+                </p>
+              </div>
+              <div>
+                <Input
+                  label="Sort order"
+                  type="number"
+                  value={String(tier.sort_order)}
+                  onChange={(e) =>
+                    updateTier(index, { sort_order: parseInt(e.target.value, 10) || 0 })
+                  }
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.sortOrder}
+                </p>
+              </div>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-start gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={tier.express_allowed}
                 onChange={(e) => updateTier(index, { express_allowed: e.target.checked })}
+                className="mt-0.5"
               />
-              Express delivery allowed
+              <span>
+                Express delivery allowed
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.expressAllowed}
+                </span>
+              </span>
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-start gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={tier.is_active}
                 onChange={(e) => updateTier(index, { is_active: e.target.checked })}
+                className="mt-0.5"
               />
-              Active
+              <span>
+                Active
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {DELIVERY_SETTINGS_COPY.tierFields.active}
+                </span>
+              </span>
             </label>
           </div>
         ))}

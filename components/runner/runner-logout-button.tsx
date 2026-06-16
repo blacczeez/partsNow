@@ -15,7 +15,7 @@ import { toast } from '@/components/ui/toast';
 export function RunnerLogoutButton() {
   const { logout, isLoggingOut } = useLogout();
   const { shift, float, endShift, isLoading: shiftLoading } = useRunnerShift();
-  const { orders, isLoading: ordersLoading } = useRunnerOrders();
+  const { orders, isLoading: ordersLoading } = useRunnerOrders(Boolean(shift));
   const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [showEndShift, setShowEndShift] = useState(false);
   const [isEndingShift, setIsEndingShift] = useState(false);
