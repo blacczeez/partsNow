@@ -145,9 +145,12 @@ export async function createOrder(
       source_channel: input.sourceChannel || 'web',
       promised_delivery_minutes:
         deliveryBreakdown?.promisedMinutes ?? runtime.delivery.expressPromiseMinutes,
-      payment_hold_expires_at: new Date(
-        Date.now() + config.payments.paymentHoldExpiryMinutes * 60 * 1000
-      ).toISOString(),
+      payment_hold_expires_at:
+        input.paymentMethod === 'card'
+          ? new Date(
+              Date.now() + config.payments.paymentHoldExpiryMinutes * 60 * 1000
+            ).toISOString()
+          : null,
     })
     .select()
     .single();

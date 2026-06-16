@@ -2,17 +2,29 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Package, User } from 'lucide-react';
+import { Home, Search, Package, User, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import type { LucideIcon } from 'lucide-react';
 
-const navItems = [
+interface NavItem {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+}
+
+interface BottomNavProps {
+  cartCount?: number;
+}
+
+const navItems: NavItem[] = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/search', icon: Search, label: 'Search' },
+  { href: '/cart', icon: ShoppingCart, label: 'Cart' },
   { href: '/orders', icon: Package, label: 'Orders' },
   { href: '/account', icon: User, label: 'Account' },
 ];
 
-export function BottomNav() {
+export function BottomNav({ cartCount = 0 }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
@@ -24,17 +36,26 @@ export function BottomNav() {
             (href !== '/' && pathname.startsWith(href)) ||
             (href === '/orders' && pathname.startsWith('/order/'));
 
+          const isCart = href === '/cart';
+
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                'flex h-full w-full flex-col items-center justify-center gap-1',
+                'relative flex h-full w-full flex-col items-center justify-center gap-0.5',
                 isActive ? 'text-primary' : 'text-slate-400'
               )}
             >
-              <Icon className="h-6 w-6" strokeWidth={isActive ? 2 : 1.5} />
-              <span className="text-xs font-medium">{label}</span>
+              <span className="relative">
+                <Icon className="h-6 w-6" strokeWidth={isActive ? 2 : 1.5} />
+                {isCart && cartCount > 0 && (
+                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </span>
+              <span className="text-[11px] font-medium">{label}</span>
             </Link>
           );
         })}

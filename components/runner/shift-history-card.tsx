@@ -12,7 +12,7 @@ interface ShiftHistoryCardProps {
 export function ShiftHistoryCard({ shift }: ShiftHistoryCardProps) {
   return (
     <Link href={`/runner/shifts/${shift.id}`}>
-      <div className="rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="mb-4 rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">

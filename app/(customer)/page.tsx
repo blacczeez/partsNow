@@ -97,7 +97,7 @@ function Dashboard() {
       {/* Content area — overlaps hero on mobile for visual bridge */}
       <div className="relative z-10 -mt-5 lg:mt-0">
         {/* Categories */}
-        <div className="px-4 pt-2 lg:pt-6">
+        <div className="px-4 pt-6 lg:pt-6">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Find Parts</h2>
           <div className="grid grid-cols-4 gap-3 md:grid-cols-6 xl:grid-cols-8">
             {categories.map(({ name, slug }) => {

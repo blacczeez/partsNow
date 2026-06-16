@@ -23,7 +23,7 @@ export function OrderItemCard({
   return (
     <div
       className={cn(
-        'rounded-card border p-4',
+          'mb-4 rounded-card border p-4',
         item.is_found && 'border-success/30 bg-success-light/20',
         item.is_unavailable && 'border-error/30 bg-error-light/20',
         !isResolved && 'border-slate-200 bg-white'

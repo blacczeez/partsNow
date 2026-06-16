@@ -41,7 +41,7 @@ export function RiderHistoryCard({ delivery }: RiderHistoryCardProps) {
     delivery.delivered_at ?? delivery.completed_at ?? delivery.assigned_at;
 
   return (
-    <article className="relative mt-4 rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <article className="relative mb-4 mt-4 rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       <Link
         href={`/rider/history/${delivery.id}`}
         className="absolute inset-0 z-0 rounded-card"

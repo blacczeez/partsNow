@@ -30,7 +30,7 @@ export function OrderCard({ order }: OrderCardProps) {
 
   return (
     <Link href={`/order/${order.id}`}>
-      <div className="rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="mb-4 rounded-card border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
         <div className="mb-3 flex items-start justify-between">
           <div>
             <p className="text-sm text-slate-500">{order.order_number}</p>

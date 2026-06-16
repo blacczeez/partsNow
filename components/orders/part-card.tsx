@@ -16,7 +16,7 @@ export function PartCard({ part, onClick }: PartCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full flex-col overflow-hidden rounded-card border border-slate-200 bg-white text-left shadow-sm transition-shadow hover:shadow-md"
+      className="mb-4 flex w-full flex-col overflow-hidden rounded-card border border-slate-200 bg-white text-left shadow-sm transition-shadow hover:shadow-md"
     >
       {/* Image area */}
       <div className="relative aspect-square w-full bg-slate-100">

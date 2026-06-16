@@ -14,6 +14,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/inventory/search',
   '/api/delivery/config',
   '/api/webhooks/',
+  '/api/cron/',
 ];
 
 function isPublicApiRoute(pathname: string): boolean {

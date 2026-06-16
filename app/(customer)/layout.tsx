@@ -2,6 +2,7 @@
 
 import { Home, Search, Package, Wallet, User } from 'lucide-react';
 import { BottomNav } from '@/components/layout/bottom-nav';
+import { MobileCustomerHeader } from '@/components/layout/mobile-customer-header';
 import { TopNav } from '@/components/layout/top-nav';
 import { SetupRedirect } from '@/components/auth/setup-redirect';
 import { UserProvider, useUser } from '@/lib/hooks/use-user';
@@ -36,6 +37,7 @@ function CustomerTopNav() {
 
 function CustomerShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading, needsSetup } = useUser();
+  const { itemCount } = useCart();
 
   // Loading or unauthenticated — render children bare (no app chrome).
   // The page component shows <LandingPage /> when there's no user,
@@ -48,10 +50,11 @@ function CustomerShell({ children }: { children: React.ReactNode }) {
     <>
       <SetupRedirect />
       <CustomerTopNav />
+      <MobileCustomerHeader cartCount={itemCount} />
       <main className="min-h-full flex-1 pb-20 lg:pb-0">
         <div className="mx-auto w-full lg:max-w-5xl">{children}</div>
       </main>
-      <BottomNav />
+      <BottomNav cartCount={itemCount} />
     </>
   );
 }

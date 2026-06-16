@@ -34,7 +34,7 @@ export function LoyaltyProgressCard({
   lifetimeSpend,
 }: LoyaltyProgressCardProps) {
   return (
-    <div className="rounded-card border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-4 rounded-card border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-sm text-slate-500">Current tier</p>
