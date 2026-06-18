@@ -1,4 +1,4 @@
-import { sendTextMessage } from '@/lib/integrations/wati';
+import { sendTextMessage } from '@/lib/integrations/whatsapp';
 import {
   acceptPriceChangeFromWhatsApp,
   discardPriceChangeFromWhatsApp,

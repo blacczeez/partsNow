@@ -1,4 +1,4 @@
-import { mockGlobalFetch, createFetchResponse } from '@/lib/__tests__/helpers';
+import { mockGlobalFetch, createFetchResponse, getFetchMockCall } from '@/lib/__tests__/helpers';
 
 vi.mock('@/lib/config', () => ({
   config: {
@@ -27,7 +27,7 @@ describe('sendTemplateMessage', () => {
 
     await sendTemplateMessage('2348012345678', 'order_confirmed', { '1': 'ORD-001' });
 
-    const url = mockFetch.mock.calls[0][0] as string;
+    const { url } = getFetchMockCall(mockFetch);
     expect(url).toBe(
       'https://live-server-test.wati.io/api/v1/sendTemplateMessage?whatsappNumber=2348012345678'
     );
@@ -40,10 +40,10 @@ describe('sendTemplateMessage', () => {
 
     await sendTemplateMessage('2348012345678', 'order_confirmed', {});
 
-    const opts = mockFetch.mock.calls[0][1];
-    expect(opts.headers.Authorization).toBe('Bearer test-api-key');
-    expect(opts.headers['Content-Type']).toBe('application/json');
-    expect(opts.method).toBe('POST');
+    const { init } = getFetchMockCall(mockFetch);
+    expect(init.headers.Authorization).toBe('Bearer test-api-key');
+    expect(init.headers['Content-Type']).toBe('application/json');
+    expect(init.method).toBe('POST');
   });
 
   it('maps parameters from {k:v} to [{name,value}] array', async () => {
@@ -57,7 +57,7 @@ describe('sendTemplateMessage', () => {
       '3': '45',
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const body = JSON.parse(getFetchMockCall(mockFetch).init.body as string);
     expect(body.template_name).toBe('order_confirmed');
     expect(body.broadcast_name).toBe('order_update');
     expect(body.parameters).toEqual([
@@ -73,7 +73,7 @@ describe('sendTemplateMessage', () => {
     );
 
     const result = await sendTemplateMessage('2348012345678', 'order_confirmed', {});
-    expect(result).toEqual({ result: true, info: 'sent' });
+    expect(result).toEqual({ ok: true, info: 'sent' });
   });
 
   it('returns null on network error', async () => {
@@ -92,7 +92,7 @@ describe('sendTextMessage', () => {
 
     await sendTextMessage('2348012345678', 'Hello');
 
-    const url = mockFetch.mock.calls[0][0] as string;
+    const { url } = getFetchMockCall(mockFetch);
     expect(url).toBe(
       'https://live-server-test.wati.io/api/v1/sendSessionMessage/2348012345678'
     );
@@ -105,7 +105,7 @@ describe('sendTextMessage', () => {
 
     await sendTextMessage('2348012345678', 'Your order is ready!');
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const body = JSON.parse(getFetchMockCall(mockFetch).init.body as string);
     expect(body.messageText).toBe('Your order is ready!');
   });
 
@@ -115,7 +115,7 @@ describe('sendTextMessage', () => {
     );
 
     const result = await sendTextMessage('2348012345678', 'test');
-    expect(result).toEqual({ result: true });
+    expect(result).toEqual({ ok: true });
   });
 
   it('returns null on error', async () => {
@@ -139,7 +139,7 @@ describe('sendInteractiveButtons', () => {
 
     await sendInteractiveButtons('2348012345678', 'Choose an option:', buttons);
 
-    const url = mockFetch.mock.calls[0][0] as string;
+    const { url } = getFetchMockCall(mockFetch);
     expect(url).toBe(
       'https://live-server-test.wati.io/api/v1/sendInteractiveButtonsMessage?whatsappNumber=2348012345678'
     );
@@ -152,7 +152,7 @@ describe('sendInteractiveButtons', () => {
 
     await sendInteractiveButtons('2348012345678', 'Choose:', buttons);
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const body = JSON.parse(getFetchMockCall(mockFetch).init.body as string);
     expect(body.body).toBe('Choose:');
     expect(body.buttons).toEqual([
       { type: 'reply', reply: { id: 'reply_1', title: 'Reply' } },
@@ -166,7 +166,7 @@ describe('sendInteractiveButtons', () => {
     );
 
     const result = await sendInteractiveButtons('2348012345678', 'Choose:', buttons);
-    expect(result).toEqual({ result: true });
+    expect(result).toEqual({ ok: true });
   });
 
   it('returns null on error', async () => {
@@ -194,7 +194,7 @@ describe('getMediaUrl', () => {
 
     await getMediaUrl('media/special');
 
-    const url = mockFetch.mock.calls[0][0] as string;
+    const { url } = getFetchMockCall(mockFetch);
     expect(url).toBe(
       'https://live-server-test.wati.io/api/v1/getMedia/media%2Fspecial'
     );

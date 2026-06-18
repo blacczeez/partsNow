@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendTextMessage } from '@/lib/integrations/wati';
+import { sendTextMessage } from '@/lib/integrations/whatsapp';
 import {
   setConversationState,
   linkConversationToUser,

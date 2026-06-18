@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendTextMessage, sendInteractiveButtons } from '@/lib/integrations/wati';
+import { sendTextMessage, sendInteractiveButtons } from '@/lib/integrations/whatsapp';
 import { formatCurrency } from '@/lib/utils/format';
 import { assignRunner } from '@/lib/services/dispatch';
 import {

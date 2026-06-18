@@ -607,7 +607,7 @@ export async function acceptPriceChangeFromWhatsApp(
   const supabase = createServiceClient();
   const result = await acceptCustomerPriceChange(supabase, userId, orderId);
   if (result.paymentUrl) {
-    const { sendTextMessage } = await import('@/lib/integrations/wati');
+    const { sendTextMessage } = await import('@/lib/integrations/whatsapp');
     const { data: user } = await supabase.from('users').select('phone').eq('id', userId).single();
     if (user?.phone) {
       await sendTextMessage(

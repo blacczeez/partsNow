@@ -1,5 +1,9 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendTextMessage, sendInteractiveButtons } from '@/lib/integrations/wati';
+import {
+  sendTextMessage,
+  sendInteractiveButtons,
+  type WhatsAppIncomingMessage,
+} from '@/lib/integrations/whatsapp';
 import { normalizePhone } from '@/lib/utils/format';
 import { getOrCreateConversation, type WhatsAppConversation } from './conversation';
 import { handleRegistration, startRegistration } from './flows/registration';
@@ -10,20 +14,7 @@ import { handleClarification } from './flows/clarification';
 import { handlePriceChangeButton } from './flows/price-change';
 import type { User } from '@/lib/types/database';
 
-export interface WatiWebhookPayload {
-  waId: string;
-  text?: string;
-  type?: string;
-  timestamp?: string;
-  media?: {
-    url: string;
-    id?: string;
-  };
-  buttonReply?: {
-    id: string;
-    title: string;
-  };
-}
+export type { WhatsAppIncomingMessage };
 
 async function getUserById(userId: string): Promise<User | null> {
   const supabase = createServiceClient();
@@ -49,7 +40,9 @@ async function getUserByPhone(phone: string): Promise<User | null> {
   return data as unknown as User;
 }
 
-export async function routeIncomingMessage(payload: WatiWebhookPayload): Promise<void> {
+export async function routeIncomingMessage(
+  payload: WhatsAppIncomingMessage
+): Promise<void> {
   const phone = normalizePhone(payload.waId);
   const conversation = await getOrCreateConversation(phone);
 

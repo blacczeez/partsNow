@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendTextMessage } from '@/lib/integrations/wati';
+import { sendTextMessage } from '@/lib/integrations/whatsapp';
 import { formatCurrency } from '@/lib/utils/format';
 import { config } from '@/lib/config';
 import { initializePayment } from '@/lib/integrations/paystack';

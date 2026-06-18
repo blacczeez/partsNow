@@ -1,5 +1,6 @@
 import { config } from '@/lib/config';
 import crypto from 'crypto';
+import type { WhatsAppSendResult } from '@/lib/types/whatsapp';
 
 /** Skip outbound calls when WATI is not configured (local dev without WhatsApp). */
 export function isWatiConfigured(): boolean {
@@ -13,6 +14,10 @@ interface WatiApiResponse {
   info?: string;
 }
 
+function toSendResult(data: WatiApiResponse): WhatsAppSendResult {
+  return { ok: data.result, info: data.info };
+}
+
 interface SendTemplateParams {
   phone: string;
   templateName: string;
@@ -23,7 +28,7 @@ export async function sendTemplateMessage(
   phone: string,
   templateName: string,
   parameters: Record<string, string>
-): Promise<WatiApiResponse | null> {
+): Promise<WhatsAppSendResult | null> {
   if (!isWatiConfigured()) return null;
 
   try {
@@ -46,8 +51,8 @@ export async function sendTemplateMessage(
       }
     );
 
-    const data = await response.json();
-    return data as WatiApiResponse;
+    const data = (await response.json()) as WatiApiResponse;
+    return toSendResult(data);
   } catch (error) {
     console.error(`Wati sendTemplateMessage error (${templateName}):`, error);
     return null;
@@ -57,7 +62,7 @@ export async function sendTemplateMessage(
 export async function sendTextMessage(
   phone: string,
   message: string
-): Promise<WatiApiResponse | null> {
+): Promise<WhatsAppSendResult | null> {
   if (!isWatiConfigured()) return null;
 
   try {
@@ -75,8 +80,8 @@ export async function sendTextMessage(
       }
     );
 
-    const data = await response.json();
-    return data as WatiApiResponse;
+    const data = (await response.json()) as WatiApiResponse;
+    return toSendResult(data);
   } catch (error) {
     console.error('Wati sendTextMessage error:', error);
     return null;
@@ -87,7 +92,7 @@ export async function sendInteractiveButtons(
   phone: string,
   bodyText: string,
   buttons: Array<{ id: string; title: string }>
-): Promise<WatiApiResponse | null> {
+): Promise<WhatsAppSendResult | null> {
   if (!isWatiConfigured()) return null;
 
   try {
@@ -112,8 +117,8 @@ export async function sendInteractiveButtons(
       }
     );
 
-    const data = await response.json();
-    return data as WatiApiResponse;
+    const data = (await response.json()) as WatiApiResponse;
+    return toSendResult(data);
   } catch (error) {
     console.error('Wati sendInteractiveButtons error:', error);
     return null;

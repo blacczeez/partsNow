@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendTextMessage } from '@/lib/integrations/wati';
+import { sendTextMessage } from '@/lib/integrations/whatsapp';
 import type { LoyaltyTier, User } from '@/lib/types/database';
 import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import {

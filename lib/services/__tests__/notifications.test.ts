@@ -4,13 +4,13 @@ import {
   sendTemplateMessage,
   sendTextMessage,
   sendInteractiveButtons,
-} from '@/lib/integrations/wati';
+} from '@/lib/integrations/whatsapp';
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(),
 }));
 
-vi.mock('@/lib/integrations/wati', () => ({
+vi.mock('@/lib/integrations/whatsapp', () => ({
   sendTemplateMessage: vi.fn(),
   sendTextMessage: vi.fn(),
   sendInteractiveButtons: vi.fn(),
@@ -23,13 +23,13 @@ const mockedSendInteractive = vi.mocked(sendInteractiveButtons);
 
 // Helper: create a chainable that resolves with given data
 function createChain(data: unknown, error: unknown = null) {
-  const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+  const chain: Record<string, unknown> = {};
   const methods = ['select', 'insert', 'update', 'eq', 'in', 'is', 'gte', 'order', 'range'];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
   chain.single = vi.fn().mockResolvedValue({ data, error });
-  (chain as any).then = (resolve: (v: unknown) => void, reject: (v: unknown) => void) =>
+  chain.then = (resolve: (v: unknown) => void, reject: (v: unknown) => void) =>
     Promise.resolve({ data, error, count: null }).then(resolve, reject);
   return chain;
 }
@@ -58,7 +58,7 @@ function setupOrderCustomerMock(
 // Get a fresh mockSupabase wired up to createServiceClient
 function setupServiceClient() {
   const { mockSupabase, mockRpc } = createMockSupabase();
-  mockedCreateServiceClient.mockReturnValue(mockSupabase as any);
+  mockedCreateServiceClient.mockReturnValue(mockSupabase);
   return { mockSupabase, mockRpc };
 }
 

@@ -138,6 +138,18 @@ export const config = {
     apiUrl: getEnvVar('WATI_API_URL', ''),
     apiKey: getEnvVar('WATI_API_KEY', ''),
     webhookSecret: getEnvVar('WATI_WEBHOOK_SECRET', ''),
+    twilio: {
+      accountSid: getEnvVar('TWILIO_ACCOUNT_SID', ''),
+      authToken: getEnvVar('TWILIO_AUTH_TOKEN', ''),
+      whatsappFrom: getEnvVar('TWILIO_WHATSAPP_FROM', ''),
+      webhookUrl: getEnvVar('TWILIO_WEBHOOK_URL', ''),
+      templates: {
+        order_confirmed: getEnvVar('TWILIO_TEMPLATE_ORDER_CONFIRMED', ''),
+        order_dispatched: getEnvVar('TWILIO_TEMPLATE_ORDER_DISPATCHED', ''),
+        order_delivered: getEnvVar('TWILIO_TEMPLATE_ORDER_DELIVERED', ''),
+        wallet_topup_success: getEnvVar('TWILIO_TEMPLATE_WALLET_TOPUP_SUCCESS', ''),
+      },
+    },
   },
 
   features: {
