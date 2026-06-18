@@ -53,7 +53,7 @@ export function TopNav({
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-6">
           {/* Left: Logo + role badge */}
           <Link href={items[0]?.href ?? '/'} className="flex shrink-0 items-center gap-2">
-            <span className="text-lg font-bold text-primary">PartsNow</span>
+            <span className="text-lg font-bold text-primary">PartsDey</span>
             {roleBadge && (
               <span
                 className={cn(

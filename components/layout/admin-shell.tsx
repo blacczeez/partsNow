@@ -15,7 +15,7 @@ import {
 function AdminBrandMark() {
   return (
     <>
-      <span className="text-lg font-bold text-primary">PartsNow</span>
+      <span className="text-lg font-bold text-primary">PartsDey</span>
       <span className="ml-2 rounded-pill bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
         Admin
       </span>

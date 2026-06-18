@@ -481,7 +481,7 @@ export async function acceptCustomerPriceChange(
         .eq('id', customerId)
         .single();
 
-      const email = user?.email || `${user?.phone}@partsnow.ng`;
+      const email = user?.email || `${user?.phone}@partsdey.ng`;
       const reference = `price_topup_${orderId}_${Date.now()}`;
 
       const payment = await initializePayment({

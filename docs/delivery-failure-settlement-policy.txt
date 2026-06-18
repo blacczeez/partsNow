@@ -1,5 +1,5 @@
 DELIVERY FAILURE SETTLEMENT POLICY
-PartsNow — v1.0 (design)
+PartsDey — v1.0 (design)
 Fee name: Return & handling fee
 
 ================================================================================

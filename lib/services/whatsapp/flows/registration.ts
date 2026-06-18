@@ -84,7 +84,7 @@ export async function handleRegistration(
 
     await sendTextMessage(
       phone,
-      `Welcome to PartsNow, ${name}!\n\nYou can now:\n- Send a voice note or text to order parts\n- Type "balance" to check your wallet\n- Type "topup" to add funds\n\nWhat parts do you need today?`
+      `Welcome to PartsDey, ${name}! We run am for you.\n\nYou can now:\n- Send a voice note or text to order parts\n- Type "balance" to check your wallet\n- Type "topup" to add funds\n\nWhat parts do you need today?`
     );
   }
 }
@@ -93,6 +93,6 @@ export async function startRegistration(phone: string): Promise<void> {
   await setConversationState(phone, 'registering', { step: 'name' });
   await sendTextMessage(
     phone,
-    "Welcome to PartsNow! We deliver spare parts in 45 minutes.\n\nLet's set up your account. What's your full name?"
+    "Welcome to PartsDey! We run am for you — spare parts in 45 minutes.\n\nLet's set up your account. What's your full name?"
   );
 }

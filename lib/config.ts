@@ -26,7 +26,7 @@ const getEnvBoolean = (key: string, defaultValue?: boolean): boolean => {
 
 export const config = {
   app: {
-    name: getEnvVar('NEXT_PUBLIC_APP_NAME', 'PartsNow'),
+    name: getEnvVar('NEXT_PUBLIC_APP_NAME', 'PartsDey'),
     url: getEnvVar('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
     env: getEnvVar('NEXT_PUBLIC_APP_ENV', 'development'),
   },

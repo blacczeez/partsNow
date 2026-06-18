@@ -179,7 +179,7 @@ describe('initiateTopUp', () => {
     expect(result.reference).toBeDefined();
   });
 
-  it('uses phone@partsnow.ng fallback when user has no email', async () => {
+  it('uses phone@partsdey.ng fallback when user has no email', async () => {
     const { mockSupabase } = setup();
 
     const userChain = createChain({ email: null, phone: '2348012345678' });
@@ -196,7 +196,7 @@ describe('initiateTopUp', () => {
 
     expect(mockedInitializePayment).toHaveBeenCalledWith(
       expect.objectContaining({
-        email: '2348012345678@partsnow.ng',
+        email: '2348012345678@partsdey.ng',
       })
     );
   });

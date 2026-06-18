@@ -7,7 +7,7 @@ export function LandingNav() {
     <header className="sticky top-0 z-50">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="text-xl font-bold text-white">
-          PartsNow
+          PartsDey
         </Link>
 
         <div className="flex items-center gap-3">

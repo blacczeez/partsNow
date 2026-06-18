@@ -16,7 +16,7 @@ export function MobileCustomerHeader({ cartCount = 0 }: MobileCustomerHeaderProp
   return (
     <header className="sticky top-0 z-40 flex h-12 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
       <Link href="/" className="text-base font-bold text-primary">
-        PartsNow
+        PartsDey
       </Link>
       <Link
         href="/cart"

@@ -10,7 +10,7 @@ import {
 } from 'react';
 import type { CartItem } from '@/lib/types/cart';
 
-const STORAGE_KEY = 'partsnow-cart';
+const STORAGE_KEY = 'partsdey-cart';
 
 interface CartContextValue {
   items: CartItem[];
@@ -55,22 +55,22 @@ function saveCart(items: CartItem[], vehicleId?: string) {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [vehicleId, setVehicleId] = useState<string | undefined>();
-  const [mounted, setMounted] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Hydrate cart from localStorage on the client (avoids setState in useEffect).
+  if (typeof window !== 'undefined' && !isHydrated) {
     const saved = loadCart();
     setItems(saved.items);
     setVehicleId(saved.vehicleId);
-    setMounted(true);
-  }, []);
+    setIsHydrated(true);
+  }
 
   // Persist on change
   useEffect(() => {
-    if (mounted) {
+    if (isHydrated) {
       saveCart(items, vehicleId);
     }
-  }, [items, vehicleId, mounted]);
+  }, [items, vehicleId, isHydrated]);
 
   const addItem = useCallback(
     (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {

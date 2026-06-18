@@ -148,7 +148,7 @@ BEGIN
     (
       dev_ids[1],
       '2348010000001',
-      'customer@partsnow.test',
+      'customer@partsdey.test',
       'Demo Customer',
       'car_owner',
       NULL,
@@ -157,7 +157,7 @@ BEGIN
     (
       dev_ids[2],
       '2348010000002',
-      'admin@partsnow.test',
+      'admin@partsdey.test',
       'Demo Admin',
       'admin',
       NULL,
@@ -166,7 +166,7 @@ BEGIN
     (
       dev_ids[3],
       '2348010000003',
-      'runner@partsnow.test',
+      'runner@partsdey.test',
       'Demo Runner',
       'runner',
       ladipo_cluster,
@@ -175,7 +175,7 @@ BEGIN
     (
       dev_ids[4],
       '2348010000004',
-      'rider@partsnow.test',
+      'rider@partsdey.test',
       'Demo Rider',
       'rider',
       ladipo_cluster,

@@ -63,7 +63,7 @@ async function initiateTopUp(phone: string, user: User, amount: number): Promise
   }
 
   try {
-    const email = user.email || `${user.phone}@partsnow.ng`;
+    const email = user.email || `${user.phone}@partsdey.ng`;
     const reference = `topup_${user.id}_${Date.now()}`;
 
     const result = await initializePayment({

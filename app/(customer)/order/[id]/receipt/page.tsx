@@ -67,7 +67,7 @@ function ReceiptContent({ orderId }: { orderId: string }) {
         <div className="rounded-card border border-slate-200 bg-white p-6 print:rounded-none print:border-0 print:shadow-none">
           {/* Header */}
           <div className="mb-6 text-center">
-            <h1 className="text-xl font-bold text-slate-900">PartsNow</h1>
+            <h1 className="text-xl font-bold text-slate-900">PartsDey</h1>
             <p className="mt-1 text-xs uppercase tracking-widest text-slate-400">
               Receipt
             </p>
@@ -217,7 +217,7 @@ function ReceiptContent({ orderId }: { orderId: string }) {
           {/* Footer */}
           <div className="border-t border-slate-100 pt-5 text-center">
             <p className="text-sm text-slate-600">
-              Thank you for using PartsNow!
+              Thank you for using PartsDey!
             </p>
             <p className="mt-1 text-xs text-slate-400">
               For support, contact us via WhatsApp

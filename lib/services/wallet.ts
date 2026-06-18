@@ -109,7 +109,7 @@ export async function initiateTopUp(
 
   if (!user) throw new Error('User not found');
 
-  const email = user.email || `${user.phone}@partsnow.ng`;
+  const email = user.email || `${user.phone}@partsdey.ng`;
   const reference = `topup_${userId}_${Date.now()}`;
 
   const result = await initializePayment({

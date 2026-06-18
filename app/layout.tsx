@@ -3,8 +3,8 @@ import './globals.css';
 import { ToastContainer } from '@/components/ui/toast';
 
 export const metadata: Metadata = {
-  title: 'PartsNow - Spare Parts Delivery',
-  description: 'Get spare parts delivered in 45 minutes in Lagos',
+  title: 'PartsDey - We run am for you',
+  description: 'Get spare parts delivered in 45 minutes in Lagos. We run am for you.',
 };
 
 export const viewport: Viewport = {

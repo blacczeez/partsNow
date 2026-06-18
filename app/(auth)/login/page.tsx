@@ -54,9 +54,9 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-900">PartsNow</h1>
+        <h1 className="text-3xl font-bold text-slate-900">PartsDey</h1>
         <p className="mt-2 text-slate-600">
-          Spare parts delivered in 45 minutes
+          We run am for you
         </p>
       </div>
 

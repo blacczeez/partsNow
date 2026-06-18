@@ -251,7 +251,7 @@ export async function createOrder(
   }
 
   if (input.paymentMethod === 'card') {
-    const email = customer.email || `${customer.phone}@partsnow.ng`;
+    const email = customer.email || `${customer.phone}@partsdey.ng`;
     const result = await initializePayment({
       email,
       amount: pricing.total,

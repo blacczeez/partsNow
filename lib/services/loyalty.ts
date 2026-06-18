@@ -56,7 +56,7 @@ export async function notifyLoyaltyTierUpgradeIfNeeded(
     });
     const message =
       `Congratulations ${customer.full_name.split(' ')[0]}! ` +
-      `You've reached ${formatLoyaltyTier(newTier)} tier on PartsNow. ` +
+      `You've reached ${formatLoyaltyTier(newTier)} tier on PartsDey. ` +
       (runtime.features.loyaltyDiscounts &&
       markup < runtime.business.defaultMarkupPercentage
         ? `Your service fee is now ${markup}% on parts orders. `

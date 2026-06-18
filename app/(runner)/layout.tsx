@@ -26,7 +26,7 @@ export default function RunnerLayout({
         roleBadge={{ label: 'Runner', className: 'bg-purple-100 text-purple-700' }}
       />
       <header className="sticky top-0 z-40 flex h-14 items-center border-b border-slate-200 bg-white px-4 lg:hidden">
-        <span className="text-lg font-bold text-primary">PartsNow</span>
+        <span className="text-lg font-bold text-primary">PartsDey</span>
         <span className="ml-2 rounded-pill bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
           Runner
         </span>

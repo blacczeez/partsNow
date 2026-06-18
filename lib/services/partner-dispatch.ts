@@ -87,7 +87,7 @@ function buildKwikParams(order: {
       address: pickupAddress,
       latitude: Number(order.cluster.latitude),
       longitude: Number(order.cluster.longitude),
-      contactName: 'PartsNow Gate',
+      contactName: 'PartsDey Gate',
       contactPhone: config.dispatch.opsContactPhone,
     },
     delivery: {

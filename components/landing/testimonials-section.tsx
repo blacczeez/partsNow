@@ -14,7 +14,7 @@ const testimonials = [
     location: 'Lekki, Lagos',
     role: 'Car Owner',
     quote:
-      'My mechanic kept telling me "the boy has gone to buy parts" for hours. With PartsNow I ordered the parts myself and they arrived before he finished draining the oil.',
+      'My mechanic kept telling me "the boy has gone to buy parts" for hours. With PartsDey I ordered the parts myself and they arrived before he finished draining the oil.',
     rating: 5,
   },
   {

@@ -7,9 +7,9 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {/* Brand */}
           <div>
-            <p className="text-lg font-bold text-white">PartsNow</p>
+            <p className="text-lg font-bold text-white">PartsDey</p>
             <p className="mt-2 text-sm">
-              Spare parts delivered in 45 minutes across Lagos.
+              We run am for you. Spare parts delivered in 45 minutes across Lagos.
             </p>
           </div>
 
@@ -44,14 +44,14 @@ export function Footer() {
             </p>
             <ul className="space-y-2 text-sm">
               <li>WhatsApp: +234 XXX XXX XXXX</li>
-              <li>Email: hello@partsnow.ng</li>
+              <li>Email: hello@partsdey.ng</li>
               <li>Lagos, Nigeria</li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs text-slate-500">
-          &copy; {new Date().getFullYear()} PartsNow. All rights reserved.
+          &copy; {new Date().getFullYear()} PartsDey. All rights reserved.
         </div>
       </div>
     </footer>

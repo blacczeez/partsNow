@@ -26,7 +26,7 @@ export default function RiderLayout({
         roleBadge={{ label: 'Rider', className: 'bg-green-100 text-green-700' }}
       />
       <header className="sticky top-0 z-40 flex h-14 items-center border-b border-slate-200 bg-white px-4 lg:hidden">
-        <span className="text-lg font-bold text-primary">PartsNow</span>
+        <span className="text-lg font-bold text-primary">PartsDey</span>
         <span className="ml-2 rounded-pill bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
           Rider
         </span>

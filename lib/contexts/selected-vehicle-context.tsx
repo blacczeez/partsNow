@@ -13,8 +13,8 @@ import {
 import type { Vehicle } from '@/lib/types/database';
 import { useCart } from '@/lib/hooks/use-cart';
 
-const FIT_MY_CAR_KEY = 'partsnow-fit-my-car';
-const SKIP_AUTO_VEHICLE_KEY = 'partsnow-skip-auto-vehicle';
+const FIT_MY_CAR_KEY = 'partsdey-fit-my-car';
+const SKIP_AUTO_VEHICLE_KEY = 'partsdey-skip-auto-vehicle';
 
 interface SelectedVehicleContextValue {
   vehicles: Vehicle[];

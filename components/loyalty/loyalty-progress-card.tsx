@@ -82,7 +82,7 @@ export function LoyaltyProgressCard({
         </div>
       ) : (
         <p className="text-sm text-slate-600">
-          You&apos;re at our highest tier — thank you for being a PartsNow partner.
+          You&apos;re at our highest tier — thank you for being a PartsDey partner.
         </p>
       )}
     </div>
