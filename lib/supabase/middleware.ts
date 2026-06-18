@@ -116,7 +116,12 @@ export async function updateSession(request: NextRequest) {
 
   const isApiRoute = pathname.startsWith('/api');
   const isPublicRoute =
-    isAuthRoute || pathname === '/' || pathname === '/how-delivery-works' || pathname === '/how-loyalty-works';
+    isAuthRoute ||
+    pathname === '/' ||
+    pathname === '/how-delivery-works' ||
+    pathname === '/how-loyalty-works' ||
+    pathname.startsWith('/features') ||
+    pathname.startsWith('/blog');
 
   if (!user && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();

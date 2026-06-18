@@ -4,13 +4,32 @@ export function Footer() {
   return (
     <footer className="bg-slate-900 text-slate-300">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
             <p className="text-lg font-bold text-white">PartsDey</p>
             <p className="mt-2 text-sm">
               We run am for you. Spare parts delivered in 45 minutes across Lagos.
             </p>
+          </div>
+
+          {/* Product */}
+          <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Product
+            </p>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/features" className="transition-colors hover:text-white">
+                  Features
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="transition-colors hover:text-white">
+                  Blog
+                </Link>
+              </li>
+            </ul>
           </div>
 
           {/* Quick Links */}

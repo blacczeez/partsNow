@@ -1,4 +1,4 @@
-import { LandingNav } from '@/components/layout/landing-nav';
+import { MarketingNav } from '@/components/layout/marketing-nav';
 import { Footer } from '@/components/layout/footer';
 import { HeroSection } from './hero-section';
 import { HowItWorksSection } from './how-it-works-section';
@@ -13,7 +13,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen">
       <div className="bg-gradient-to-br from-primary to-primary-dark">
-        <LandingNav />
+        <MarketingNav variant="transparent" />
         <HeroSection />
       </div>
       <HowItWorksSection />
