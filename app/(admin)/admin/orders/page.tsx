@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
@@ -20,9 +21,22 @@ import { ORDER_STATUSES } from '@/lib/constants/order-status';
 import type { OrderStatus } from '@/lib/types/database';
 
 export default function AdminOrdersPage() {
+  const searchParams = useSearchParams();
+  const deepLinkOrderId = searchParams.get('order');
   const { orders, pagination, isLoading, filters, setFilters, attentionLabel } =
     useAdminOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [deepLinkDismissed, setDeepLinkDismissed] = useState(false);
+  const [prevDeepLinkOrderId, setPrevDeepLinkOrderId] = useState(deepLinkOrderId);
+
+  if (deepLinkOrderId !== prevDeepLinkOrderId) {
+    setPrevDeepLinkOrderId(deepLinkOrderId);
+    setDeepLinkDismissed(false);
+  }
+
+  const activeOrderId =
+    selectedOrderId ??
+    (deepLinkOrderId && !deepLinkDismissed ? deepLinkOrderId : null);
 
   const columns = [
     {
@@ -42,6 +56,9 @@ export default function AdminOrdersPage() {
           <StatusBadge status={row.status as OrderStatus} />
           {row.price_review_status === 'pending' && (
             <Badge variant="warning">Price review</Badge>
+          )}
+          {filters.attention === 'sourcing_escalated' && (
+            <Badge variant="warning">Sourcing</Badge>
           )}
         </div>
       ),
@@ -208,9 +225,12 @@ export default function AdminOrdersPage() {
       />
 
       <OrderDetailSheet
-        orderId={selectedOrderId}
-        isOpen={!!selectedOrderId}
-        onClose={() => setSelectedOrderId(null)}
+        orderId={activeOrderId}
+        isOpen={!!activeOrderId}
+        onClose={() => {
+          setSelectedOrderId(null);
+          if (deepLinkOrderId) setDeepLinkDismissed(true);
+        }}
       />
     </div>
   );

@@ -18,6 +18,7 @@ import { OrderItemCard } from '@/components/runner/order-item-card';
 import { RunnerPriceStatusBanner } from '@/components/runner/runner-price-status-banner';
 import { SlaCountdown } from '@/components/runner/sla-countdown';
 import { MarkFoundSheet } from '@/components/runner/mark-found-sheet';
+import { MarkUnavailableSheet } from '@/components/runner/mark-unavailable-sheet';
 import { ClarificationSheet } from '@/components/runner/clarification-sheet';
 import { useRunnerOrderDetail } from '@/lib/hooks/use-runner-order-detail';
 import { useSlaCountdown } from '@/lib/hooks/use-sla-countdown';
@@ -43,12 +44,14 @@ export default function RunnerOrderPage() {
     rejectOrder,
     releaseOrder,
     markItemFound,
+    markItemUnavailable,
     requestClarification,
     completeOrder,
   } = useRunnerOrderDetail(id);
 
   const [activeSheet, setActiveSheet] = useState<
     | { type: 'found'; itemId: string; itemDescription: string }
+    | { type: 'unavailable'; itemId: string; itemDescription: string }
     | { type: 'clarify' }
     | null
   >(null);
@@ -180,6 +183,28 @@ export default function RunnerOrderPage() {
     } else {
       toast('success', 'Item marked as found');
     }
+  };
+
+  const handleMarkUnavailable = async (reason: string) => {
+    if (activeSheet?.type !== 'unavailable') return;
+    const result = await markItemUnavailable(activeSheet.itemId, reason);
+    if (result.allItemsUnavailable) {
+      toast(
+        'warning',
+        'All items unavailable. Admin has been notified. Order removed from your queue.'
+      );
+    } else if (result.reassigned) {
+      toast(
+        'info',
+        'Item marked unavailable. Order transferred to another runner.'
+      );
+    } else {
+      toast(
+        'warning',
+        'Item marked unavailable. No runner on shift — admin notified.'
+      );
+    }
+    router.push('/runner/dashboard');
   };
 
   const handleClarify = async (message: string) => {
@@ -414,6 +439,13 @@ export default function RunnerOrderPage() {
                   itemDescription: item.description,
                 })
               }
+              onMarkUnavailable={(itemId) =>
+                setActiveSheet({
+                  type: 'unavailable',
+                  itemId,
+                  itemDescription: item.description,
+                })
+              }
             />
           ))}
         </div>
@@ -499,6 +531,15 @@ export default function RunnerOrderPage() {
             : null
         }
         onSubmit={handleMarkFound}
+      />
+
+      <MarkUnavailableSheet
+        isOpen={activeSheet?.type === 'unavailable'}
+        onClose={() => setActiveSheet(null)}
+        itemDescription={
+          activeSheet?.type === 'unavailable' ? activeSheet.itemDescription : ''
+        }
+        onSubmit={handleMarkUnavailable}
       />
 
       <ClarificationSheet

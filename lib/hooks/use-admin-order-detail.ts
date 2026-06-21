@@ -42,6 +42,18 @@ interface OrderDetail {
   return_handling_fee: number | null;
   settlement_refund_amount: number | null;
   settlement_completed_at: string | null;
+  sourcing_escalated_at: string | null;
+  sourcing_escalation_reason: string | null;
+  sourcingSummary: {
+    isEscalated: boolean;
+    reason: string | null;
+    escalatedAt: string | null;
+    unavailableRunnerCount: number;
+    hasActiveRunner: boolean;
+    unavailableItemCount: number;
+    pendingItemCount: number;
+    allItemsUnavailable: boolean;
+  };
   promised_delivery_minutes: number | null;
   actual_delivery_minutes: number | null;
   rating: number | null;
@@ -68,6 +80,7 @@ interface OrderDetail {
     assigned_at: string;
     accepted_at: string | null;
     completed_at: string | null;
+    rejection_reason: string | null;
   }>;
   customer: {
     id: string;
@@ -240,6 +253,64 @@ export function useAdminOrderDetail(orderId: string | null) {
     }
   };
 
+  const retrySourcingAssign = async () => {
+    if (!orderId) return false;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/sourcing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'retry_assign' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await refresh();
+        return Boolean(data.assigned);
+      }
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const messageCustomerAboutSourcing = async (message: string) => {
+    if (!orderId) return false;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/sourcing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'message_customer', message }),
+      });
+      if (res.ok) {
+        await refresh();
+        return true;
+      }
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const dismissSourcingEscalation = async (note?: string) => {
+    if (!orderId) return false;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/sourcing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'dismiss', note }),
+      });
+      if (res.ok) {
+        await refresh();
+        return true;
+      }
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return {
     order,
     isLoading,
@@ -248,6 +319,9 @@ export function useAdminOrderDetail(orderId: string | null) {
     cancel,
     refund,
     resolvePriceReview,
+    retrySourcingAssign,
+    messageCustomerAboutSourcing,
+    dismissSourcingEscalation,
     refresh,
   };
 }

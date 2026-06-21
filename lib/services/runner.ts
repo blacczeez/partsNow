@@ -1090,7 +1090,7 @@ export async function markItemUnavailable(
   orderId: string,
   itemId: string,
   reason: string
-): Promise<void> {
+) {
   const supabase = await createClient();
 
   const assignment = await findRunnerAssignment(supabase, runnerId, orderId, [
@@ -1100,23 +1100,24 @@ export async function markItemUnavailable(
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
 
-  await supabase
+  const { data: item } = await supabase
     .from('order_items')
-    .update({
-      is_unavailable: true,
-      is_found: false,
-      unavailable_reason: reason,
-    })
+    .select('description')
     .eq('id', itemId)
-    .eq('order_id', orderId);
+    .eq('order_id', orderId)
+    .single();
 
-  // Update assignment to in_progress if accepted
-  if (assignment.status === 'accepted') {
-    await supabase
-      .from('order_assignments')
-      .update({ status: 'in_progress' })
-      .eq('id', assignment.id);
-  }
+  if (!item) throw new Error('Item not found');
+
+  const { handleRunnerItemUnavailable } = await import('./runner-unavailable');
+
+  return handleRunnerItemUnavailable({
+    runnerId,
+    orderId,
+    itemId,
+    reason,
+    itemDescription: item.description,
+  });
 }
 
 export async function requestClarification(

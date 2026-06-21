@@ -47,6 +47,36 @@ export function recalculateOrderTotalsFromItems(
   };
 }
 
+/** Recalculate customer total excluding unavailable lines (pending lines keep quoted selling_price). */
+export function recalculateOrderTotalsExcludingUnavailable(
+  items: Array<{ quantity: number; selling_price: number; is_unavailable: boolean }>,
+  options: {
+    markupPercentage?: number;
+    deliveryFee: number;
+    discountAmount: number;
+  }
+): RepricedOrderTotals {
+  const markupPercentage = options.markupPercentage ?? config.business.defaultMarkupPercentage;
+  const partsCustomerTotal = items
+    .filter((item) => !item.is_unavailable)
+    .reduce((sum, item) => sum + item.selling_price * item.quantity, 0);
+
+  const subtotal = Math.round(partsCustomerTotal / (1 + markupPercentage / 100));
+  const markupAmount = partsCustomerTotal - subtotal;
+  const total = Math.max(
+    0,
+    partsCustomerTotal + options.deliveryFee - options.discountAmount
+  );
+
+  return {
+    subtotal,
+    markupAmount,
+    deliveryFee: options.deliveryFee,
+    discountAmount: options.discountAmount,
+    total,
+  };
+}
+
 export function sellingPriceFromVendor(vendorPrice: number, markupPercentage?: number): number {
   const markup = markupPercentage ?? config.business.defaultMarkupPercentage;
   return Math.round(vendorPrice * (1 + markup / 100));

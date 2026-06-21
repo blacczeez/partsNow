@@ -11,12 +11,14 @@ interface OrderItemCardProps {
   item: OrderItem;
   canAct: boolean;
   onMarkFound: (itemId: string) => void;
+  onMarkUnavailable: (itemId: string) => void;
 }
 
 export function OrderItemCard({
   item,
   canAct,
   onMarkFound,
+  onMarkUnavailable,
 }: OrderItemCardProps) {
   const isResolved = item.is_found || item.is_unavailable;
 
@@ -111,7 +113,7 @@ export function OrderItemCard({
 
       {/* Action buttons */}
       {!isResolved && canAct && (
-        <div className="mt-3">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <Button
             size="sm"
             variant="primary"
@@ -120,6 +122,15 @@ export function OrderItemCard({
           >
             <Search className="mr-1.5 h-4 w-4" />
             Found
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            fullWidth
+            onClick={() => onMarkUnavailable(item.id)}
+          >
+            <XCircle className="mr-1.5 h-4 w-4" />
+            Unavailable
           </Button>
         </div>
       )}

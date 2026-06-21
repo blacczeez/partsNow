@@ -244,6 +244,8 @@ export interface Order {
   settlement_refund_amount: number | null;
   settlement_breakdown: Record<string, unknown> | null;
   settlement_completed_at: string | null;
+  sourcing_escalated_at: string | null;
+  sourcing_escalation_reason: string | null;
 }
 
 export interface OrderItem {

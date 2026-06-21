@@ -8,9 +8,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || undefined;
 
-    const result = await getReconciliation(date);
+    const result = await getReconciliation({
+      preset: searchParams.get('preset'),
+      from: searchParams.get('from'),
+      to: searchParams.get('to'),
+      date: searchParams.get('date'),
+    });
     return NextResponse.json(result);
   } catch (error) {
     console.error('Reconciliation error:', error);

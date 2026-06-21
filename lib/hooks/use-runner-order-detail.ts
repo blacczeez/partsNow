@@ -176,6 +176,12 @@ export function useRunnerOrderDetail(orderId: string) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to mark item as unavailable');
       await refresh();
+      return data as {
+        reassigned: boolean;
+        unavailableRunnerCount: number;
+        allItemsUnavailable: boolean;
+        partialRefundAmount: number;
+      };
     },
     [orderId, refresh]
   );

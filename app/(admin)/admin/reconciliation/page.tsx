@@ -3,10 +3,18 @@
 import { useEffect, useState } from 'react';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
+import { AdminDateRangeFilter } from '@/components/admin/admin-date-range-filter';
+import { FinancialStatCards } from '@/components/admin/financial-stat-cards';
 import { Badge } from '@/components/ui/badge';
-import { DateInput } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils/format';
+import {
+  adminDateRangeToSearchParams,
+  getDefaultAdminDateRange,
+  type AdminDateRangeValue,
+} from '@/lib/utils/admin-date-range';
+import type { AdminFinancialTotals } from '@/lib/services/admin-financials';
+import { ADMIN_FINANCIAL_DESCRIPTIONS } from '@/lib/services/admin-financials';
 
 interface ReconciliationShift {
   id: string;
@@ -30,6 +38,14 @@ interface ReconciliationSummary {
   unreconciledCount: number;
 }
 
+interface ReconciliationData {
+  shifts: ReconciliationShift[];
+  summary: ReconciliationSummary;
+  financials: AdminFinancialTotals;
+  financialDescriptions: typeof ADMIN_FINANCIAL_DESCRIPTIONS;
+  dateRangeLabel: string;
+}
+
 const columns = [
   {
     header: 'Runner',
@@ -38,10 +54,15 @@ const columns = [
     ),
   },
   {
-    header: 'Shift',
+    header: 'Shift started',
     render: (row: ReconciliationShift) => (
       <span className="text-slate-500">
-        {new Date(row.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {new Date(row.started_at).toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
         {row.ended_at
           ? ` – ${new Date(row.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
           : ' (active)'}
@@ -81,23 +102,30 @@ const columns = [
   },
 ];
 
-function ReconciliationResults({ date }: { date: string }) {
-  const [shifts, setShifts] = useState<ReconciliationShift[]>([]);
-  const [summary, setSummary] = useState<ReconciliationSummary | null>(null);
+function ReconciliationResults({
+  dateRange,
+  refreshKey,
+}: {
+  dateRange: AdminDateRangeValue;
+  refreshKey: number;
+}) {
+  const [data, setData] = useState<ReconciliationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`/api/admin/reconciliation?date=${date}`)
+    const params = adminDateRangeToSearchParams(dateRange);
+
+    fetch(`/api/admin/reconciliation?${params.toString()}`)
       .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load reconciliation');
-        if (!cancelled) {
-          setShifts(data.shifts ?? []);
-          setSummary(data.summary ?? null);
-        }
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to load reconciliation');
+        return result as ReconciliationData;
+      })
+      .then((result) => {
+        if (!cancelled) setData(result);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -111,63 +139,78 @@ function ReconciliationResults({ date }: { date: string }) {
     return () => {
       cancelled = true;
     };
-  }, [date]);
+  }, [dateRange, refreshKey]);
+
+  if (error) {
+    return (
+      <p className="mb-4 rounded-card border border-error/20 bg-error-light px-4 py-3 text-sm text-error">
+        {error}
+      </p>
+    );
+  }
+
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-4">
+        <div className="h-28 animate-pulse rounded-card bg-slate-100" />
+        <div className="h-64 animate-pulse rounded-card bg-slate-100" />
+      </div>
+    );
+  }
+
+  const { summary } = data;
 
   return (
     <>
-      {error && (
-        <p className="mb-4 rounded-card border border-error/20 bg-error-light px-4 py-3 text-sm text-error">
-          {error}
-        </p>
-      )}
+      <p className="mb-4 text-sm text-slate-500">Showing data for {data.dateRangeLabel}</p>
 
-      {summary && (
-        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-          {[
-            { label: 'Shifts', value: summary.totalShifts },
-            { label: 'Total sourced', value: formatCurrency(summary.totalSourced) },
-            { label: 'Commission', value: formatCurrency(summary.totalCommission) },
-            { label: 'Discrepancy', value: formatCurrency(summary.totalDiscrepancy) },
-            { label: 'Unreconciled', value: summary.unreconciledCount },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-card border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <p className="text-xs text-slate-500">{item.label}</p>
-              <p className="text-lg font-semibold text-slate-900">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <FinancialStatCards
+        financials={data.financials}
+        descriptions={data.financialDescriptions}
+        className="mb-6"
+      />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {[
+          { label: 'Shifts', value: summary.totalShifts },
+          { label: 'Total sourced', value: formatCurrency(summary.totalSourced) },
+          { label: 'Shift commission', value: formatCurrency(summary.totalCommission) },
+          { label: 'Discrepancy', value: formatCurrency(summary.totalDiscrepancy) },
+          { label: 'Unreconciled', value: summary.unreconciledCount },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-card border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <p className="text-xs text-slate-500">{item.label}</p>
+            <p className="text-lg font-semibold text-slate-900">{item.value}</p>
+          </div>
+        ))}
+      </div>
 
       <DataTable
         columns={columns}
-        data={shifts}
-        isLoading={isLoading}
-        emptyMessage="No runner shifts for this date"
+        data={data.shifts}
+        emptyMessage="No runner shifts for this period"
       />
     </>
   );
 }
 
-function ReconciliationContent() {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+export default function AdminReconciliationPage() {
+  const [dateRange, setDateRange] = useState<AdminDateRangeValue>(() =>
+    getDefaultAdminDateRange('today')
+  );
   const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <div className="p-6">
       <AdminPageHeader
         title="Reconciliation"
-        description="Daily runner shift float and sourcing totals."
+        description="Runner shift totals and platform financial accumulation for the selected period."
         filters={
-          <div className="flex max-w-xs items-end gap-2">
-            <DateInput
-              label="Date"
-              fieldSize="sm"
-              value={date}
-              onChange={setDate}
-            />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <AdminDateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button variant="secondary" size="sm" onClick={() => setRefreshKey((k) => k + 1)}>
               Refresh
             </Button>
@@ -175,11 +218,11 @@ function ReconciliationContent() {
         }
       />
 
-      <ReconciliationResults key={`${date}-${refreshKey}`} date={date} />
+      <ReconciliationResults
+        key={`${dateRange.preset}-${dateRange.from}-${dateRange.to}-${refreshKey}`}
+        dateRange={dateRange}
+        refreshKey={refreshKey}
+      />
     </div>
   );
-}
-
-export default function AdminReconciliationPage() {
-  return <ReconciliationContent />;
 }

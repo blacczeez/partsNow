@@ -12,18 +12,23 @@ export async function POST(
 
   const { id, itemId } = await params;
   const body = await request.json();
-  const result = markItemUnavailableSchema.safeParse(body);
+  const parsed = markItemUnavailableSchema.safeParse(body);
 
-  if (!result.success) {
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Validation failed', details: result.error.format() },
+      { error: 'Validation failed', details: parsed.error.format() },
       { status: 400 }
     );
   }
 
   try {
-    await markItemUnavailable(auth.user.id, id, itemId, result.data.reason);
-    return NextResponse.json({ success: true });
+    const result = await markItemUnavailable(
+      auth.user.id,
+      id,
+      itemId,
+      parsed.data.reason
+    );
+    return NextResponse.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to mark item as unavailable';
     return NextResponse.json({ error: message }, { status: 500 });

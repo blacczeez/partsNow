@@ -17,8 +17,10 @@ import { toast } from '@/components/ui/toast';
 import { ReassignSheet } from './reassign-sheet';
 import { PriceReviewPanel } from './price-review-panel';
 import { DeliverySettlementPanel } from './delivery-settlement-panel';
+import { SourcingEscalationPanel } from './sourcing-escalation-panel';
 import { canAdminReassignRider } from '@/lib/constants/order-status';
 import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
+import { parseRunnerUnavailableRejection } from '@/lib/constants/runner-unavailable';
 import { OrderVehicleSummary } from '@/components/orders/order-vehicle-summary';
 import type { OrderStatus } from '@/lib/types/database';
 
@@ -37,6 +39,9 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
     cancel,
     refund,
     resolvePriceReview,
+    retrySourcingAssign,
+    messageCustomerAboutSourcing,
+    dismissSourcingEscalation,
     refresh,
   } = useAdminOrderDetail(orderId);
   const [reassignOpen, setReassignOpen] = useState(false);
@@ -129,6 +134,9 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
               {order.delivery_resolution === 'admin_review' && (
                 <Badge variant="warning">Delivery escalation</Badge>
               )}
+              {order.sourcingSummary?.isEscalated && (
+                <Badge variant="warning">Sourcing escalation</Badge>
+              )}
               {order.delivery_resolution === 'retry' && (
                 <Badge variant="warning">Delivery retry</Badge>
               )}
@@ -174,6 +182,25 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
               </p>
             )}
 
+            {order.sourcingSummary?.isEscalated && (
+              <SourcingEscalationPanel
+                orderId={order.id}
+                orderNumber={order.order_number}
+                escalationReason={order.sourcing_escalation_reason}
+                summary={order.sourcingSummary}
+                actionLoading={actionLoading}
+                onRetryAssign={retrySourcingAssign}
+                onMessageCustomer={messageCustomerAboutSourcing}
+                onDismiss={dismissSourcingEscalation}
+                onReassignRunner={() => {
+                  setReassignRole('runner');
+                  setReassignOpen(true);
+                }}
+                onCancel={() => setShowCancelForm(true)}
+                onUpdated={refresh}
+              />
+            )}
+
             {/* Items */}
             <div>
               <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Items</h4>
@@ -201,7 +228,14 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                         + {formatCurrency(quotedServiceFeeLine(item))} fee
                       </p>
                       {item.is_unavailable && (
-                        <Badge variant="error" className="mt-0.5">N/A</Badge>
+                        <>
+                          <Badge variant="error" className="mt-0.5">N/A</Badge>
+                          {item.unavailable_reason && (
+                            <p className="mt-0.5 max-w-[140px] text-xs text-error">
+                              {item.unavailable_reason}
+                            </p>
+                          )}
+                        </>
                       )}
                       {!item.is_unavailable && item.price_review_status === 'pending' && (
                         <Badge variant="warning" className="mt-0.5">Price review</Badge>
@@ -342,17 +376,30 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
               <div>
                 <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Assignments</h4>
                 <div className="space-y-2">
-                  {order.assignments.map((a) => (
+                  {order.assignments.map((a) => {
+                    const unavailableRejection = parseRunnerUnavailableRejection(
+                      a.rejection_reason
+                    );
+                    return (
                     <div key={a.id} className="flex items-center justify-between rounded-button bg-slate-50 px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-slate-700">{a.assignee_name}</p>
                         <p className="text-xs text-slate-400">{a.role} - {a.assignee_phone}</p>
+                        {unavailableRejection && (
+                          <p className="mt-0.5 text-xs text-error">
+                            Unavailable: {unavailableRejection.reason}
+                          </p>
+                        )}
+                        {!unavailableRejection && a.rejection_reason && a.status === 'failed' && (
+                          <p className="mt-0.5 text-xs text-slate-500">{a.rejection_reason}</p>
+                        )}
                       </div>
                       <Badge variant={a.status === 'completed' ? 'success' : a.status === 'failed' ? 'error' : 'primary'}>
                         {a.status}
                       </Badge>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { refundOrderPayment } from './order-refund';
 import { clearDeliveryEscalation, markPartsReturnedToHub } from './delivery-failure';
+import {
+  buildSourcingEscalationSummary,
+  clearOrderSourcingEscalation,
+} from '@/lib/utils/sourcing-escalation';
 import { notifyOrderCancelled } from './notifications';
 import { writeAuditLog, auditDetails } from './audit-log';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
@@ -24,6 +28,15 @@ import {
   getAdminAttentionInbox,
   getAdminOrdersByAttention,
 } from './admin-attention';
+import {
+  ADMIN_FINANCIAL_DESCRIPTIONS,
+  getAdminFinancialTotals,
+} from './admin-financials';
+import {
+  formatAdminDateRangeLabel,
+  parseAdminDateRange,
+  type AdminDateRangeParams,
+} from '@/lib/utils/admin-date-range';
 
 // ============================================
 // DASHBOARD
@@ -299,6 +312,8 @@ export async function getAdminOrderDetail(orderId: string) {
     .eq('type', 'price_discrepancy')
     .order('created_at', { ascending: false });
 
+  const sourcingSummary = await buildSourcingEscalationSummary(supabase, order);
+
   return {
     ...order,
     items: items ?? [],
@@ -309,6 +324,7 @@ export async function getAdminOrderDetail(orderId: string) {
     deliveryAttempts: deliveryAttempts ?? [],
     paymentEvents: paymentEvents ?? [],
     priceIncidents: priceIncidents ?? [],
+    sourcingSummary,
   };
 }
 
@@ -396,6 +412,10 @@ export async function reassignOrder(
     await clearDeliveryEscalation(orderId, adminId);
   }
 
+  if (role === 'runner') {
+    await clearOrderSourcingEscalation(supabase, orderId);
+  }
+
   return data;
 }
 
@@ -435,6 +455,8 @@ export async function adminCancelOrder(
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
       internal_notes: reason,
+      sourcing_escalated_at: null,
+      sourcing_escalation_reason: null,
     })
     .eq('id', orderId);
 
@@ -1260,43 +1282,43 @@ export async function getAdminPayments(filters: {
 // ANALYTICS
 // ============================================
 
-export async function getAnalytics(period: 'week' | 'month') {
+export async function getAnalytics(rangeParams: AdminDateRangeParams = {}) {
   const supabase = await createClient();
-  const periodStart = new Date();
-  if (period === 'week') {
-    periodStart.setDate(periodStart.getDate() - 7);
-  } else {
-    periodStart.setMonth(periodStart.getMonth() - 1);
-  }
+  const range = parseAdminDateRange(rangeParams);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const applyOrderRange = (query: any) => {
+    if (range.allTime) return query;
+    if (range.from) query = query.gte('created_at', range.from.toISOString());
+    if (range.to) query = query.lte('created_at', range.to.toISOString());
+    return query;
+  };
 
   // Order counts
-  const { count: totalOrders } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', periodStart.toISOString());
+  let totalOrdersQuery = supabase.from('orders').select('*', { count: 'exact', head: true });
+  totalOrdersQuery = applyOrderRange(totalOrdersQuery);
+  const { count: totalOrders } = await totalOrdersQuery;
 
-  const { count: deliveredOrders } = await supabase
+  let deliveredOrdersQuery = supabase
     .from('orders')
     .select('*', { count: 'exact', head: true })
-    .gte('created_at', periodStart.toISOString())
     .eq('status', 'delivered');
+  deliveredOrdersQuery = applyOrderRange(deliveredOrdersQuery);
+  const { count: deliveredOrders } = await deliveredOrdersQuery;
 
-  // Revenue
-  const { data: revenueData } = await supabase
-    .from('orders')
-    .select('total')
-    .gte('created_at', periodStart.toISOString())
-    .eq('payment_status', 'paid');
-
-  const totalRevenue = revenueData?.reduce((sum, o) => sum + o.total, 0) ?? 0;
+  const financials = await getAdminFinancialTotals(supabase, range);
 
   // Average delivery time
-  const { data: deliveredData } = await supabase
+  let deliveredDataQuery = supabase
     .from('orders')
     .select('actual_delivery_minutes')
-    .gte('created_at', periodStart.toISOString())
     .eq('status', 'delivered')
     .not('actual_delivery_minutes', 'is', null);
+  if (!range.allTime) {
+    if (range.from) deliveredDataQuery = deliveredDataQuery.gte('created_at', range.from.toISOString());
+    if (range.to) deliveredDataQuery = deliveredDataQuery.lte('created_at', range.to.toISOString());
+  }
+  const { data: deliveredData } = await deliveredDataQuery;
 
   const avgDeliveryTime =
     deliveredData && deliveredData.length > 0
@@ -1314,21 +1336,27 @@ export async function getAnalytics(period: 'week' | 'month') {
       ? Math.round(((deliveredOrders ?? 0) / totalOrders) * 100)
       : 0;
 
-  // Top runners
-  const { data: runnerAssignments } = await supabase
-    .from('order_assignments')
-    .select('assignee_id')
-    .eq('role', 'runner')
-    .eq('status', 'completed')
-    .gte('completed_at', periodStart.toISOString());
+  // Top runners from shifts in range
+  let shiftsQuery = supabase
+    .from('runner_shifts')
+    .select('runner_id, orders_completed, commission_earned');
+  if (!range.allTime) {
+    if (range.from) shiftsQuery = shiftsQuery.gte('started_at', range.from.toISOString());
+    if (range.to) shiftsQuery = shiftsQuery.lte('started_at', range.to.toISOString());
+  }
+  const { data: shiftRows } = await shiftsQuery;
 
-  const runnerCounts: Record<string, number> = {};
-  runnerAssignments?.forEach((a) => {
-    runnerCounts[a.assignee_id] = (runnerCounts[a.assignee_id] || 0) + 1;
+  const runnerTotals: Record<string, { orders: number; commission: number }> = {};
+  shiftRows?.forEach((shift) => {
+    const current = runnerTotals[shift.runner_id] ?? { orders: 0, commission: 0 };
+    runnerTotals[shift.runner_id] = {
+      orders: current.orders + (shift.orders_completed ?? 0),
+      commission: current.commission + (shift.commission_earned ?? 0),
+    };
   });
 
-  const topRunnerIds = Object.entries(runnerCounts)
-    .sort(([, a], [, b]) => b - a)
+  const topRunnerIds = Object.entries(runnerTotals)
+    .sort(([, a], [, b]) => b.orders - a.orders)
     .slice(0, 5)
     .map(([id]) => id);
 
@@ -1350,12 +1378,12 @@ export async function getAnalytics(period: 'week' | 'month') {
 
     topRunners = topRunnerIds.map((id) => ({
       name: nameMap[id] ?? 'Unknown',
-      orders_completed: runnerCounts[id],
-      commission: runnerCounts[id] * 600,
+      orders_completed: runnerTotals[id].orders,
+      commission: runnerTotals[id].commission,
     }));
   }
 
-  // Top vendors by reliability
+  // Top vendors by reliability (lifetime — not period-scoped)
   const { data: topVendors } = await supabase
     .from('vendors')
     .select('name, reliability_score, total_orders')
@@ -1366,9 +1394,11 @@ export async function getAnalytics(period: 'week' | 'month') {
   return {
     totalOrders: totalOrders ?? 0,
     deliveredOrders: deliveredOrders ?? 0,
-    totalRevenue,
     avgDeliveryTime,
     successRate,
+    financials,
+    financialDescriptions: ADMIN_FINANCIAL_DESCRIPTIONS,
+    dateRangeLabel: formatAdminDateRangeLabel(range),
     topRunners,
     topVendors: topVendors ?? [],
   };
@@ -1378,22 +1408,39 @@ export async function getAnalytics(period: 'week' | 'month') {
 // RECONCILIATION
 // ============================================
 
-export async function getReconciliation(date?: string) {
+export async function getReconciliation(rangeParams: AdminDateRangeParams = {}) {
   const supabase = await createClient();
-  const targetDate = date ? new Date(date) : new Date();
-  const dayStart = new Date(targetDate);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(targetDate);
-  dayEnd.setHours(23, 59, 59, 999);
+  const range = parseAdminDateRange(rangeParams);
 
-  const { data: shifts } = await supabase
-    .from('runner_shifts')
-    .select('*')
-    .gte('started_at', dayStart.toISOString())
-    .lte('started_at', dayEnd.toISOString())
-    .order('started_at', { ascending: false });
+  let shiftsQuery = supabase.from('runner_shifts').select('*');
+  if (!range.allTime) {
+    if (range.from) shiftsQuery = shiftsQuery.gte('started_at', range.from.toISOString());
+    if (range.to) shiftsQuery = shiftsQuery.lte('started_at', range.to.toISOString());
+  }
+  shiftsQuery = shiftsQuery.order('started_at', { ascending: false });
 
-  if (!shifts || shifts.length === 0) return { shifts: [], summary: null };
+  const [{ data: shifts }, financials] = await Promise.all([
+    shiftsQuery,
+    getAdminFinancialTotals(supabase, range),
+  ]);
+
+  const emptySummary = {
+    totalShifts: 0,
+    totalSourced: 0,
+    totalCommission: 0,
+    totalDiscrepancy: 0,
+    unreconciledCount: 0,
+  };
+
+  if (!shifts || shifts.length === 0) {
+    return {
+      shifts: [],
+      summary: emptySummary,
+      financials,
+      financialDescriptions: ADMIN_FINANCIAL_DESCRIPTIONS,
+      dateRangeLabel: formatAdminDateRangeLabel(range),
+    };
+  }
 
   // Get runner names
   const runnerIds = [...new Set(shifts.map((s) => s.runner_id))];
@@ -1432,6 +1479,9 @@ export async function getReconciliation(date?: string) {
       totalDiscrepancy,
       unreconciledCount,
     },
+    financials,
+    financialDescriptions: ADMIN_FINANCIAL_DESCRIPTIONS,
+    dateRangeLabel: formatAdminDateRangeLabel(range),
   };
 }
 

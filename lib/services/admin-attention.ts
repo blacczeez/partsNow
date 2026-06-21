@@ -70,6 +70,14 @@ async function countPriceReviewPending(supabase: SupabaseClient): Promise<number
   return count ?? 0;
 }
 
+async function countSourcingEscalated(supabase: SupabaseClient): Promise<number> {
+  const { count } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .not('sourcing_escalated_at', 'is', null);
+  return count ?? 0;
+}
+
 async function countDeliveryEscalated(supabase: SupabaseClient): Promise<number> {
   const { count } = await supabase
     .from('orders')
@@ -109,6 +117,19 @@ async function previewPriceReview(
     .select(ORDER_LIST_COLUMNS)
     .eq('price_review_status', 'pending')
     .order('created_at', { ascending: true })
+    .limit(limit);
+  return (data ?? []) as AttentionOrderRow[];
+}
+
+async function previewSourcingEscalated(
+  supabase: SupabaseClient,
+  limit: number
+): Promise<AttentionOrderRow[]> {
+  const { data } = await supabase
+    .from('orders')
+    .select(ORDER_LIST_COLUMNS)
+    .not('sourcing_escalated_at', 'is', null)
+    .order('sourcing_escalated_at', { ascending: true })
     .limit(limit);
   return (data ?? []) as AttentionOrderRow[];
 }
@@ -165,19 +186,23 @@ export async function getAdminAttentionInbox(
 ): Promise<AdminAttentionInbox> {
   const [
     slaCount,
+    sourcingCount,
     escalatedCount,
     priceReviewCount,
     settlementCount,
     slaPreview,
+    sourcingPreview,
     escalatedPreview,
     priceReviewPreview,
     settlementPreview,
   ] = await Promise.all([
     countSlaBreaches(supabase),
+    countSourcingEscalated(supabase),
     countDeliveryEscalated(supabase),
     countPriceReviewPending(supabase),
     countSettlementPending(supabase),
     previewSlaBreaches(supabase, previewLimit),
+    previewSourcingEscalated(supabase, previewLimit),
     previewDeliveryEscalated(supabase, previewLimit),
     previewPriceReview(supabase, previewLimit),
     previewSettlementPending(supabase, previewLimit),
@@ -185,6 +210,7 @@ export async function getAdminAttentionInbox(
 
   const counts: Record<AttentionType, number> = {
     sla_breach: slaCount,
+    sourcing_escalated: sourcingCount,
     delivery_escalated: escalatedCount,
     price_review: priceReviewCount,
     settlement_pending: settlementCount,
@@ -192,6 +218,7 @@ export async function getAdminAttentionInbox(
 
   const previews: Record<AttentionType, AttentionOrderRow[]> = {
     sla_breach: slaPreview,
+    sourcing_escalated: sourcingPreview,
     delivery_escalated: escalatedPreview,
     price_review: priceReviewPreview,
     settlement_pending: settlementPreview,
@@ -239,7 +266,10 @@ export async function getAdminOrdersByAttention(
   let query = supabase
     .from('orders')
     .select(ORDER_LIST_COLUMNS, { count: 'exact' })
-    .order('created_at', { ascending: true })
+    .order(
+      attention === 'sourcing_escalated' ? 'sourcing_escalated_at' : 'created_at',
+      { ascending: true }
+    )
     .range(offset, offset + limit - 1);
 
   switch (attention) {
@@ -250,6 +280,9 @@ export async function getAdminOrdersByAttention(
       query = query
         .eq('delivery_resolution', DELIVERY_RESOLUTION.ADMIN_REVIEW)
         .eq('status', 'dispatched');
+      break;
+    case 'sourcing_escalated':
+      query = query.not('sourcing_escalated_at', 'is', null);
       break;
     case 'settlement_pending':
       query = query

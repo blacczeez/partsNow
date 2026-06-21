@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ChevronRight, Scale, Truck, Wallet } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Scale, Search, Truck, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import {
@@ -16,6 +16,7 @@ import type { OrderStatus } from '@/lib/types/database';
 
 const ATTENTION_ICONS: Record<AttentionType, ComponentType<{ className?: string }>> = {
   sla_breach: AlertTriangle,
+  sourcing_escalated: Search,
   delivery_escalated: Truck,
   price_review: Scale,
   settlement_pending: Wallet,
@@ -26,6 +27,7 @@ const ATTENTION_VARIANTS: Record<
   'error' | 'warning' | 'info'
 > = {
   sla_breach: 'error',
+  sourcing_escalated: 'warning',
   delivery_escalated: 'warning',
   price_review: 'warning',
   settlement_pending: 'info',
@@ -129,7 +131,11 @@ export function NeedsAttentionPanel({ attention }: NeedsAttentionPanelProps) {
                   {group.preview.map((order) => (
                     <Link
                       key={order.id}
-                      href={`/admin/orders?search=${encodeURIComponent(order.order_number)}`}
+                      href={
+                        group.type === 'sourcing_escalated'
+                          ? `/admin/orders?attention=sourcing_escalated&order=${order.id}`
+                          : `/admin/orders?search=${encodeURIComponent(order.order_number)}`
+                      }
                       className="block hover:bg-white/80"
                     >
                       <AttentionOrderRow type={group.type} order={order} />

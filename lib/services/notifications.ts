@@ -3,6 +3,7 @@ import { sendTemplateMessage, sendTextMessage, sendInteractiveButtons } from '@/
 import { formatCurrency } from '@/lib/utils/format';
 import { getRuntimeConfig } from '@/lib/services/runtime-config';
 import { config } from '@/lib/config';
+import { getSourcingEscalationOrderUrl } from '@/lib/utils/sourcing-escalation';
 
 interface OrderData {
   order_number: string;
@@ -281,6 +282,81 @@ export async function notifyDeliveryFailed(
     await sendTextMessage(data.customer.phone, body);
   } catch (error) {
     console.error('Notification error (delivery_failed):', error);
+  }
+}
+
+export async function notifySourcingDifficulty(
+  orderId: string,
+  itemDescription: string,
+  reason: string,
+  options?: { reassigned?: boolean; allItemsUnavailable?: boolean }
+) {
+  try {
+    const data = await getOrderWithCustomerPhone(orderId);
+    if (!data) return;
+
+    let body: string;
+    if (options?.allItemsUnavailable) {
+      body =
+        `Update on order ${data.order.order_number}:\n\n` +
+        `We couldn't source the parts you requested (${reason}). ` +
+        `Our team is reviewing your order and will contact you shortly about next steps.`;
+    } else if (options?.reassigned) {
+      body =
+        `Update on order ${data.order.order_number}:\n\n` +
+        `We're having difficulty sourcing "${itemDescription}" (${reason}). ` +
+        `This may affect your delivery time.\n\n` +
+        `We've assigned another runner to continue looking for your parts and will keep you updated.`;
+    } else {
+      body =
+        `Update on order ${data.order.order_number}:\n\n` +
+        `We're having difficulty sourcing "${itemDescription}" (${reason}). ` +
+        `This may affect your delivery time.\n\n` +
+        `Our team is working to assign another runner and will keep you updated.`;
+    }
+
+    await sendTextMessage(data.customer.phone, body);
+  } catch (error) {
+    console.error('Notification error (sourcing_difficulty):', error);
+  }
+}
+
+export async function notifyAdminSourcingEscalation(
+  orderId: string,
+  reasonLabel: string,
+  notes?: string
+) {
+  try {
+    const supabase = createServiceClient();
+    const { data: order } = await supabase
+      .from('orders')
+      .select('order_number, delivery_address')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) return;
+
+    const { data: admins } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('user_type', 'admin')
+      .eq('is_active', true);
+
+    const adminUrl = `${config.app.url}${getSourcingEscalationOrderUrl(orderId)}`;
+    const message =
+      `Sourcing escalation — ${order.order_number}\n\n` +
+      `Reason: ${reasonLabel}\n` +
+      `Address: ${order.delivery_address}\n` +
+      (notes ? `Notes: ${notes}\n` : '') +
+      `\nReview in admin: ${adminUrl}`;
+
+    for (const admin of admins ?? []) {
+      if (admin.phone) {
+        await sendTextMessage(admin.phone, message);
+      }
+    }
+  } catch (error) {
+    console.error('Notification error (admin_sourcing_escalation):', error);
   }
 }
 

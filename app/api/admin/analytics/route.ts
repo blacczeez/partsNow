@@ -8,9 +8,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const period = (searchParams.get('period') || 'week') as 'week' | 'month';
 
-    const analytics = await getAnalytics(period);
+    const analytics = await getAnalytics({
+      preset: searchParams.get('preset'),
+      from: searchParams.get('from'),
+      to: searchParams.get('to'),
+      date: searchParams.get('date'),
+    });
     return NextResponse.json(analytics);
   } catch (error) {
     console.error('Analytics error:', error);
