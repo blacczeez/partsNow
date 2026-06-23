@@ -16,6 +16,7 @@ import {
 } from './notifications';
 import { recordVendorPartPrice } from './vendor-parts';
 import { shiftDurationMinutes } from '@/lib/utils/shift';
+import { computeShiftDiscrepancy } from '@/lib/utils/shift-reconciliation';
 import { runnerAssignmentReleaseAction } from '@/lib/utils/runner-assignments';
 import { runnerOrderAwaitingExternalResolution } from '@/lib/utils/runner-price-review';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
@@ -182,13 +183,27 @@ export async function endShift(
 
   // Get current float
   const float = await getRunnerFloat(runnerId);
+  const endingFloat = float?.balance ?? 0;
+  const discrepancyAmount = computeShiftDiscrepancy({
+    startingFloat: Number(shift.starting_float),
+    totalSourced: Number(shift.total_sourced),
+    endingFloat,
+  });
+  const autoReconcile = discrepancyAmount === 0;
 
   const { data: updated, error } = await supabase
     .from('runner_shifts')
     .update({
       ended_at: new Date().toISOString(),
-      ending_float: float?.balance ?? 0,
+      ending_float: endingFloat,
+      discrepancy_amount: discrepancyAmount,
       discrepancy_notes: notes || null,
+      ...(autoReconcile
+        ? {
+            is_reconciled: true,
+            reconciled_at: new Date().toISOString(),
+          }
+        : {}),
     })
     .eq('id', shift.id)
     .select()
@@ -203,7 +218,9 @@ export async function endShift(
     entityId: runnerId,
     newValues: auditDetails('Runner clocked out', {
       shiftId: shift.id,
-      endingFloat: float?.balance ?? 0,
+      endingFloat,
+      discrepancyAmount,
+      autoReconciled: autoReconcile,
       notes: notes ?? null,
       ordersTransferred: transferSummary.transferred,
       ordersOrphaned: transferSummary.orphaned,

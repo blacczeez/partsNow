@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { FloatTopupSheet } from '@/components/admin/float-topup-sheet';
+import { ShiftReconciliationBadge } from '@/components/admin/shift-reconciliation-badge';
 import { useAdminRunners } from '@/lib/hooks/use-admin-runners';
 import { useAdminRunnerDetail } from '@/lib/hooks/use-admin-runner-detail';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
+import { formatShiftDiscrepancyLabel } from '@/lib/utils/shift-reconciliation';
 import { toast } from '@/components/ui/toast';
 
 export default function AdminRunnersPage() {
@@ -189,11 +191,14 @@ export default function AdminRunnersPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {shift.discrepancy_amount !== 0 && (
-                          <Badge variant="warning">{formatCurrency(shift.discrepancy_amount)} disc.</Badge>
+                          <Badge variant="warning">
+                            {formatShiftDiscrepancyLabel(shift.discrepancy_amount)}
+                          </Badge>
                         )}
-                        <Badge variant={shift.is_reconciled ? 'success' : 'warning'}>
-                          {shift.is_reconciled ? 'Reconciled' : 'Pending'}
-                        </Badge>
+                        <ShiftReconciliationBadge
+                          endedAt={shift.ended_at}
+                          isReconciled={shift.is_reconciled}
+                        />
                       </div>
                     </div>
                   ))}

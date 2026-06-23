@@ -1,18 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { AdminDateRangeFilter } from '@/components/admin/admin-date-range-filter';
 import { FinancialStatCards } from '@/components/admin/financial-stat-cards';
-import { Badge } from '@/components/ui/badge';
+import { ShiftReconciliationBadge } from '@/components/admin/shift-reconciliation-badge';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import { formatCurrency } from '@/lib/utils/format';
 import {
   adminDateRangeToSearchParams,
   getDefaultAdminDateRange,
   type AdminDateRangeValue,
 } from '@/lib/utils/admin-date-range';
+import {
+  formatShiftDiscrepancyLabel,
+  getShiftReconciliationStatus,
+} from '@/lib/utils/shift-reconciliation';
 import type { AdminFinancialTotals } from '@/lib/services/admin-financials';
 import { ADMIN_FINANCIAL_DESCRIPTIONS } from '@/lib/services/admin-financials';
 
@@ -46,62 +51,6 @@ interface ReconciliationData {
   dateRangeLabel: string;
 }
 
-const columns = [
-  {
-    header: 'Runner',
-    render: (row: ReconciliationShift) => (
-      <span className="font-medium text-slate-900">{row.runner_name}</span>
-    ),
-  },
-  {
-    header: 'Shift started',
-    render: (row: ReconciliationShift) => (
-      <span className="text-slate-500">
-        {new Date(row.started_at).toLocaleString([], {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-        {row.ended_at
-          ? ` – ${new Date(row.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-          : ' (active)'}
-      </span>
-    ),
-  },
-  {
-    header: 'Orders',
-    render: (row: ReconciliationShift) => row.orders_completed,
-  },
-  {
-    header: 'Sourced',
-    render: (row: ReconciliationShift) => formatCurrency(row.total_sourced),
-  },
-  {
-    header: 'Commission',
-    render: (row: ReconciliationShift) => formatCurrency(row.commission_earned),
-  },
-  {
-    header: 'Discrepancy',
-    render: (row: ReconciliationShift) => {
-      const amount = row.discrepancy_amount ?? 0;
-      return (
-        <span className={amount !== 0 ? 'font-medium text-error' : 'text-slate-500'}>
-          {formatCurrency(amount)}
-        </span>
-      );
-    },
-  },
-  {
-    header: 'Status',
-    render: (row: ReconciliationShift) => (
-      <Badge variant={row.is_reconciled ? 'success' : 'warning'}>
-        {row.is_reconciled ? 'Reconciled' : 'Pending'}
-      </Badge>
-    ),
-  },
-];
-
 function ReconciliationResults({
   dateRange,
   refreshKey,
@@ -112,18 +61,20 @@ function ReconciliationResults({
   const [data, setData] = useState<ReconciliationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reconcilingId, setReconcilingId] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    const params = adminDateRangeToSearchParams(dateRange);
+    const res = await fetch(`/api/admin/reconciliation?${params.toString()}`);
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to load reconciliation');
+    return result as ReconciliationData;
+  }, [dateRange]);
 
   useEffect(() => {
     let cancelled = false;
 
-    const params = adminDateRangeToSearchParams(dateRange);
-
-    fetch(`/api/admin/reconciliation?${params.toString()}`)
-      .then(async (res) => {
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Failed to load reconciliation');
-        return result as ReconciliationData;
-      })
+    loadData()
       .then((result) => {
         if (!cancelled) setData(result);
       })
@@ -139,7 +90,54 @@ function ReconciliationResults({
     return () => {
       cancelled = true;
     };
-  }, [dateRange, refreshKey]);
+  }, [loadData, refreshKey]);
+
+  const handleReconcile = async (shiftId: string) => {
+    setReconcilingId(shiftId);
+    try {
+      const res = await fetch(
+        `/api/admin/reconciliation/shifts/${shiftId}/reconcile`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || 'Failed to reconcile shift');
+      }
+
+      setData((prev) => {
+        if (!prev) return prev;
+        const shift = prev.shifts.find((s) => s.id === shiftId);
+        const wasPending = shift?.ended_at && !shift.is_reconciled;
+        return {
+          ...prev,
+          shifts: prev.shifts.map((s) =>
+            s.id === shiftId ? { ...s, is_reconciled: true } : s
+          ),
+          summary: wasPending
+            ? {
+                ...prev.summary,
+                unreconciledCount: Math.max(0, prev.summary.unreconciledCount - 1),
+              }
+            : prev.summary,
+        };
+      });
+
+      const refreshed = await loadData();
+      setData(refreshed);
+      toast('success', 'Shift marked as reconciled');
+    } catch (err) {
+      toast(
+        'error',
+        err instanceof Error ? err.message : 'Failed to reconcile shift'
+      );
+    } finally {
+      setReconcilingId(null);
+    }
+  };
 
   if (error) {
     return (
@@ -160,6 +158,93 @@ function ReconciliationResults({
 
   const { summary } = data;
 
+  const columns = [
+    {
+      header: 'Runner',
+      render: (row: ReconciliationShift) => (
+        <span className="font-medium text-slate-900">{row.runner_name}</span>
+      ),
+    },
+    {
+      header: 'Shift',
+      render: (row: ReconciliationShift) => (
+        <span className="text-slate-500">
+          {new Date(row.started_at).toLocaleString([], {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+          {row.ended_at
+            ? ` – ${new Date(row.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+            : ''}
+        </span>
+      ),
+    },
+    {
+      header: 'Orders',
+      render: (row: ReconciliationShift) => row.orders_completed,
+    },
+    {
+      header: 'Sourced',
+      render: (row: ReconciliationShift) => formatCurrency(row.total_sourced),
+    },
+    {
+      header: 'Commission',
+      render: (row: ReconciliationShift) => formatCurrency(row.commission_earned),
+    },
+    {
+      header: 'Discrepancy',
+      render: (row: ReconciliationShift) => {
+        const amount = row.discrepancy_amount ?? 0;
+        const status = getShiftReconciliationStatus({
+          ended_at: row.ended_at,
+          is_reconciled: row.is_reconciled,
+        });
+        if (status === 'active') {
+          return <span className="text-slate-400">—</span>;
+        }
+        return (
+          <span className={amount !== 0 ? 'font-medium text-error' : 'text-slate-500'}>
+            {formatShiftDiscrepancyLabel(amount)}
+          </span>
+        );
+      },
+    },
+    {
+      header: 'Status',
+      render: (row: ReconciliationShift) => (
+        <ShiftReconciliationBadge
+          endedAt={row.ended_at}
+          isReconciled={row.is_reconciled}
+        />
+      ),
+    },
+    {
+      header: '',
+      render: (row: ReconciliationShift) => {
+        const status = getShiftReconciliationStatus({
+          ended_at: row.ended_at,
+          is_reconciled: row.is_reconciled,
+        });
+        if (status !== 'pending') return null;
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            isLoading={reconcilingId === row.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleReconcile(row.id);
+            }}
+          >
+            Mark reconciled
+          </Button>
+        );
+      },
+    },
+  ];
+
   return (
     <>
       <p className="mb-4 text-sm text-slate-500">Showing data for {data.dateRangeLabel}</p>
@@ -170,13 +255,13 @@ function ReconciliationResults({
         className="mb-6"
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mb-2 grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
           { label: 'Shifts', value: summary.totalShifts },
           { label: 'Total sourced', value: formatCurrency(summary.totalSourced) },
           { label: 'Shift commission', value: formatCurrency(summary.totalCommission) },
-          { label: 'Discrepancy', value: formatCurrency(summary.totalDiscrepancy) },
-          { label: 'Unreconciled', value: summary.unreconciledCount },
+          { label: 'Net discrepancy', value: formatCurrency(summary.totalDiscrepancy) },
+          { label: 'Pending review', value: summary.unreconciledCount },
         ].map((item) => (
           <div
             key={item.label}
@@ -187,6 +272,10 @@ function ReconciliationResults({
           </div>
         ))}
       </div>
+      <p className="mb-4 text-xs text-slate-400">
+        Discrepancy = ending float minus (starting float − parts sourced). Shifts with ₦0
+        discrepancy auto-reconcile on clock-out.
+      </p>
 
       <DataTable
         columns={columns}

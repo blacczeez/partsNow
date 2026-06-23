@@ -1468,7 +1468,9 @@ export async function getReconciliation(rangeParams: AdminDateRangeParams = {}) 
     (sum, s) => sum + (s.discrepancy_amount ?? 0),
     0
   );
-  const unreconciledCount = shifts.filter((s) => !s.is_reconciled).length;
+  const unreconciledCount = shifts.filter(
+    (s) => s.ended_at && !s.is_reconciled
+  ).length;
 
   return {
     shifts: shiftsWithNames,
