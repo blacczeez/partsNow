@@ -10,6 +10,24 @@ interface RunnerShiftState {
   error: string | null;
 }
 
+async function fetchRunnerShiftState(): Promise<{
+  shift: RunnerShift | null;
+  float: RunnerFloat | null;
+}> {
+  const [shiftRes, floatRes] = await Promise.all([
+    fetch('/api/runner/shift'),
+    fetch('/api/runner/float'),
+  ]);
+
+  const shiftData = await shiftRes.json();
+  const floatData = await floatRes.json();
+
+  return {
+    shift: shiftData.shift || null,
+    float: floatData.float || null,
+  };
+}
+
 export function useRunnerShift() {
   const [state, setState] = useState<RunnerShiftState>({
     shift: null,
@@ -17,20 +35,43 @@ export function useRunnerShift() {
     isLoading: true,
     error: null,
   });
+  const [reloadNonce, setReloadNonce] = useState(0);
 
-  const fetchState = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchRunnerShiftState()
+      .then(({ shift, float }) => {
+        if (!cancelled) {
+          setState({
+            shift,
+            float,
+            isLoading: false,
+            error: null,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState((s) => ({
+            ...s,
+            isLoading: false,
+            error: 'Failed to load shift data',
+          }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadNonce]);
+
+  const reloadShiftState = useCallback(async () => {
     try {
-      const [shiftRes, floatRes] = await Promise.all([
-        fetch('/api/runner/shift'),
-        fetch('/api/runner/float'),
-      ]);
-
-      const shiftData = await shiftRes.json();
-      const floatData = await floatRes.json();
-
+      const { shift, float } = await fetchRunnerShiftState();
       setState({
-        shift: shiftData.shift || null,
-        float: floatData.float || null,
+        shift,
+        float,
         isLoading: false,
         error: null,
       });
@@ -43,9 +84,10 @@ export function useRunnerShift() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchState();
-  }, [fetchState]);
+  const refresh = useCallback(() => {
+    setState((s) => ({ ...s, isLoading: true, error: null }));
+    setReloadNonce((n) => n + 1);
+  }, []);
 
   const startShift = useCallback(
     async (latitude: number, longitude: number) => {
@@ -58,10 +100,10 @@ export function useRunnerShift() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to start shift');
 
-      await fetchState();
+      await reloadShiftState();
       return data.shift as RunnerShift;
     },
-    [fetchState]
+    [reloadShiftState]
   );
 
   const endShift = useCallback(
@@ -75,7 +117,7 @@ export function useRunnerShift() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to end shift');
 
-      await fetchState();
+      await reloadShiftState();
       return {
         shift: data.shift as RunnerShift,
         transferSummary: data.transferSummary as
@@ -83,13 +125,13 @@ export function useRunnerShift() {
           | undefined,
       };
     },
-    [fetchState]
+    [reloadShiftState]
   );
 
   return {
     ...state,
     startShift,
     endShift,
-    refresh: fetchState,
+    refresh,
   };
 }
