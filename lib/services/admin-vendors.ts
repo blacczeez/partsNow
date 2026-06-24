@@ -1,9 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { VENDOR_VERIFICATION_STATUS } from '@/lib/constants/vendors';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 import { normalizeVendorName } from '@/lib/utils/vendor-name-match';
 import { combineVendorPartRows } from '@/lib/utils/vendor-merge';
+import {
+  buildVendorReliabilityBreakdown,
+  listVendorIncidents,
+  type VendorReliabilityBreakdown,
+  type VendorIncidentRow,
+} from '@/lib/services/vendor-reliability';
+import type { Vendor } from '@/lib/types/database';
 
 export interface DuplicateVendorEntry {
   id: string;
@@ -258,5 +266,40 @@ export async function mergeVendors(
     }),
   });
 
+  const { recalculateVendorReliability } = await import('@/lib/services/vendor-reliability');
+  await recalculateVendorReliability(keepVendorId);
+
   return updatedKeep;
+}
+
+export interface AdminVendorDetail {
+  vendor: Vendor;
+  reliability: VendorReliabilityBreakdown;
+  incidents: VendorIncidentRow[];
+}
+
+export async function getAdminVendorDetail(vendorId: string): Promise<AdminVendorDetail | null> {
+  const supabase = createServiceClient();
+
+  const { data: vendor, error } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('id', vendorId)
+    .single();
+
+  if (error || !vendor) return null;
+
+  const reliability = await buildVendorReliabilityBreakdown(
+    supabase,
+    vendorId,
+    vendor.total_orders ?? 0,
+    vendor.quality_issues ?? 0
+  );
+  const incidents = await listVendorIncidents(supabase, vendorId, 50);
+
+  return {
+    vendor: vendor as Vendor,
+    reliability,
+    incidents,
+  };
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { rateOrderSchema } from '@/lib/validators/order';
+import { applyRatingReliabilityCredits } from '@/lib/services/part-reports';
 
 export async function POST(
   request: NextRequest,
@@ -63,6 +64,8 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: 'Failed to submit rating' }, { status: 500 });
   }
+
+  applyRatingReliabilityCredits(id).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

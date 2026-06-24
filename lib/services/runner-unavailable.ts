@@ -18,6 +18,11 @@ import {
 } from '@/lib/utils/sourcing-escalation';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
+import {
+  VENDOR_INCIDENT_SOURCES,
+  VENDOR_INCIDENT_STATUSES,
+  VENDOR_INCIDENT_TYPES,
+} from '@/lib/constants/vendor-incidents';
 import type { PaymentStatus } from '@/lib/types/database';
 
 export interface MarkItemUnavailableResult {
@@ -145,7 +150,7 @@ export async function handleRunnerItemUnavailable(params: {
 
   const { data: item, error: itemError } = await supabase
     .from('order_items')
-    .select('id, description, is_found, is_unavailable')
+    .select('id, description, is_found, is_unavailable, vendor_id')
     .eq('id', itemId)
     .eq('order_id', orderId)
     .single();
@@ -211,6 +216,24 @@ export async function handleRunnerItemUnavailable(params: {
     .eq('order_id', orderId);
 
   throwIfSupabaseError(updateItemError, 'Failed to mark item as unavailable');
+
+  if (item.vendor_id) {
+    const db = createServiceClient();
+    const { error: oosError } = await db.from('vendor_incidents').insert({
+      vendor_id: item.vendor_id,
+      order_id: orderId,
+      order_item_id: itemId,
+      type: VENDOR_INCIDENT_TYPES.OUT_OF_STOCK,
+      status: VENDOR_INCIDENT_STATUSES.CONFIRMED,
+      source: VENDOR_INCIDENT_SOURCES.RUNNER,
+      reported_by: runnerId,
+      description: `Runner marked unavailable: ${itemDescription}. Reason: ${reason.trim()}`,
+    });
+    throwIfSupabaseError(oosError, 'Failed to record out-of-stock incident');
+
+    const { recalculateVendorReliability } = await import('@/lib/services/vendor-reliability');
+    recalculateVendorReliability(item.vendor_id).catch(() => {});
+  }
 
   await persistUnavailableRepricing(supabase, orderId, order, repriced, partialRefundAmount);
 

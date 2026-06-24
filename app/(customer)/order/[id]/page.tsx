@@ -16,6 +16,7 @@ import { OrderTimeline } from '@/components/orders/order-timeline';
 import { PricingSummary } from '@/components/orders/pricing-summary';
 import { PriceChangeBanner } from '@/components/orders/price-change-notice';
 import { RatingForm } from '@/components/orders/rating-form';
+import { PartIssueReportForm } from '@/components/orders/part-issue-report-form';
 import { useOrder } from '@/lib/hooks/use-order';
 import { useUser } from '@/lib/hooks/use-user';
 import { OrderStatusLive } from '@/components/tracking/order-status-live';
@@ -101,6 +102,22 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
     } finally {
       setIsCancelling(false);
     }
+  }
+
+  async function handleReportPartIssues(
+    reports: Array<{ itemId: string; issueSubtype: string; notes?: string }>
+  ) {
+    const res = await fetch(`/api/orders/${orderId}/report-parts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reports }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to submit report');
+    }
+    toast('success', 'Part issue reported — our team will review');
+    refresh();
   }
 
   async function handleRate(rating: number, comment: string) {
@@ -400,6 +417,19 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
               </p>
             )}
           </div>
+        )}
+
+        {displayStatus === 'delivered' && (
+          <PartIssueReportForm
+            items={order.order_items.map((item) => ({
+              id: item.id,
+              description: item.description,
+              is_found: (item as { is_found?: boolean }).is_found,
+              part_issue_reported: (item as { part_issue_reported?: boolean })
+                .part_issue_reported,
+            }))}
+            onSubmit={handleReportPartIssues}
+          />
         )}
 
         {/* View Receipt */}

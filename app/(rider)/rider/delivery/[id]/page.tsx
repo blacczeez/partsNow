@@ -165,6 +165,7 @@ export default function DeliveryDetailPage() {
     latitude?: number;
     longitude?: number;
     callAttemptsMade?: number;
+    partIssueSubtype?: string;
   }) => {
     try {
       const res = await fetch(`/api/rider/orders/${id}/fail`, {

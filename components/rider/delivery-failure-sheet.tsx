@@ -11,6 +11,11 @@ import {
   requiresFailurePhoto,
   type DeliveryFailureReason,
 } from '@/lib/constants/delivery-failure';
+import {
+  PART_ISSUE_LABELS,
+  PART_ISSUE_SUBTYPES,
+  type PartIssueSubtype,
+} from '@/lib/constants/vendor-incidents';
 
 interface DeliveryFailureSheetProps {
   isOpen: boolean;
@@ -24,6 +29,7 @@ interface DeliveryFailureSheetProps {
     latitude?: number;
     longitude?: number;
     callAttemptsMade?: number;
+    partIssueSubtype?: PartIssueSubtype;
   }) => Promise<void>;
 }
 
@@ -60,6 +66,7 @@ export function DeliveryFailureSheet({
   const [selectedReason, setSelectedReason] = useState<DeliveryFailureReason | null>(null);
   const [notes, setNotes] = useState('');
   const [callAttempts, setCallAttempts] = useState(1);
+  const [partIssueSubtype, setPartIssueSubtype] = useState<PartIssueSubtype | ''>('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -128,6 +135,11 @@ export function DeliveryFailureSheet({
       return;
     }
 
+    if (selectedReason === 'customer_refused' && !partIssueSubtype) {
+      setSubmitError('Select the part problem the customer reported');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -163,6 +175,10 @@ export function DeliveryFailureSheet({
         longitude: location?.longitude,
         callAttemptsMade:
           selectedReason === 'customer_unavailable' ? callAttempts : undefined,
+        partIssueSubtype:
+          selectedReason === 'customer_refused' && partIssueSubtype
+            ? partIssueSubtype
+            : undefined,
       });
 
       handleClose();
@@ -178,6 +194,7 @@ export function DeliveryFailureSheet({
       setSelectedReason(null);
       setNotes('');
       setCallAttempts(1);
+      setPartIssueSubtype('');
       setPhotoFile(null);
       setPhotoPreview(null);
       setSubmitError(null);
@@ -231,6 +248,31 @@ export function DeliveryFailureSheet({
               onChange={(e) => setCallAttempts(parseInt(e.target.value, 10) || 0)}
               className="w-full rounded-input border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
+          </div>
+        )}
+
+        {selectedReason === 'customer_refused' && (
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              What was wrong with the part?
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {PART_ISSUE_SUBTYPES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPartIssueSubtype(value)}
+                  className={cn(
+                    'rounded-button border px-3 py-2 text-left text-xs',
+                    partIssueSubtype === value
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-slate-200 text-slate-700'
+                  )}
+                >
+                  {PART_ISSUE_LABELS[value]}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

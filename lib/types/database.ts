@@ -137,11 +137,17 @@ export interface Vendor {
 
 export interface VendorIncident {
   id: string;
-  vendor_id: string;
+  vendor_id: string | null;
   order_id: string | null;
+  order_item_id: string | null;
   type: string;
+  issue_subtype: string | null;
+  status: string;
+  source: string | null;
+  reported_by: string | null;
   description: string | null;
   resolution: string | null;
+  photo_url: string | null;
   created_at: string;
 }
 
@@ -269,6 +275,7 @@ export interface OrderItem {
   is_found: boolean;
   is_unavailable: boolean;
   unavailable_reason: string | null;
+  part_issue_reported: boolean;
   vendor_name?: string | null;
   created_at: string;
 }

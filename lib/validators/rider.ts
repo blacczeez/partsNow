@@ -25,6 +25,9 @@ export const reportFailureSchema = z.object({
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   callAttemptsMade: z.number().int().min(0).max(10).optional(),
+  partIssueSubtype: z
+    .enum(['wrong_part', 'damaged', 'doesnt_fit', 'not_ordered'])
+    .optional(),
 });
 
 export type ReportFailureInput = z.infer<typeof reportFailureSchema>;

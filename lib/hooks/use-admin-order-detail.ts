@@ -121,6 +121,21 @@ interface OrderDetail {
     status: string;
     created_at: string;
   }>;
+  vendorIncidents: Array<{
+    id: string;
+    vendor_id: string | null;
+    order_item_id: string | null;
+    type: string;
+    issue_subtype: string | null;
+    status: string;
+    source: string | null;
+    description: string | null;
+    resolution: string | null;
+    photo_url: string | null;
+    created_at: string;
+    vendor_name?: string | null;
+    item_description?: string | null;
+  }>;
 }
 
 export function useAdminOrderDetail(orderId: string | null) {

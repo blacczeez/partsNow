@@ -47,6 +47,11 @@ export const mergeVendorsSchema = z.object({
   mergeVendorId: uuidIdSchema,
 });
 
+export const resolveVendorIncidentSchema = z.object({
+  action: z.enum(['confirm', 'reject']),
+  resolutionNote: z.string().max(500).optional().or(z.literal('')),
+});
+
 export const updateConfigSchema = z.object({
   key: z.string().min(1),
   value: z.unknown(),

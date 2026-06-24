@@ -11,6 +11,12 @@ import {
   requiresFailurePhoto,
   type DeliveryFailureReason,
 } from '@/lib/constants/delivery-failure';
+import {
+  VENDOR_INCIDENT_SOURCES,
+  VENDOR_INCIDENT_STATUSES,
+  VENDOR_INCIDENT_TYPES,
+  type PartIssueSubtype,
+} from '@/lib/constants/vendor-incidents';
 import { findStaffAssignment } from './order-assignments';
 import { initiateDeliverySettlement } from './delivery-settlement';
 import {
@@ -26,6 +32,7 @@ export interface ReportDeliveryFailureInput {
   latitude?: number;
   longitude?: number;
   callAttemptsMade?: number;
+  partIssueSubtype?: PartIssueSubtype;
 }
 
 const ATTEMPT_STATUS_MAP: Record<DeliveryFailureReason, string> = {
@@ -94,6 +101,59 @@ async function recordCodRefusal(customerId: string, riderId?: string): Promise<v
   }
 
   await db.from('users').update({ profile: nextProfile }).eq('id', customerId);
+}
+
+async function createRiderPartIssueIncidents(
+  orderId: string,
+  riderId: string,
+  data: ReportDeliveryFailureInput
+): Promise<void> {
+  if (!data.partIssueSubtype) return;
+
+  const db = createServiceClient();
+  const { data: items, error } = await db
+    .from('order_items')
+    .select('id, description, vendor_id, is_found, part_issue_reported')
+    .eq('order_id', orderId)
+    .eq('is_found', true)
+    .not('vendor_id', 'is', null);
+
+  if (error) throw new Error(error.message);
+
+  const subtype = data.partIssueSubtype;
+  const descriptionBase = `Rider report: customer refused — ${subtype.replace(/_/g, ' ')}`;
+
+  for (const item of items ?? []) {
+    if (item.part_issue_reported) continue;
+
+    const description = [
+      descriptionBase,
+      `Item: ${item.description}`,
+      data.notes?.trim() ? `Notes: ${data.notes.trim()}` : null,
+    ]
+      .filter(Boolean)
+      .join('. ');
+
+    const { error: incidentError } = await db.from('vendor_incidents').insert({
+      vendor_id: item.vendor_id,
+      order_id: orderId,
+      order_item_id: item.id,
+      type: VENDOR_INCIDENT_TYPES.QUALITY_ISSUE,
+      issue_subtype: subtype,
+      status: VENDOR_INCIDENT_STATUSES.PENDING,
+      source: VENDOR_INCIDENT_SOURCES.RIDER,
+      reported_by: riderId,
+      description,
+      photo_url: data.photoUrl ?? null,
+    });
+
+    throwIfSupabaseError(incidentError, 'Failed to record rider part issue incident');
+
+    await db
+      .from('order_items')
+      .update({ part_issue_reported: true })
+      .eq('id', item.id);
+  }
 }
 
 async function finalizeTerminalDeliveryFailure(
@@ -245,6 +305,10 @@ export async function reportDeliveryFailure(
   );
 
   if (data.reason === 'customer_refused') {
+    if (data.partIssueSubtype) {
+      await createRiderPartIssueIncidents(orderId, riderId, data);
+    }
+
     const { error: rejectAssignmentError } = await supabase
       .from('order_assignments')
       .update({ status: 'failed', completed_at: new Date().toISOString() })

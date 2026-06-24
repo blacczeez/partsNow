@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { VendorFormSheet } from '@/components/admin/vendor-form-sheet';
 import { ActivateVendorSheet } from '@/components/admin/activate-vendor-sheet';
+import { VendorDetailSheet } from '@/components/admin/vendor-detail-sheet';
 import { DuplicateVendorsPanel } from '@/components/admin/duplicate-vendors-panel';
 import { useAdminVendors } from '@/lib/hooks/use-admin-vendors';
 import { VENDOR_VERIFICATION_STATUS } from '@/lib/constants/vendors';
@@ -30,6 +31,7 @@ export default function AdminVendorsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<(typeof vendors)[0] | null>(null);
   const [activatingVendor, setActivatingVendor] = useState<(typeof vendors)[0] | null>(null);
+  const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
 
   const handleRowClick = (row: (typeof vendors)[0]) => {
     if (row.verification_status === VENDOR_VERIFICATION_STATUS.PENDING) {
@@ -103,17 +105,22 @@ export default function AdminVendorsPage() {
     {
       header: 'Reliability',
       render: (row: (typeof vendors)[0]) => (
-        <span
+        <button
+          type="button"
           className={
             row.reliability_score >= 80
-              ? 'text-success'
+              ? 'font-medium text-success underline-offset-2 hover:underline'
               : row.reliability_score >= 60
-                ? 'text-warning'
-                : 'text-error'
+                ? 'font-medium text-warning underline-offset-2 hover:underline'
+                : 'font-medium text-error underline-offset-2 hover:underline'
           }
+          onClick={(e) => {
+            e.stopPropagation();
+            setDetailVendorId(row.id);
+          }}
         >
           {row.reliability_score}%
-        </span>
+        </button>
       ),
     },
     {
@@ -237,6 +244,20 @@ export default function AdminVendorsPage() {
         defaultLocation={activatingVendor?.location_in_market}
         onConfirm={handleActivate}
         isLoading={actionLoading}
+      />
+
+      <VendorDetailSheet
+        vendorId={detailVendorId}
+        isOpen={!!detailVendorId}
+        onClose={() => setDetailVendorId(null)}
+        onEdit={() => {
+          const vendor = vendors.find((v) => v.id === detailVendorId);
+          if (vendor) {
+            setDetailVendorId(null);
+            setEditingVendor(vendor);
+            setFormOpen(true);
+          }
+        }}
       />
     </div>
   );

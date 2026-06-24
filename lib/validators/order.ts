@@ -34,4 +34,18 @@ export const rateOrderSchema = z.object({
   comment: z.string().max(1000).optional().or(z.literal('')),
 });
 
+export const reportPartIssuesSchema = z.object({
+  reports: z
+    .array(
+      z.object({
+        itemId: z.string().uuid(),
+        issueSubtype: z.enum(['wrong_part', 'damaged', 'doesnt_fit', 'not_ordered']),
+        notes: z.string().max(500).optional().or(z.literal('')),
+        photoUrl: z.string().url().optional(),
+      })
+    )
+    .min(1, 'Select at least one item to report'),
+});
+
 export type RateOrderInput = z.infer<typeof rateOrderSchema>;
+export type ReportPartIssuesInput = z.infer<typeof reportPartIssuesSchema>;

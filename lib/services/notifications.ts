@@ -321,6 +321,39 @@ export async function notifySourcingDifficulty(
   }
 }
 
+export async function notifyAdminVendorIncident(orderId: string, reportCount: number) {
+  try {
+    const supabase = createServiceClient();
+    const { data: order } = await supabase
+      .from('orders')
+      .select('order_number')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) return;
+
+    const { data: admins } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('user_type', 'admin')
+      .eq('is_active', true);
+
+    const adminUrl = `${config.app.url}/admin/vendors`;
+    const message =
+      `Part issue report — ${order.order_number}\n\n` +
+      `${reportCount} item(s) reported by customer. Review pending incidents in admin.\n` +
+      adminUrl;
+
+    for (const admin of admins ?? []) {
+      if (admin.phone) {
+        await sendTextMessage(admin.phone, message);
+      }
+    }
+  } catch (error) {
+    console.error('Notification error (vendor_incident):', error);
+  }
+}
+
 export async function notifyAdminSourcingEscalation(
   orderId: string,
   reasonLabel: string,

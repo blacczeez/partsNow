@@ -202,10 +202,17 @@ export async function handleVendorPriceEntry(
     order_id: params.orderId,
     order_item_id: params.itemId,
     type: 'price_discrepancy',
+    status: 'confirmed',
+    source: 'runner',
     description: incidentDescription,
   });
 
   throwIfSupabaseError(incidentError, 'Failed to record price discrepancy incident');
+
+  if (params.vendorId) {
+    const { recalculateVendorReliability } = await import('@/lib/services/vendor-reliability');
+    recalculateVendorReliability(params.vendorId).catch(() => {});
+  }
 
   await writeAuditLog({
     userId: params.actorId ?? null,

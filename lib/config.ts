@@ -131,6 +131,7 @@ export const config = {
   vendor: {
     minReliabilityScore: getEnvNumber('VENDOR_MIN_RELIABILITY_SCORE', 70),
     qualityIssueLimitBeforeRemoval: getEnvNumber('VENDOR_QUALITY_ISSUE_LIMIT_BEFORE_REMOVAL', 3),
+    autoDeactivateOnScoreDrop: getEnvBoolean('VENDOR_AUTO_DEACTIVATE_ON_SCORE_DROP', false),
   },
 
   whatsapp: {

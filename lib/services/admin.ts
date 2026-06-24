@@ -42,6 +42,24 @@ import {
   type AdminDateRangeParams,
 } from '@/lib/utils/admin-date-range';
 
+interface AdminOrderVendorIncident {
+  id: string;
+  vendor_id: string | null;
+  order_id: string | null;
+  order_item_id: string | null;
+  type: string;
+  issue_subtype: string | null;
+  status: string;
+  source: string | null;
+  description: string | null;
+  resolution: string | null;
+  photo_url: string | null;
+  reported_by: string | null;
+  created_at: string;
+  vendor_name: string | null;
+  item_description: string | null;
+}
+
 // ============================================
 // DASHBOARD
 // ============================================
@@ -330,12 +348,39 @@ export async function getAdminOrderDetail(orderId: string) {
     .eq('order_id', orderId)
     .order('created_at', { ascending: false });
 
-  const { data: priceIncidents } = await supabase
+  const { data: vendorIncidents } = await supabase
     .from('vendor_incidents')
-    .select('*')
+    .select(
+      'id, vendor_id, order_id, order_item_id, type, issue_subtype, status, source, description, resolution, photo_url, reported_by, created_at, vendors(name), order_items(description)'
+    )
     .eq('order_id', orderId)
-    .eq('type', 'price_discrepancy')
     .order('created_at', { ascending: false });
+
+  const incidentsWithNames: AdminOrderVendorIncident[] = (vendorIncidents ?? []).map(
+    (row: Record<string, unknown>) => {
+    const vendor = row.vendors as { name?: string } | { name?: string }[] | null;
+    const item = row.order_items as { description?: string } | { description?: string }[] | null;
+    const vendorName = Array.isArray(vendor) ? vendor[0]?.name : vendor?.name;
+    const itemDescription = Array.isArray(item) ? item[0]?.description : item?.description;
+    return {
+      id: row.id as string,
+      vendor_id: row.vendor_id as string | null,
+      order_id: row.order_id as string | null,
+      order_item_id: row.order_item_id as string | null,
+      type: row.type as string,
+      issue_subtype: row.issue_subtype as string | null,
+      status: row.status as string,
+      source: row.source as string | null,
+      description: row.description as string | null,
+      resolution: row.resolution as string | null,
+      photo_url: row.photo_url as string | null,
+      reported_by: row.reported_by as string | null,
+      created_at: row.created_at as string,
+      vendor_name: vendorName ?? null,
+      item_description: itemDescription ?? null,
+    };
+  }
+  );
 
   const sourcingSummary = await buildSourcingEscalationSummary(supabase, order);
 
@@ -348,7 +393,10 @@ export async function getAdminOrderDetail(orderId: string) {
     tracking,
     deliveryAttempts: deliveryAttempts ?? [],
     paymentEvents: paymentEvents ?? [],
-    priceIncidents: priceIncidents ?? [],
+    vendorIncidents: incidentsWithNames,
+    priceIncidents: incidentsWithNames.filter(
+      (i) => i.type === 'price_discrepancy'
+    ),
     sourcingSummary,
   };
 }

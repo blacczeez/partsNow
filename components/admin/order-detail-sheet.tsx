@@ -19,6 +19,7 @@ import { ReassignSheet } from './reassign-sheet';
 import { PriceReviewPanel } from './price-review-panel';
 import { DeliverySettlementPanel } from './delivery-settlement-panel';
 import { SourcingEscalationPanel } from './sourcing-escalation-panel';
+import { VendorIncidentsPanel } from './vendor-incidents-panel';
 import { canAdminReassignRider } from '@/lib/constants/order-status';
 import { formatDeliveryFailureReason } from '@/lib/constants/delivery-failure';
 import { parseRunnerUnavailableRejection } from '@/lib/constants/runner-unavailable';
@@ -365,6 +366,10 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                   ))}
                 </div>
               </div>
+            )}
+
+            {(order.vendorIncidents?.length ?? 0) > 0 && (
+              <VendorIncidentsPanel incidents={order.vendorIncidents} />
             )}
 
             {order.delivery_resolution === 'admin_review' && (
