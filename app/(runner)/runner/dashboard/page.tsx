@@ -9,6 +9,7 @@ import { useRunnerShift } from '@/lib/hooks/use-runner-shift';
 import { useRunnerOrders } from '@/lib/hooks/use-runner-orders';
 import { toast } from '@/components/ui/toast';
 import { countRunnerShiftBlockingOrders } from '@/lib/utils/runner-price-review';
+import { skipRunnerClockInGeoCheck } from '@/lib/constants/runner-clock-in';
 
 export default function RunnerDashboardPage() {
   const { shift, float, isLoading: shiftLoading, startShift, endShift } = useRunnerShift();
@@ -18,8 +19,25 @@ export default function RunnerDashboardPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [showEndShift, setShowEndShift] = useState(false);
 
+  const completeStartShift = async (latitude: number, longitude: number) => {
+    try {
+      await startShift(latitude, longitude);
+      await refreshOrders();
+      toast('success', 'Shift started!');
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to start shift');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   const handleStartShift = () => {
     setIsStarting(true);
+
+    if (skipRunnerClockInGeoCheck) {
+      void completeStartShift(0, 0);
+      return;
+    }
 
     if (!navigator.geolocation) {
       toast('error', 'Geolocation is not supported by your browser');
@@ -28,16 +46,8 @@ export default function RunnerDashboardPage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          await startShift(pos.coords.latitude, pos.coords.longitude);
-          await refreshOrders();
-          toast('success', 'Shift started!');
-        } catch (err) {
-          toast('error', err instanceof Error ? err.message : 'Failed to start shift');
-        } finally {
-          setIsStarting(false);
-        }
+      (pos) => {
+        void completeStartShift(pos.coords.latitude, pos.coords.longitude);
       },
       (err) => {
         let message = 'Failed to get location';
