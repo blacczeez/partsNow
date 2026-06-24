@@ -87,14 +87,24 @@ export const TERMINAL_ORDER_STATUSES: OrderStatus[] = [
   'failed',
 ];
 
-/** Terminal orders — no rider reassignment. */
-export const RIDER_REASSIGN_BLOCKED_STATUSES: OrderStatus[] = [
-  'delivered',
-  'cancelled',
-  'rejected',
-  'failed',
+/** Rider is only involved after runner handoff or during active delivery. */
+export const RIDER_DELIVERY_STATUSES: OrderStatus[] = ['picked', 'dispatched'];
+
+/** Runner still sourcing — rider assignments should not exist. */
+export const RIDER_PRE_DELIVERY_STATUSES: OrderStatus[] = [
+  'pending',
+  'confirmed',
+  'sourcing',
 ];
 
 export function canAdminReassignRider(status: OrderStatus): boolean {
-  return !RIDER_REASSIGN_BLOCKED_STATUSES.includes(status);
+  return RIDER_DELIVERY_STATUSES.includes(status);
+}
+
+export function canAssignRiderToOrder(status: OrderStatus): boolean {
+  return status === 'picked';
+}
+
+export function canRiderConfirmPickup(status: OrderStatus): boolean {
+  return status === 'picked';
 }

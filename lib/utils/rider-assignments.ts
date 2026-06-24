@@ -1,3 +1,6 @@
+import { RIDER_PRE_DELIVERY_STATUSES } from '@/lib/constants/order-status';
+import type { OrderStatus } from '@/lib/types/database';
+
 /** Order statuses where the rider should no longer hold an active assignment. */
 export const RIDER_TERMINAL_ORDER_STATUSES = [
   'cancelled',
@@ -24,6 +27,10 @@ export function riderAssignmentReleaseAction(
   }
 
   if (priceReviewStatus === 'cancelled') {
+    return 'fail';
+  }
+
+  if (RIDER_PRE_DELIVERY_STATUSES.includes(orderStatus as OrderStatus)) {
     return 'fail';
   }
 

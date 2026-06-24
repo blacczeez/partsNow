@@ -15,8 +15,8 @@ vi.mock('@/lib/services/partner-dispatch', () => ({
 
 const mockedCreateServiceClient = vi.mocked(createServiceClient);
 
-function bikeOrderChain() {
-  return createChain({ delivery_vehicle_type: 'bike' });
+function bikeOrderChain(status = 'picked') {
+  return createChain({ delivery_vehicle_type: 'bike', status });
 }
 
 // Helper: create a chainable that resolves with given data/error
@@ -371,6 +371,19 @@ describe('assignRider', () => {
     expect(result).toBe('rider-assignment-1');
   });
 
+  it('returns null when order is not picked yet', async () => {
+    const { mockSupabase } = setupMock();
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'orders') return bikeOrderChain('sourcing');
+      return createChain(null);
+    });
+
+    const { assignRider } = await getModule();
+    const result = await assignRider('order-1', 'cluster-1');
+    expect(result).toBeNull();
+  });
+
   it('picks rider with fewer assignments (load balancing)', async () => {
     const { mockSupabase } = setupMock();
 
@@ -561,7 +574,7 @@ describe('assignRider', () => {
 
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'orders') {
-        return createChain({ delivery_vehicle_type: 'partner' });
+        return createChain({ delivery_vehicle_type: 'partner', status: 'picked' });
       }
       if (table === 'order_assignments') {
         return createChain(null);
@@ -587,7 +600,7 @@ describe('assignRider', () => {
 
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'orders') {
-        return createChain({ delivery_vehicle_type: 'van' });
+        return createChain({ delivery_vehicle_type: 'van', status: 'picked' });
       }
       if (table === 'users') return createChain([]);
       return createChain(null);

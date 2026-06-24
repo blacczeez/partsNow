@@ -1,7 +1,9 @@
 import type { ParsedAdminDateRange } from '@/lib/utils/admin-date-range';
+import { sumSourcingSavings } from '@/lib/utils/sourcing-savings';
 
 export interface AdminFinancialTotals {
   serviceFeeTotal: number;
+  sourcingSavingsTotal: number;
   deliveryRevenueTotal: number;
   commissionTotal: number;
   paidOrderCount: number;
@@ -30,7 +32,7 @@ export async function getAdminFinancialTotals(
 ): Promise<AdminFinancialTotals> {
   let ordersQuery = supabase
     .from('orders')
-    .select('markup_amount, delivery_fee')
+    .select('id, markup_amount, delivery_fee')
     .eq('payment_status', 'paid');
 
   ordersQuery = applyRangeFilter(ordersQuery, range, 'created_at');
@@ -46,12 +48,26 @@ export async function getAdminFinancialTotals(
 
   const paidOrders = orders ?? [];
   const runnerShifts = shifts ?? [];
+  const orderIds = paidOrders.map((order: { id: string }) => order.id);
+
+  let sourcingSavingsTotal = 0;
+  if (orderIds.length > 0) {
+    const { data: sourcedItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('quantity, vendor_price, expected_vendor_price')
+      .in('order_id', orderIds)
+      .eq('is_found', true);
+
+    if (itemsError) throw new Error(itemsError.message);
+    sourcingSavingsTotal = sumSourcingSavings(sourcedItems ?? []);
+  }
 
   return {
     serviceFeeTotal: paidOrders.reduce(
       (sum: number, order: { markup_amount: number }) => sum + (order.markup_amount ?? 0),
       0
     ),
+    sourcingSavingsTotal,
     deliveryRevenueTotal: paidOrders.reduce(
       (sum: number, order: { delivery_fee: number }) => sum + (order.delivery_fee ?? 0),
       0
@@ -68,6 +84,8 @@ export async function getAdminFinancialTotals(
 export const ADMIN_FINANCIAL_DESCRIPTIONS = {
   serviceFee:
     'Sum of markup_amount on paid orders in this period. This is the platform service fee on vendor parts cost (typically ~15%).',
+  sourcingSavings:
+    'Extra platform margin when runners sourced below the target vendor budget. Customer price is unchanged; savings are (target − vendor paid) × quantity on found items.',
   deliveryRevenue:
     'Sum of delivery_fee on paid orders in this period. Free-delivery orders contribute ₦0.',
   commission:

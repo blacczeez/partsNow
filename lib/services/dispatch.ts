@@ -10,6 +10,8 @@ import {
 } from '@/lib/services/partner-dispatch';
 import { riderVehicleTypesForOrder } from '@/lib/utils/delivery-pricing';
 import type { DeliveryVehicleType } from '@/lib/types/delivery';
+import { canAssignRiderToOrder } from '@/lib/constants/order-status';
+import type { OrderStatus } from '@/lib/types/database';
 
 export interface AssignRunnerOptions {
   /** Runners who must not receive this assignment (e.g. who just rejected). */
@@ -362,12 +364,21 @@ export async function assignRider(
 
   const { data: order } = await supabase
     .from('orders')
-    .select('delivery_vehicle_type')
+    .select('delivery_vehicle_type, status')
     .eq('id', orderId)
     .maybeSingle();
 
+  if (!order) return null;
+
+  if (!canAssignRiderToOrder(order.status as OrderStatus)) {
+    console.error(
+      `Cannot assign rider to order ${orderId}: status is ${order.status}, expected picked`
+    );
+    return null;
+  }
+
   const orderVehicleType =
-    (order?.delivery_vehicle_type as DeliveryVehicleType | null) ?? 'bike';
+    (order.delivery_vehicle_type as DeliveryVehicleType | null) ?? 'bike';
 
   const partnerOnly = requiresPartnerDispatchOnly(orderVehicleType);
   const partnerEligible = shouldOfferPartnerDispatch(orderVehicleType);

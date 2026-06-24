@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { config } from '@/lib/config';
 import { throwIfSupabaseError } from '@/lib/utils/supabase-errors';
+import { canRiderConfirmPickup } from '@/lib/constants/order-status';
 import { riderAssignmentReleaseAction } from '@/lib/utils/rider-assignments';
 import { riderHistoryOutcome } from '@/lib/utils/rider-history';
 import { runnerOrderAwaitingExternalResolution } from '@/lib/utils/runner-price-review';
@@ -506,11 +507,15 @@ export async function confirmPickup(
   // Get order to check high-value requirement and price review
   const { data: order } = await supabase
     .from('orders')
-    .select('total, price_review_status')
+    .select('total, price_review_status, status')
     .eq('id', orderId)
     .single();
 
   if (!order) throw new Error('Order not found');
+
+  if (!canRiderConfirmPickup(order.status)) {
+    throw new Error('Parts are not at the gate yet — pickup is not available');
+  }
 
   if (order.price_review_status === 'pending') {
     throw new Error('Order has items pending admin price approval — pickup blocked');

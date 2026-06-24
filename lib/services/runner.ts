@@ -1125,12 +1125,6 @@ export async function markItemFound(
 
   await incrementVendorOrderCount(resolvedVendorId);
 
-  // Fire-and-forget: record vendor-part price for catalogue feedback
-  if (item.part_id) {
-    recordVendorPartPrice(resolvedVendorId, item.part_id, data.vendorPrice, runnerId)
-      .catch((err) => console.error('Price feedback failed:', err));
-  }
-
   const escalation = await handleVendorPriceEntry(supabase, {
     orderId,
     itemId,
@@ -1140,6 +1134,13 @@ export async function markItemFound(
     description: item.description,
     actorId: runnerId,
   });
+
+  // Fire-and-forget: record vendor-part price; under-budget punches update catalog directly
+  if (item.part_id) {
+    recordVendorPartPrice(resolvedVendorId, item.part_id, data.vendorPrice, runnerId, {
+      catalogPriceMode: escalation.escalated ? 'weighted' : 'direct',
+    }).catch((err) => console.error('Price feedback failed:', err));
+  }
 
   if (assignment.status === 'accepted') {
     const { error: progressError } = await supabase

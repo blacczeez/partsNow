@@ -7,7 +7,6 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  MessageSquare,
   Phone,
   MapPin,
   Package,
@@ -19,7 +18,6 @@ import { RunnerPriceStatusBanner } from '@/components/runner/runner-price-status
 import { SlaCountdown } from '@/components/runner/sla-countdown';
 import { MarkFoundSheet } from '@/components/runner/mark-found-sheet';
 import { MarkUnavailableSheet } from '@/components/runner/mark-unavailable-sheet';
-import { ClarificationSheet } from '@/components/runner/clarification-sheet';
 import { useRunnerOrderDetail } from '@/lib/hooks/use-runner-order-detail';
 import { useSlaCountdown } from '@/lib/hooks/use-sla-countdown';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
@@ -32,6 +30,8 @@ import {
 import { toast } from '@/components/ui/toast';
 import Link from 'next/link';
 import { OrderVehicleSummary } from '@/components/orders/order-vehicle-summary';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils/cn';
 
 export default function RunnerOrderPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,14 +45,12 @@ export default function RunnerOrderPage() {
     releaseOrder,
     markItemFound,
     markItemUnavailable,
-    requestClarification,
     completeOrder,
   } = useRunnerOrderDetail(id);
 
   const [activeSheet, setActiveSheet] = useState<
     | { type: 'found'; itemId: string; itemDescription: string }
     | { type: 'unavailable'; itemId: string; itemDescription: string }
-    | { type: 'clarify' }
     | null
   >(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -212,12 +210,7 @@ export default function RunnerOrderPage() {
     router.push('/runner/dashboard');
   };
 
-  const handleClarify = async (message: string) => {
-    await requestClarification(message);
-    toast('success', 'Clarification sent');
-  };
-
-  // Clarification thread
+  // Clarification thread (historical — in-app questions no longer sent from runner UI)
   const clarificationThread = Array.isArray(order.clarification_thread)
     ? (order.clarification_thread as Array<{ from: string; message: string; timestamp: string }>)
     : [];
@@ -481,17 +474,15 @@ export default function RunnerOrderPage() {
         </div>
       )}
 
-      {/* Clarification button */}
-      {canAct && (
-        <Button
-          variant="secondary"
-          fullWidth
-          className="mb-4"
-          onClick={() => setActiveSheet({ type: 'clarify' })}
+      {/* Call customer */}
+      {canAct && order.customer_phone && (
+        <a
+          href={`tel:${order.customer_phone}`}
+          className={cn(buttonVariants({ variant: 'secondary', fullWidth: true }), 'mb-4')}
         >
-          <MessageSquare className="mr-2 h-4 w-4" />
-          Ask Customer
-        </Button>
+          <Phone className="mr-2 h-4 w-4" />
+          Call Customer
+        </a>
       )}
 
       {/* Complete button */}
@@ -547,12 +538,6 @@ export default function RunnerOrderPage() {
           activeSheet?.type === 'unavailable' ? activeSheet.itemDescription : ''
         }
         onSubmit={handleMarkUnavailable}
-      />
-
-      <ClarificationSheet
-        isOpen={activeSheet?.type === 'clarify'}
-        onClose={() => setActiveSheet(null)}
-        onSubmit={handleClarify}
       />
     </div>
   );

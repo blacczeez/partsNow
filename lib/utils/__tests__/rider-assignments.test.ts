@@ -14,6 +14,12 @@ describe('riderAssignmentReleaseAction', () => {
     expect(riderAssignmentReleaseAction('delivered', null)).toBe('complete');
   });
 
+  it('fails assignments while runner is still sourcing', () => {
+    expect(riderAssignmentReleaseAction('pending', null)).toBe('fail');
+    expect(riderAssignmentReleaseAction('confirmed', null)).toBe('fail');
+    expect(riderAssignmentReleaseAction('sourcing', null)).toBe('fail');
+  });
+
   it('keeps assignments active for picked orders ready for pickup', () => {
     expect(riderAssignmentReleaseAction('picked', 'none')).toBeNull();
     expect(riderAssignmentReleaseAction('picked', 'pending')).toBeNull();

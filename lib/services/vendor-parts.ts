@@ -2,6 +2,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
 
+export type CatalogPriceMode = 'weighted' | 'direct';
+
 /**
  * Records a vendor-part price observation from a runner's sourcing activity.
  * Uses the service role client to bypass RLS (runners don't have write access
@@ -9,14 +11,17 @@ import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
  *
  * - Upserts vendor_parts: updates last_price, increments price_count,
  *   recalculates rolling average.
- * - Recalculates parts.average_price from all vendor_parts rows for that part.
+ * - Updates parts.average_price using weighted vendor_parts averages, or sets
+ *   it directly to the punched price when catalogPriceMode is `direct`.
  */
 export async function recordVendorPartPrice(
   vendorId: string,
   partId: string,
   price: number,
-  actorId?: string
+  actorId?: string,
+  options?: { catalogPriceMode?: CatalogPriceMode }
 ): Promise<void> {
+  const catalogPriceMode = options?.catalogPriceMode ?? 'weighted';
   const supabase = createServiceClient();
 
   // Check if a vendor_parts row already exists
@@ -82,6 +87,17 @@ export async function recordVendorPartPrice(
         price,
       }),
     });
+  }
+
+  if (catalogPriceMode === 'direct') {
+    await supabase
+      .from('parts')
+      .update({
+        average_price: Math.round(price * 100) / 100,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', partId);
+    return;
   }
 
   // Recalculate parts.average_price from all vendor_parts for this part

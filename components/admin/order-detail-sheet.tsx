@@ -13,6 +13,7 @@ import {
   quotedServiceFeeLine,
   runnerSourcingTargetTotal,
 } from '@/lib/utils/order-pricing-display';
+import { lineSourcingSavings } from '@/lib/utils/sourcing-savings';
 import { toast } from '@/components/ui/toast';
 import { ReassignSheet } from './reassign-sheet';
 import { PriceReviewPanel } from './price-review-panel';
@@ -205,7 +206,10 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
             <div>
               <h4 className="mb-2 text-xs font-semibold uppercase text-slate-400">Items</h4>
               <div className="space-y-2">
-                {order.items.map((item) => (
+                {order.items.map((item) => {
+                  const itemSourcingSavings = lineSourcingSavings(item);
+
+                  return (
                   <div key={item.id} className="flex items-center justify-between rounded-button bg-slate-50 px-3 py-2">
                     <div>
                       <p className="text-sm font-medium text-slate-700">
@@ -222,6 +226,11 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                           {item.expected_vendor_price != null && (
                             <> · Target budget: {formatCurrency(item.expected_vendor_price * item.quantity)}</>
                           )}
+                        </p>
+                      )}
+                      {itemSourcingSavings > 0 && (
+                        <p className="text-xs font-medium text-success">
+                          Sourcing savings: {formatCurrency(itemSourcingSavings)}
                         </p>
                       )}
                     </div>
@@ -262,7 +271,8 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                         )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -469,6 +479,11 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                     Reassign Rider
                   </Button>
                 </div>
+                {['pending', 'confirmed', 'sourcing'].includes(order.status) && (
+                  <p className="text-xs text-slate-500">
+                    Rider reassignment is available after the runner hands off parts (picked).
+                  </p>
+                )}
                 {!showCancelForm ? (
                   <Button
                     variant="destructive"

@@ -23,6 +23,23 @@ export function getOrderRefundAmount(order: {
   return order.revised_total ?? order.total;
 }
 
+/** Outstanding order value eligible for a further partial refund. */
+export function getPartialRefundCeiling(order: {
+  total: number;
+  revised_total?: number | null;
+}): number {
+  return getOrderRefundAmount(order);
+}
+
+export function assertPartialRefundWithinCeiling(
+  amount: number,
+  ceiling: number
+): void {
+  if (amount > ceiling) {
+    throw new Error('Partial refund exceeds amount paid');
+  }
+}
+
 /**
  * Refund a paid order to the original payment method (wallet credit or Paystack card refund).
  */
@@ -122,11 +139,17 @@ export async function refundOrderPayment(
 /**
  * Partial refund for delivery failure settlement (wallet credit or Paystack partial).
  */
+export interface RefundOrderPartialOptions {
+  /** Pre-reprice outstanding total; defaults to current revised_total ?? total on the order. */
+  maxRefundAmount?: number;
+}
+
 export async function refundOrderPartial(
   orderId: string,
   amount: number,
   description?: string,
-  actorId?: string
+  actorId?: string,
+  options?: RefundOrderPartialOptions
 ): Promise<{ refunded: boolean; amount: number }> {
   if (amount <= 0) {
     return { refunded: false, amount: 0 };
@@ -146,14 +169,12 @@ export async function refundOrderPartial(
 
   const typed = order as RefundableOrder;
 
-  if (typed.payment_status !== 'paid') {
+  if (typed.payment_status !== 'paid' && typed.payment_status !== 'partially_refunded') {
     return { refunded: false, amount: 0 };
   }
 
-  const totalPaid = getOrderRefundAmount(typed);
-  if (amount > totalPaid) {
-    throw new Error('Partial refund exceeds amount paid');
-  }
+  const refundCeiling = options?.maxRefundAmount ?? getPartialRefundCeiling(typed);
+  assertPartialRefundWithinCeiling(amount, refundCeiling);
 
   const refundDescription =
     description ?? `Partial refund for order ${typed.order_number}`;

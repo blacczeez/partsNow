@@ -395,7 +395,9 @@ export async function reassignOrder(
     if (orderError || !order) throw new Error('Order not found');
 
     if (!canAdminReassignRider(order.status as OrderStatus)) {
-      throw new Error('Cannot reassign rider for a completed or cancelled order');
+      throw new Error(
+        'Cannot reassign rider until parts are at the gate (picked) or delivery is in progress (dispatched)'
+      );
     }
   }
 

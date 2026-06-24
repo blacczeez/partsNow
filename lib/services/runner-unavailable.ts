@@ -18,6 +18,7 @@ import {
 } from '@/lib/utils/sourcing-escalation';
 import { AUDIT_ACTIONS } from '@/lib/constants/audit-log';
 import { writeAuditLog, auditDetails } from '@/lib/services/audit-log';
+import type { PaymentStatus } from '@/lib/types/database';
 
 export interface MarkItemUnavailableResult {
   reassigned: boolean;
@@ -28,6 +29,44 @@ export interface MarkItemUnavailableResult {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
+
+interface OrderItemForUnavailableReprice {
+  id: string;
+  quantity: number;
+  selling_price: number;
+  is_unavailable: boolean;
+}
+
+interface OrderForUnavailableReprice {
+  order_number: string;
+  delivery_fee: number;
+  discount_amount: number;
+  total: number;
+  revised_total: number | null;
+  payment_status: PaymentStatus;
+}
+
+export function computePartialRefundForUnavailableMark(
+  previousTotal: number,
+  newTotal: number,
+  paymentStatus: PaymentStatus
+): number {
+  const isPrepaid =
+    paymentStatus === 'paid' || paymentStatus === 'partially_refunded';
+  if (!isPrepaid || newTotal >= previousTotal) return 0;
+  return previousTotal - newTotal;
+}
+
+export function itemsAfterUnavailableMark(
+  items: OrderItemForUnavailableReprice[],
+  itemId: string
+): Array<{ quantity: number; selling_price: number; is_unavailable: boolean }> {
+  return items.map((row) => ({
+    quantity: row.quantity,
+    selling_price: row.selling_price,
+    is_unavailable: row.id === itemId ? true : row.is_unavailable,
+  }));
+}
 
 export async function countRunnersWhoMarkedUnavailable(
   supabase: SupabaseClient,
@@ -49,34 +88,36 @@ export async function countRunnersWhoMarkedUnavailable(
   return runnerIds.size;
 }
 
-async function repriceOrderAfterUnavailableMark(
+async function refundUnavailableMark(
+  orderId: string,
+  order: OrderForUnavailableReprice,
+  previousTotal: number,
+  partialRefundAmount: number,
+  actorId: string
+): Promise<void> {
+  if (partialRefundAmount <= 0) return;
+
+  await refundOrderPartial(
+    orderId,
+    partialRefundAmount,
+    `Partial refund — unavailable part removed from order ${order.order_number}`,
+    actorId,
+    { maxRefundAmount: previousTotal }
+  );
+}
+
+async function persistUnavailableRepricing(
   supabase: SupabaseClient,
-  orderId: string
-): Promise<{ previousTotal: number; newTotal: number; partialRefundAmount: number }> {
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .select(
-      'order_number, subtotal, markup_amount, delivery_fee, discount_amount, total, revised_total, payment_status, payment_method'
-    )
-    .eq('id', orderId)
-    .single();
-
-  if (orderError || !order) throw new Error('Order not found');
-
-  const { data: items, error: itemsError } = await supabase
-    .from('order_items')
-    .select('quantity, selling_price, is_unavailable')
-    .eq('order_id', orderId);
-
-  throwIfSupabaseError(itemsError, 'Failed to load order items');
-
-  const repriced = recalculateOrderTotalsExcludingUnavailable(items ?? [], {
-    deliveryFee: order.delivery_fee,
-    discountAmount: order.discount_amount,
-  });
-
-  const previousTotal = order.revised_total ?? order.total;
-  const newTotal = repriced.total;
+  orderId: string,
+  order: OrderForUnavailableReprice,
+  repriced: ReturnType<typeof recalculateOrderTotalsExcludingUnavailable>,
+  partialRefundAmount: number
+): Promise<void> {
+  const paymentStatus: PaymentStatus =
+    partialRefundAmount > 0 &&
+    (order.payment_status === 'paid' || order.payment_status === 'partially_refunded')
+      ? 'partially_refunded'
+      : order.payment_status;
 
   const { error: updateError } = await supabase
     .from('orders')
@@ -85,25 +126,11 @@ async function repriceOrderAfterUnavailableMark(
       markup_amount: repriced.markupAmount,
       total: repriced.total,
       revised_total: repriced.total,
+      payment_status: paymentStatus,
     })
     .eq('id', orderId);
 
   throwIfSupabaseError(updateError, 'Failed to update order totals');
-
-  let partialRefundAmount = 0;
-  if (
-    order.payment_status === 'paid' &&
-    previousTotal > newTotal
-  ) {
-    partialRefundAmount = previousTotal - newTotal;
-    await refundOrderPartial(
-      orderId,
-      partialRefundAmount,
-      `Partial refund — unavailable part removed from order ${order.order_number}`
-    );
-  }
-
-  return { previousTotal, newTotal, partialRefundAmount };
 }
 
 export async function handleRunnerItemUnavailable(params: {
@@ -127,6 +154,50 @@ export async function handleRunnerItemUnavailable(params: {
   if (item.is_found) throw new Error('Cannot mark a sourced item as unavailable');
   if (item.is_unavailable) throw new Error('Item is already marked unavailable');
 
+  const [{ data: order, error: orderError }, { data: allItems, error: itemsError }] =
+    await Promise.all([
+      supabase
+        .from('orders')
+        .select(
+          'order_number, delivery_fee, discount_amount, total, revised_total, payment_status, cluster_id'
+        )
+        .eq('id', orderId)
+        .single(),
+      supabase
+        .from('order_items')
+        .select('id, quantity, selling_price, is_unavailable')
+        .eq('order_id', orderId),
+    ]);
+
+  if (orderError || !order) throw new Error('Order not found');
+  throwIfSupabaseError(itemsError, 'Failed to load order items');
+
+  const itemRows = (allItems ?? []) as OrderItemForUnavailableReprice[];
+  const repricedItems = itemsAfterUnavailableMark(itemRows, itemId);
+  const repriced = recalculateOrderTotalsExcludingUnavailable(repricedItems, {
+    deliveryFee: order.delivery_fee,
+    discountAmount: order.discount_amount,
+  });
+
+  const previousTotal = order.revised_total ?? order.total;
+  const newTotal = repriced.total;
+  const partialRefundAmount = computePartialRefundForUnavailableMark(
+    previousTotal,
+    newTotal,
+    order.payment_status
+  );
+
+  const allItemsUnavailable =
+    repricedItems.length > 0 && repricedItems.every((row) => row.is_unavailable);
+
+  await refundUnavailableMark(
+    orderId,
+    order,
+    previousTotal,
+    partialRefundAmount,
+    runnerId
+  );
+
   const { error: updateItemError } = await supabase
     .from('order_items')
     .update({
@@ -141,22 +212,7 @@ export async function handleRunnerItemUnavailable(params: {
 
   throwIfSupabaseError(updateItemError, 'Failed to mark item as unavailable');
 
-  const { data: allItems } = await supabase
-    .from('order_items')
-    .select('is_unavailable')
-    .eq('order_id', orderId);
-
-  const allItemsUnavailable =
-    (allItems?.length ?? 0) > 0 &&
-    (allItems ?? []).every((row) => row.is_unavailable);
-
-  const { partialRefundAmount } = await repriceOrderAfterUnavailableMark(supabase, orderId);
-
-  const { data: order } = await supabase
-    .from('orders')
-    .select('cluster_id, order_number')
-    .eq('id', orderId)
-    .single();
+  await persistUnavailableRepricing(supabase, orderId, order, repriced, partialRefundAmount);
 
   const { data: assignment } = await supabase
     .from('order_assignments')
@@ -187,7 +243,7 @@ export async function handleRunnerItemUnavailable(params: {
   let reassigned = false;
   if (
     !allItemsUnavailable &&
-    order?.cluster_id &&
+    order.cluster_id &&
     config.runner.autoReassignEnabled
   ) {
     const assignmentId = await assignRunner(orderId, order.cluster_id, {
