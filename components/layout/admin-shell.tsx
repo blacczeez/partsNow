@@ -11,6 +11,7 @@ import {
   isAdminNavActive,
   type AdminNavItem,
 } from '@/components/layout/admin-nav-config';
+import { AdminNotificationBell } from '@/components/admin/admin-notification-bell';
 
 type NavBadges = Partial<Record<NonNullable<AdminNavItem['badgeKey']>, number>>;
 
@@ -25,15 +26,22 @@ function AdminBrandMark() {
   );
 }
 
-function AdminBrandHeader({ className }: { className?: string }) {
+function AdminBrandHeader({
+  className,
+  trailing,
+}: {
+  className?: string;
+  trailing?: React.ReactNode;
+}) {
   return (
     <div
       className={cn(
-        'flex h-14 shrink-0 items-center border-b border-slate-200 px-6',
+        'flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-4 lg:px-6',
         className
       )}
     >
       <AdminBrandMark />
+      {trailing}
     </div>
   );
 }
@@ -122,11 +130,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
     async function loadNavBadges() {
       try {
-        const res = await fetch('/api/admin/vendors/pending-count');
+        const res = await fetch('/api/admin/notifications');
         if (!res.ok || cancelled) return;
         const data = await res.json();
         if (!cancelled) {
-          setNavBadges({ pendingVendors: data.count ?? 0 });
+          setNavBadges({ pendingVendors: data.pendingVendors ?? 0 });
         }
       } catch {
         // Non-critical — nav works without badges
@@ -162,7 +170,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="font-sans flex h-dvh overflow-hidden bg-slate-50">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
-        <AdminBrandHeader />
+        <AdminBrandHeader
+          trailing={
+            <AdminNotificationBell
+              onPendingVendorsChange={(count) =>
+                setNavBadges({ pendingVendors: count })
+              }
+            />
+          }
+        />
         <div className="scrollbar-subtle flex-1 overflow-y-auto overscroll-contain">
           <AdminNav pathname={pathname} badges={navBadges} />
         </div>
@@ -215,6 +231,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   : 'Admin')}
             </p>
           </div>
+          <AdminNotificationBell
+            onPendingVendorsChange={(count) =>
+              setNavBadges({ pendingVendors: count })
+            }
+          />
         </header>
 
         <main className="scrollbar-subtle flex-1 overflow-y-auto overscroll-contain">

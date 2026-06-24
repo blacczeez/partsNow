@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +15,13 @@ import { VENDOR_VERIFICATION_STATUS } from '@/lib/constants/vendors';
 import { toast } from '@/components/ui/toast';
 
 export default function AdminVendorsPage() {
+  const searchParams = useSearchParams();
   const {
     vendors,
     pagination,
     isLoading,
     actionLoading,
-    page,
+    page: _page,
     setPage,
     filter,
     setFilter,
@@ -30,12 +32,77 @@ export default function AdminVendorsPage() {
   } = useAdminVendors();
   const [formOpen, setFormOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<(typeof vendors)[0] | null>(null);
-  const [activatingVendor, setActivatingVendor] = useState<(typeof vendors)[0] | null>(null);
+  const [activatingVendorState, setActivatingVendorState] = useState<
+    (typeof vendors)[0] | null
+  >(null);
   const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
+  const [activateFetchVendor, setActivateFetchVendor] = useState<
+    (typeof vendors)[0] | null
+  >(null);
+
+  const deepLinkVendorId = searchParams.get('vendor');
+  const deepLinkActivateId = searchParams.get('activate');
+  const urlFilter = searchParams.get('filter');
+
+  const [prevUrlFilter, setPrevUrlFilter] = useState(urlFilter);
+  if (urlFilter !== prevUrlFilter) {
+    setPrevUrlFilter(urlFilter);
+    if (urlFilter === 'pending') {
+      setFilter('pending');
+    }
+  }
+
+  const [prevDeepLinkActivateId, setPrevDeepLinkActivateId] =
+    useState(deepLinkActivateId);
+  if (deepLinkActivateId !== prevDeepLinkActivateId) {
+    setPrevDeepLinkActivateId(deepLinkActivateId);
+    setActivateFetchVendor(null);
+  }
+
+  const activeDetailVendorId = detailVendorId ?? deepLinkVendorId;
+  const activatingVendor =
+    activatingVendorState ??
+    (deepLinkActivateId
+      ? vendors.find((v) => v.id === deepLinkActivateId) ?? activateFetchVendor
+      : null);
+
+  useEffect(() => {
+    if (!deepLinkActivateId) return;
+    if (vendors.some((v) => v.id === deepLinkActivateId)) return;
+    if (activateFetchVendor?.id === deepLinkActivateId) return;
+
+    let cancelled = false;
+    fetch(`/api/admin/vendors/${deepLinkActivateId}`)
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.vendor) return;
+        const vendor = data.vendor;
+        setActivateFetchVendor({
+          id: vendor.id,
+          name: vendor.name,
+          contact_phone: vendor.contact_phone,
+          contact_name: vendor.contact_name,
+          cluster_id: vendor.cluster_id,
+          cluster_name: '',
+          location_in_market: vendor.location_in_market,
+          specializations: vendor.specializations ?? [],
+          payment_terms: vendor.payment_terms ?? 'cash',
+          reliability_score: vendor.reliability_score ?? 100,
+          total_orders: vendor.total_orders ?? 0,
+          quality_issues: vendor.quality_issues ?? 0,
+          is_active: vendor.is_active,
+          verification_status: vendor.verification_status,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deepLinkActivateId, vendors, activateFetchVendor?.id]);
 
   const handleRowClick = (row: (typeof vendors)[0]) => {
     if (row.verification_status === VENDOR_VERIFICATION_STATUS.PENDING) {
-      setActivatingVendor(row);
+      setActivatingVendorState(row);
       return;
     }
     setEditingVendor(row);
@@ -152,7 +219,7 @@ export default function AdminVendorsPage() {
             variant="secondary"
             onClick={(e) => {
               e.stopPropagation();
-              setActivatingVendor(row);
+              setActivatingVendorState(row);
             }}
           >
             Activate
@@ -239,7 +306,7 @@ export default function AdminVendorsPage() {
 
       <ActivateVendorSheet
         isOpen={!!activatingVendor}
-        onClose={() => setActivatingVendor(null)}
+        onClose={() => setActivatingVendorState(null)}
         vendorName={activatingVendor?.name ?? ''}
         defaultLocation={activatingVendor?.location_in_market}
         onConfirm={handleActivate}
@@ -247,11 +314,11 @@ export default function AdminVendorsPage() {
       />
 
       <VendorDetailSheet
-        vendorId={detailVendorId}
-        isOpen={!!detailVendorId}
+        vendorId={activeDetailVendorId}
+        isOpen={!!activeDetailVendorId}
         onClose={() => setDetailVendorId(null)}
         onEdit={() => {
-          const vendor = vendors.find((v) => v.id === detailVendorId);
+          const vendor = vendors.find((v) => v.id === activeDetailVendorId);
           if (vendor) {
             setDetailVendorId(null);
             setEditingVendor(vendor);
