@@ -390,7 +390,7 @@ export async function listVendorIncidents(
   const { data, error } = await supabase
     .from('vendor_incidents')
     .select(
-      'id, vendor_id, order_id, order_item_id, type, issue_subtype, status, source, description, resolution, photo_url, reported_by, created_at, orders(order_number), order_items(description)'
+      'id, vendor_id, order_id, order_item_id, type, issue_subtype, status, source, description, resolution, photo_url, reported_by, created_at, order_items(description)'
     )
     .eq('vendor_id', vendorId)
     .order('created_at', { ascending: false })
@@ -398,16 +398,41 @@ export async function listVendorIncidents(
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const order = row.orders as { order_number?: string } | { order_number?: string }[] | null;
+  const rows = data ?? [];
+  const orderIds = [
+    ...new Set(
+      rows
+        .map((row: { order_id: string | null }) => row.order_id)
+        .filter((id: string | null): id is string => id != null)
+    ),
+  ];
+
+  let orderNumberMap: Record<string, string> = {};
+  if (orderIds.length > 0) {
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('id, order_number')
+      .in('id', orderIds);
+
+    if (ordersError) throw new Error(ordersError.message);
+
+    orderNumberMap = Object.fromEntries(
+      (orders ?? []).map((order: { id: string; order_number: string }) => [
+        order.id,
+        order.order_number,
+      ])
+    );
+  }
+
+  return rows.map((row: Record<string, unknown>) => {
     const item = row.order_items as { description?: string } | { description?: string }[] | null;
-    const orderNumber = Array.isArray(order) ? order[0]?.order_number : order?.order_number;
     const itemDescription = Array.isArray(item) ? item[0]?.description : item?.description;
+    const orderId = row.order_id as string | null;
 
     return {
       id: row.id as string,
       vendor_id: row.vendor_id as string | null,
-      order_id: row.order_id as string | null,
+      order_id: orderId,
       order_item_id: row.order_item_id as string | null,
       type: row.type as string,
       issue_subtype: row.issue_subtype as string | null,
@@ -418,7 +443,7 @@ export async function listVendorIncidents(
       photo_url: row.photo_url as string | null,
       reported_by: row.reported_by as string | null,
       created_at: row.created_at as string,
-      order_number: orderNumber ?? null,
+      order_number: orderId ? orderNumberMap[orderId] ?? null : null,
       item_description: itemDescription ?? null,
     };
   });
