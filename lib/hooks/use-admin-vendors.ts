@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 interface AdminVendor {
   id: string;
   name: string;
-  contact_phone: string;
+  contact_phone: string | null;
   contact_name: string | null;
   cluster_id: string;
   cluster_name: string;
@@ -16,6 +16,7 @@ interface AdminVendor {
   total_orders: number;
   quality_issues: number;
   is_active: boolean;
+  verification_status: string;
 }
 
 interface Pagination {
@@ -25,6 +26,8 @@ interface Pagination {
   totalPages: number;
 }
 
+export type VendorListFilter = 'all' | 'pending' | 'active';
+
 export function useAdminVendors() {
   const [vendors, setVendors] = useState<AdminVendor[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -33,27 +36,57 @@ export function useAdminVendors() {
     total: 0,
     totalPages: 0,
   });
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(1);
+  const [filter, setFilterState] = useState<VendorListFilter>('all');
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchVendors = useCallback(async (p: number) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const params = new URLSearchParams({ page: String(page), limit: '20' });
+    if (filter === 'pending') params.set('verification', 'pending');
+    if (filter === 'active') params.set('verification', 'active');
+
+    fetch(`/api/admin/vendors?${params.toString()}`)
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<{
+          vendors: AdminVendor[];
+          pagination: Pagination;
+        }>;
+      })
+      .then((data) => {
+        if (!cancelled && data) {
+          setVendors(data.vendors);
+          setPagination(data.pagination);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page, filter, reloadNonce]);
+
+  const refresh = useCallback(() => {
     setIsLoading(true);
-    try {
-      const res = await fetch(`/api/admin/vendors?page=${p}&limit=20`);
-      if (res.ok) {
-        const data = await res.json();
-        setVendors(data.vendors);
-        setPagination(data.pagination);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    setReloadNonce((n) => n + 1);
   }, []);
 
-  useEffect(() => {
-    fetchVendors(page);
-  }, [page, fetchVendors]);
+  const setPage = useCallback((p: number) => {
+    setIsLoading(true);
+    setPageState(p);
+  }, []);
+
+  const setFilter = useCallback((next: VendorListFilter) => {
+    setIsLoading(true);
+    setPageState(1);
+    setFilterState(next);
+  }, []);
 
   const createVendor = async (data: {
     name: string;
@@ -72,7 +105,7 @@ export function useAdminVendors() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        await fetchVendors(page);
+        refresh();
         return true;
       }
       return false;
@@ -90,7 +123,7 @@ export function useAdminVendors() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
-        await fetchVendors(page);
+        refresh();
         return true;
       }
       return false;
@@ -99,5 +132,39 @@ export function useAdminVendors() {
     }
   };
 
-  return { vendors, pagination, isLoading, actionLoading, page, setPage, createVendor, updateVendor, refresh: () => fetchVendors(page) };
+  const activateVendor = async (
+    vendorId: string,
+    data: { contact_phone: string; location_in_market?: string; notes?: string }
+  ) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/vendors/${vendorId}/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        refresh();
+        return true;
+      }
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return {
+    vendors,
+    pagination,
+    isLoading,
+    actionLoading,
+    page,
+    setPage,
+    filter,
+    setFilter,
+    createVendor,
+    updateVendor,
+    activateVendor,
+    refresh,
+  };
 }

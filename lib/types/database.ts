@@ -119,7 +119,7 @@ export interface Vendor {
   id: string;
   cluster_id: string;
   name: string;
-  contact_phone: string;
+  contact_phone: string | null;
   contact_name: string | null;
   location_in_market: string | null;
   specializations: string[];
@@ -129,6 +129,8 @@ export interface Vendor {
   quality_issues: number;
   notes: string | null;
   is_active: boolean;
+  verification_status: string;
+  created_by_runner_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -267,6 +269,7 @@ export interface OrderItem {
   is_found: boolean;
   is_unavailable: boolean;
   unavailable_reason: string | null;
+  vendor_name?: string | null;
   created_at: string;
 }
 

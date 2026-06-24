@@ -20,6 +20,7 @@ export interface AdminNavItem {
   href: string;
   icon: LucideIcon;
   label: string;
+  badgeKey?: 'pendingVendors';
 }
 
 export const adminNavItems: AdminNavItem[] = [
@@ -27,7 +28,7 @@ export const adminNavItems: AdminNavItem[] = [
   { href: '/admin/orders', icon: Package, label: 'Orders' },
   { href: '/admin/runners', icon: Users, label: 'Runners' },
   { href: '/admin/riders', icon: Bike, label: 'Riders' },
-  { href: '/admin/vendors', icon: Store, label: 'Vendors' },
+  { href: '/admin/vendors', icon: Store, label: 'Vendors', badgeKey: 'pendingVendors' },
   { href: '/admin/parts', icon: Wrench, label: 'Parts' },
   { href: '/admin/categories', icon: Tags, label: 'Categories' },
   { href: '/admin/customers', icon: UserCircle, label: 'Customers' },

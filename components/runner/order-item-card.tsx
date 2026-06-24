@@ -70,6 +70,9 @@ export function OrderItemCard({
       {/* Found state details */}
       {item.is_found && (
         <div className="mt-2 space-y-1 border-t border-success/20 pt-2">
+          {'vendor_name' in item && item.vendor_name && (
+            <p className="text-sm text-slate-600">Vendor: {item.vendor_name}</p>
+          )}
           <p className="text-sm text-slate-600">
             Vendor price: {item.vendor_price != null ? formatCurrency(item.vendor_price) : '---'}
           </p>

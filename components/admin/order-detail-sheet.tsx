@@ -211,6 +211,11 @@ export function OrderDetailSheet({ orderId, isOpen, onClose }: OrderDetailSheetP
                       <p className="text-sm font-medium text-slate-700">
                         {item.quantity}x {item.description}
                       </p>
+                      {item.vendor_name && (
+                        <p className="text-xs text-slate-500">
+                          Vendor: {item.vendor_name}
+                        </p>
+                      )}
                       {item.vendor_price != null && (
                         <p className="text-xs text-slate-400">
                           Vendor paid: {formatCurrency(item.vendor_price * item.quantity)}

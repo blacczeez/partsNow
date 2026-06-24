@@ -54,46 +54,65 @@ describe('rejectOrderSchema', () => {
 });
 
 describe('markItemFoundSchema', () => {
-  it('accepts valid input', () => {
+  const base = {
+    vendorId: '550e8400-e29b-41d4-a716-446655440000',
+    vendorPrice: 5000,
+    qcImageUrl: 'https://example.com/photo.jpg',
+  };
+
+  it('accepts valid input with vendorId', () => {
+    const result = markItemFoundSchema.safeParse(base);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts quickAddVendor instead of vendorId', () => {
     const result = markItemFoundSchema.safeParse({
+      quickAddVendor: { name: 'Emeka @ Line 12' },
       vendorPrice: 5000,
       qcImageUrl: 'https://example.com/photo.jpg',
     });
     expect(result.success).toBe(true);
   });
 
+  it('rejects when vendor is missing', () => {
+    const result = markItemFoundSchema.safeParse({
+      vendorPrice: 5000,
+      qcImageUrl: 'https://example.com/photo.jpg',
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects negative vendorPrice', () => {
     const result = markItemFoundSchema.safeParse({
+      ...base,
       vendorPrice: -100,
-      qcImageUrl: 'https://example.com/photo.jpg',
     });
     expect(result.success).toBe(false);
   });
 
   it('rejects zero vendorPrice', () => {
     const result = markItemFoundSchema.safeParse({
+      ...base,
       vendorPrice: 0,
-      qcImageUrl: 'https://example.com/photo.jpg',
     });
     expect(result.success).toBe(false);
   });
 
   it('rejects missing qcImageUrl', () => {
-    const result = markItemFoundSchema.safeParse({
-      vendorPrice: 5000,
-    });
+    const { qcImageUrl: _, ...rest } = base;
+    const result = markItemFoundSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });
 
   it('rejects empty qcImageUrl', () => {
     const result = markItemFoundSchema.safeParse({
-      vendorPrice: 5000,
+      ...base,
       qcImageUrl: '',
     });
     expect(result.success).toBe(false);
   });
 
-  it('accepts optional vendorId', () => {
+  it('accepts optional vendorId with quickAdd omitted', () => {
     const result = markItemFoundSchema.safeParse({
       vendorId: '550e8400-e29b-41d4-a716-446655440000',
       vendorPrice: 5000,

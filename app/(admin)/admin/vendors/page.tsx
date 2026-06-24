@@ -6,15 +6,36 @@ import { DataTable } from '@/components/admin/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { VendorFormSheet } from '@/components/admin/vendor-form-sheet';
+import { ActivateVendorSheet } from '@/components/admin/activate-vendor-sheet';
+import { DuplicateVendorsPanel } from '@/components/admin/duplicate-vendors-panel';
 import { useAdminVendors } from '@/lib/hooks/use-admin-vendors';
+import { VENDOR_VERIFICATION_STATUS } from '@/lib/constants/vendors';
 import { toast } from '@/components/ui/toast';
 
 export default function AdminVendorsPage() {
-  const { vendors, pagination, isLoading, actionLoading, page, setPage, createVendor, updateVendor } = useAdminVendors();
+  const {
+    vendors,
+    pagination,
+    isLoading,
+    actionLoading,
+    page,
+    setPage,
+    filter,
+    setFilter,
+    createVendor,
+    updateVendor,
+    activateVendor,
+    refresh,
+  } = useAdminVendors();
   const [formOpen, setFormOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<(typeof vendors)[0] | null>(null);
+  const [activatingVendor, setActivatingVendor] = useState<(typeof vendors)[0] | null>(null);
 
   const handleRowClick = (row: (typeof vendors)[0]) => {
+    if (row.verification_status === VENDOR_VERIFICATION_STATUS.PENDING) {
+      setActivatingVendor(row);
+      return;
+    }
     setEditingVendor(row);
     setFormOpen(true);
   };
@@ -47,6 +68,21 @@ export default function AdminVendorsPage() {
     }
   };
 
+  const handleActivate = async (data: {
+    contact_phone: string;
+    location_in_market?: string;
+    notes?: string;
+  }) => {
+    if (!activatingVendor) return false;
+    const success = await activateVendor(activatingVendor.id, data);
+    if (success) {
+      toast('success', 'Vendor activated');
+      return true;
+    }
+    toast('error', 'Failed to activate vendor');
+    return false;
+  };
+
   const columns = [
     {
       header: 'Name',
@@ -59,22 +95,23 @@ export default function AdminVendorsPage() {
       render: (row: (typeof vendors)[0]) => row.cluster_name,
     },
     {
-      header: 'Specializations',
+      header: 'Location',
       render: (row: (typeof vendors)[0]) => (
-        <div className="flex flex-wrap gap-1">
-          {row.specializations.slice(0, 3).map((s) => (
-            <Badge key={s}>{s}</Badge>
-          ))}
-          {row.specializations.length > 3 && (
-            <Badge>+{row.specializations.length - 3}</Badge>
-          )}
-        </div>
+        <span className="text-slate-500">{row.location_in_market || '—'}</span>
       ),
     },
     {
       header: 'Reliability',
       render: (row: (typeof vendors)[0]) => (
-        <span className={row.reliability_score >= 80 ? 'text-success' : row.reliability_score >= 60 ? 'text-warning' : 'text-error'}>
+        <span
+          className={
+            row.reliability_score >= 80
+              ? 'text-success'
+              : row.reliability_score >= 60
+                ? 'text-warning'
+                : 'text-error'
+          }
+        >
           {row.reliability_score}%
         </span>
       ),
@@ -84,27 +121,48 @@ export default function AdminVendorsPage() {
       render: (row: (typeof vendors)[0]) => row.total_orders,
     },
     {
-      header: 'Quality Issues',
+      header: 'Verification',
       render: (row: (typeof vendors)[0]) => (
-        <span className={row.quality_issues > 0 ? 'text-error' : ''}>
-          {row.quality_issues}
-        </span>
+        <Badge
+          variant={
+            row.verification_status === VENDOR_VERIFICATION_STATUS.PENDING
+              ? 'warning'
+              : 'success'
+          }
+        >
+          {row.verification_status === VENDOR_VERIFICATION_STATUS.PENDING
+            ? 'Pending review'
+            : 'Active'}
+        </Badge>
       ),
     },
     {
-      header: 'Status',
-      render: (row: (typeof vendors)[0]) => (
-        <Badge variant={row.is_active ? 'success' : 'error'}>
-          {row.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
+      header: '',
+      render: (row: (typeof vendors)[0]) =>
+        row.verification_status === VENDOR_VERIFICATION_STATUS.PENDING ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivatingVendor(row);
+            }}
+          >
+            Activate
+          </Button>
+        ) : null,
     },
   ];
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Vendors</h1>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Vendors</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Runner quick-adds appear as pending until you add a phone and activate.
+          </p>
+        </div>
         <Button
           size="sm"
           onClick={() => {
@@ -117,12 +175,29 @@ export default function AdminVendorsPage() {
         </Button>
       </div>
 
+      <DuplicateVendorsPanel onMerged={refresh} />
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {(['all', 'pending', 'active'] as const).map((key) => (
+          <Button
+            key={key}
+            size="sm"
+            variant={filter === key ? 'primary' : 'secondary'}
+            onClick={() => setFilter(key)}
+          >
+            {key === 'all' ? 'All' : key === 'pending' ? 'Pending review' : 'Active'}
+          </Button>
+        ))}
+      </div>
+
       <DataTable
         columns={columns}
         data={vendors}
         isLoading={isLoading}
         onRowClick={handleRowClick}
-        emptyMessage="No vendors found"
+        emptyMessage={
+          filter === 'pending' ? 'No vendors pending review' : 'No vendors found'
+        }
         pagination={{
           page: pagination.page,
           totalPages: pagination.totalPages,
@@ -132,19 +207,35 @@ export default function AdminVendorsPage() {
 
       <VendorFormSheet
         isOpen={formOpen}
-        onClose={() => { setFormOpen(false); setEditingVendor(null); }}
-        vendor={editingVendor ? {
-          id: editingVendor.id,
-          name: editingVendor.name,
-          contact_phone: editingVendor.contact_phone,
-          contact_name: editingVendor.contact_name || '',
-          cluster_id: editingVendor.cluster_id,
-          location_in_market: editingVendor.location_in_market || '',
-          specializations: editingVendor.specializations,
-          payment_terms: editingVendor.payment_terms,
-          is_active: editingVendor.is_active,
-        } : null}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingVendor(null);
+        }}
+        vendor={
+          editingVendor
+            ? {
+                id: editingVendor.id,
+                name: editingVendor.name,
+                contact_phone: editingVendor.contact_phone ?? '',
+                contact_name: editingVendor.contact_name || '',
+                cluster_id: editingVendor.cluster_id,
+                location_in_market: editingVendor.location_in_market || '',
+                specializations: editingVendor.specializations,
+                payment_terms: editingVendor.payment_terms,
+                is_active: editingVendor.is_active,
+              }
+            : null
+        }
         onSubmit={handleSubmit}
+        isLoading={actionLoading}
+      />
+
+      <ActivateVendorSheet
+        isOpen={!!activatingVendor}
+        onClose={() => setActivatingVendor(null)}
+        vendorName={activatingVendor?.name ?? ''}
+        defaultLocation={activatingVendor?.location_in_market}
+        onConfirm={handleActivate}
         isLoading={actionLoading}
       />
     </div>

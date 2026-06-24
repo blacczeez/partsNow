@@ -15,6 +15,10 @@ import {
   notifyClarificationRequest,
 } from './notifications';
 import { recordVendorPartPrice } from './vendor-parts';
+import {
+  incrementVendorOrderCount,
+  resolveVendorForSourcing,
+} from './runner-vendors';
 import { shiftDurationMinutes } from '@/lib/utils/shift';
 import { computeShiftDiscrepancy } from '@/lib/utils/shift-reconciliation';
 import { runnerAssignmentReleaseAction } from '@/lib/utils/runner-assignments';
@@ -581,8 +585,32 @@ export async function getRunnerOrderDetail(
     vehicle = vehicleRow;
   }
 
+  const items = (order.order_items ?? []) as OrderItem[];
+  const vendorIds = [
+    ...new Set(
+      items.map((i) => i.vendor_id).filter((id): id is string => id != null)
+    ),
+  ];
+
+  let vendorNameMap: Record<string, string> = {};
+  if (vendorIds.length > 0) {
+    const { data: vendorRows } = await supabase
+      .from('vendors')
+      .select('id, name')
+      .in('id', vendorIds);
+    vendorNameMap = Object.fromEntries(
+      (vendorRows ?? []).map((v) => [v.id, v.name])
+    );
+  }
+
+  const orderItemsWithVendor = items.map((item) => ({
+    ...item,
+    vendor_name: item.vendor_id ? vendorNameMap[item.vendor_id] ?? null : null,
+  }));
+
   return {
     ...order,
+    order_items: orderItemsWithVendor,
     assignment: assignment as OrderAssignment,
     customer_name: customer?.full_name ?? 'Unknown',
     customer_phone: customer?.phone ?? '',
@@ -1036,7 +1064,12 @@ export async function markItemFound(
   runnerId: string,
   orderId: string,
   itemId: string,
-  data: { vendorId?: string; vendorPrice: number; qcImageUrl: string }
+  data: {
+    vendorId?: string;
+    quickAddVendor?: { name: string; locationInMarket?: string };
+    vendorPrice: number;
+    qcImageUrl: string;
+  }
 ): Promise<PriceEscalationResult> {
   const supabase = await createClient();
 
@@ -1046,6 +1079,21 @@ export async function markItemFound(
   ]);
 
   if (!assignment) throw new Error('Order not assigned to you or not in progress');
+
+  const { data: orderRow } = await supabase
+    .from('orders')
+    .select('cluster_id')
+    .eq('id', orderId)
+    .single();
+
+  if (!orderRow?.cluster_id) throw new Error('Order cluster not found');
+
+  const resolvedVendorId = await resolveVendorForSourcing({
+    runnerId,
+    clusterId: orderRow.cluster_id,
+    vendorId: data.vendorId,
+    quickAddVendor: data.quickAddVendor,
+  });
 
   // Get item to check vendor price against target budget
   const { data: item } = await supabase
@@ -1066,7 +1114,7 @@ export async function markItemFound(
   const { error: updateItemError } = await supabase
     .from('order_items')
     .update({
-      vendor_id: data.vendorId || null,
+      vendor_id: resolvedVendorId,
       vendor_price: data.vendorPrice,
       qc_image_url: data.qcImageUrl,
       is_found: true,
@@ -1075,10 +1123,12 @@ export async function markItemFound(
     .eq('id', itemId);
   throwIfSupabaseError(updateItemError, 'Failed to mark item as found');
 
+  await incrementVendorOrderCount(resolvedVendorId);
+
   // Fire-and-forget: record vendor-part price for catalogue feedback
-  if (data.vendorId && item.part_id) {
-    recordVendorPartPrice(data.vendorId, item.part_id, data.vendorPrice, runnerId)
-      .catch(err => console.error('Price feedback failed:', err));
+  if (item.part_id) {
+    recordVendorPartPrice(resolvedVendorId, item.part_id, data.vendorPrice, runnerId)
+      .catch((err) => console.error('Price feedback failed:', err));
   }
 
   const escalation = await handleVendorPriceEntry(supabase, {
@@ -1086,7 +1136,7 @@ export async function markItemFound(
     itemId,
     sellingPrice: item.selling_price,
     vendorPrice: data.vendorPrice,
-    vendorId: data.vendorId,
+    vendorId: resolvedVendorId,
     description: item.description,
     actorId: runnerId,
   });

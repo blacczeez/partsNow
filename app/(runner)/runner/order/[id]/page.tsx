@@ -172,7 +172,12 @@ export default function RunnerOrderPage() {
     }
   };
 
-  const handleMarkFound = async (data: { vendorPrice: number; qcImageUrl: string }) => {
+  const handleMarkFound = async (data: {
+    vendorId?: string;
+    quickAddVendor?: { name: string; locationInMarket?: string };
+    vendorPrice: number;
+    qcImageUrl: string;
+  }) => {
     if (activeSheet?.type !== 'found') return;
     const result = await markItemFound(activeSheet.itemId, data);
     if (result.priceReviewPending) {
@@ -517,6 +522,8 @@ export default function RunnerOrderPage() {
       <MarkFoundSheet
         isOpen={activeSheet?.type === 'found'}
         onClose={() => setActiveSheet(null)}
+        orderId={id}
+        itemId={activeSheet?.type === 'found' ? activeSheet.itemId : ''}
         itemDescription={
           activeSheet?.type === 'found' ? activeSheet.itemDescription : ''
         }

@@ -35,6 +35,18 @@ export const updateVendorSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+export const activateVendorSchema = z.object({
+  contact_phone: z.string().min(7).max(20),
+  contact_name: z.string().max(200).optional(),
+  location_in_market: z.string().max(200).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const mergeVendorsSchema = z.object({
+  keepVendorId: uuidIdSchema,
+  mergeVendorId: uuidIdSchema,
+});
+
 export const updateConfigSchema = z.object({
   key: z.string().min(1),
   value: z.unknown(),

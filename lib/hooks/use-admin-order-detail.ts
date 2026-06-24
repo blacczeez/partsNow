@@ -65,6 +65,8 @@ interface OrderDetail {
     selling_price: number;
     expected_vendor_price: number | null;
     max_vendor_price: number | null;
+    vendor_id: string | null;
+    vendor_name: string | null;
     price_review_status: string | null;
     is_found: boolean;
     is_unavailable: boolean;

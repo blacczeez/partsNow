@@ -12,6 +12,8 @@ import {
   type AdminNavItem,
 } from '@/components/layout/admin-nav-config';
 
+type NavBadges = Partial<Record<NonNullable<AdminNavItem['badgeKey']>, number>>;
+
 function AdminBrandMark() {
   return (
     <>
@@ -39,14 +41,17 @@ function AdminBrandHeader({ className }: { className?: string }) {
 function AdminNavLink({
   item,
   pathname,
+  badges,
   onNavigate,
 }: {
   item: AdminNavItem;
   pathname: string;
+  badges: NavBadges;
   onNavigate?: () => void;
 }) {
   const active = isAdminNavActive(pathname, item.href);
   const Icon = item.icon;
+  const badgeCount = item.badgeKey ? badges[item.badgeKey] : 0;
 
   return (
     <Link
@@ -59,17 +64,24 @@ function AdminNavLink({
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
       )}
     >
-      <Icon className={cn('h-5 w-5', active ? 'text-primary' : 'text-slate-400')} />
-      {item.label}
+      <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-primary' : 'text-slate-400')} />
+      <span className="flex-1">{item.label}</span>
+      {badgeCount != null && badgeCount > 0 && (
+        <span className="rounded-pill bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </span>
+      )}
     </Link>
   );
 }
 
 function AdminNav({
   pathname,
+  badges,
   onNavigate,
 }: {
   pathname: string;
+  badges: NavBadges;
   onNavigate?: () => void;
 }) {
   return (
@@ -77,12 +89,22 @@ function AdminNav({
       <ul className="space-y-1">
         {adminNavItems.map((item) => (
           <li key={item.href}>
-            <AdminNavLink item={item} pathname={pathname} onNavigate={onNavigate} />
+            <AdminNavLink
+              item={item}
+              pathname={pathname}
+              badges={badges}
+              onNavigate={onNavigate}
+            />
           </li>
         ))}
       </ul>
       <div className="mt-8 border-t border-slate-200 pt-4">
-        <AdminNavLink item={adminAccountNavItem} pathname={pathname} onNavigate={onNavigate} />
+        <AdminNavLink
+          item={adminAccountNavItem}
+          pathname={pathname}
+          badges={badges}
+          onNavigate={onNavigate}
+        />
       </div>
     </nav>
   );
@@ -91,8 +113,31 @@ function AdminNav({
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [navBadges, setNavBadges] = useState<NavBadges>({});
 
   const closeMobileNav = () => setMobileNavOpen(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNavBadges() {
+      try {
+        const res = await fetch('/api/admin/vendors/pending-count');
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setNavBadges({ pendingVendors: data.count ?? 0 });
+        }
+      } catch {
+        // Non-critical — nav works without badges
+      }
+    }
+
+    loadNavBadges();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -119,7 +164,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
         <AdminBrandHeader />
         <div className="scrollbar-subtle flex-1 overflow-y-auto overscroll-contain">
-          <AdminNav pathname={pathname} />
+          <AdminNav pathname={pathname} badges={navBadges} />
         </div>
       </aside>
 
@@ -145,7 +190,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <div className="scrollbar-subtle flex-1 overflow-y-auto overscroll-contain">
-              <AdminNav pathname={pathname} onNavigate={closeMobileNav} />
+              <AdminNav pathname={pathname} badges={navBadges} onNavigate={closeMobileNav} />
             </div>
           </aside>
         </div>

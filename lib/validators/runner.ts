@@ -19,11 +19,22 @@ export const rejectOrderSchema = z.object({
 
 export type RejectOrderInput = z.infer<typeof rejectOrderSchema>;
 
-export const markItemFoundSchema = z.object({
-  vendorId: z.string().uuid().optional(),
-  vendorPrice: z.number().positive('Price must be greater than 0'),
-  qcImageUrl: z.string().min(1, 'QC photo is required'),
-});
+export const markItemFoundSchema = z
+  .object({
+    vendorId: z.string().uuid().optional(),
+    quickAddVendor: z
+      .object({
+        name: z.string().min(1).max(200),
+        locationInMarket: z.string().max(200).optional(),
+      })
+      .optional(),
+    vendorPrice: z.number().positive('Price must be greater than 0'),
+    qcImageUrl: z.string().min(1, 'QC photo is required'),
+  })
+  .refine((data) => Boolean(data.vendorId || data.quickAddVendor?.name?.trim()), {
+    message: 'Select a vendor or add a stall name',
+    path: ['vendorId'],
+  });
 
 export type MarkItemFoundInput = z.infer<typeof markItemFoundSchema>;
 

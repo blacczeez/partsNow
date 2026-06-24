@@ -33,6 +33,10 @@ import {
   getAdminFinancialTotals,
 } from './admin-financials';
 import {
+  type VendorVerificationStatus,
+  VENDOR_VERIFICATION_STATUS,
+} from '@/lib/constants/vendors';
+import {
   formatAdminDateRangeLabel,
   parseAdminDateRange,
   type AdminDateRangeParams,
@@ -239,6 +243,27 @@ export async function getAdminOrderDetail(orderId: string) {
     .select('*')
     .eq('order_id', orderId);
 
+  const vendorIds = [
+    ...new Set((items ?? []).map((i) => i.vendor_id).filter(Boolean)),
+  ] as string[];
+
+  let vendorNameMap: Record<string, string> = {};
+  if (vendorIds.length > 0) {
+    const { data: vendorRows } = await supabase
+      .from('vendors')
+      .select('id, name')
+      .in('id', vendorIds);
+
+    vendorNameMap = Object.fromEntries(
+      (vendorRows ?? []).map((v) => [v.id, v.name])
+    );
+  }
+
+  const itemsWithVendors = (items ?? []).map((item) => ({
+    ...item,
+    vendor_name: item.vendor_id ? vendorNameMap[item.vendor_id] ?? null : null,
+  }));
+
   // Get assignments
   const { data: assignments } = await supabase
     .from('order_assignments')
@@ -316,7 +341,7 @@ export async function getAdminOrderDetail(orderId: string) {
 
   return {
     ...order,
-    items: items ?? [],
+    items: itemsWithVendors,
     assignments: assignmentsWithNames,
     customer,
     vehicle,
@@ -826,17 +851,14 @@ export async function updateAdminRider(
   return updated;
 }
 
-// ============================================
-// VENDORS
-// ============================================
-
 export async function getAdminVendors(filters: {
   page: number;
   limit: number;
   clusterId?: string;
+  verificationStatus?: VendorVerificationStatus;
 }) {
   const supabase = await createClient();
-  const { page, limit, clusterId } = filters;
+  const { page, limit, clusterId, verificationStatus } = filters;
   const offset = (page - 1) * limit;
 
   let query = supabase
@@ -847,6 +869,10 @@ export async function getAdminVendors(filters: {
 
   if (clusterId) {
     query = query.eq('cluster_id', clusterId);
+  }
+
+  if (verificationStatus) {
+    query = query.eq('verification_status', verificationStatus);
   }
 
   const { data, error, count } = await query;
@@ -901,6 +927,7 @@ export async function createVendor(
       location_in_market: data.location_in_market ?? null,
       specializations: data.specializations ?? [],
       payment_terms: data.payment_terms ?? 'cash',
+      verification_status: VENDOR_VERIFICATION_STATUS.ACTIVE,
     })
     .select()
     .single();
@@ -919,6 +946,74 @@ export async function createVendor(
   });
 
   return vendor;
+}
+
+export async function activateVendor(
+  vendorId: string,
+  data: {
+    contact_phone: string;
+    contact_name?: string;
+    location_in_market?: string;
+    notes?: string;
+  },
+  adminId?: string
+) {
+  const supabase = await createClient();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('id', vendorId)
+    .single();
+
+  if (fetchError || !existing) throw new Error('Vendor not found');
+  if (existing.verification_status === VENDOR_VERIFICATION_STATUS.ACTIVE) {
+    throw new Error('Vendor is already active');
+  }
+
+  const notes = data.notes?.trim();
+  const internalNotes = notes
+    ? existing.notes
+      ? `${existing.notes}\n[Activated] ${notes}`
+      : `[Activated] ${notes}`
+    : existing.notes;
+
+  const { data: vendor, error } = await supabase
+    .from('vendors')
+    .update({
+      contact_phone: data.contact_phone,
+      contact_name: data.contact_name ?? existing.contact_name,
+      location_in_market: data.location_in_market ?? existing.location_in_market,
+      verification_status: VENDOR_VERIFICATION_STATUS.ACTIVE,
+      notes: internalNotes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', vendorId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  await writeAuditLog({
+    userId: adminId ?? null,
+    action: AUDIT_ACTIONS.VENDOR_ACTIVATED,
+    entityType: 'vendor',
+    entityId: vendorId,
+    newValues: auditDetails(`Vendor activated — ${vendor.name}`, {
+      contactPhone: data.contact_phone,
+    }),
+  });
+
+  return vendor;
+}
+
+export async function getPendingVendorCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from('vendors')
+    .select('*', { count: 'exact', head: true })
+    .eq('verification_status', VENDOR_VERIFICATION_STATUS.PENDING);
+  return count ?? 0;
 }
 
 export async function updateVendor(

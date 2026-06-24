@@ -12,8 +12,17 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const clusterId = searchParams.get('clusterId') || undefined;
+    const verification = searchParams.get('verification') || undefined;
 
-    const result = await getAdminVendors({ page, limit, clusterId });
+    const result = await getAdminVendors({
+      page,
+      limit,
+      clusterId,
+      verificationStatus:
+        verification === 'pending' || verification === 'active'
+          ? verification
+          : undefined,
+    });
 
     return NextResponse.json({
       vendors: result.vendors,
