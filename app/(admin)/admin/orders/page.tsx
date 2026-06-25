@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
@@ -12,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { OrderDetailSheet } from '@/components/admin/order-detail-sheet';
 import { useAdminOrders } from '@/lib/hooks/use-admin-orders';
+import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
 import {
   ATTENTION_LABELS,
   ATTENTION_TYPES,
@@ -21,22 +21,13 @@ import { ORDER_STATUSES } from '@/lib/constants/order-status';
 import type { OrderStatus } from '@/lib/types/database';
 
 export default function AdminOrdersPage() {
-  const searchParams = useSearchParams();
-  const deepLinkOrderId = searchParams.get('order');
+  const { values, setUrlState } = useAdminUrlState(['order']);
+  const deepLinkOrderId = values.order || null;
   const { orders, pagination, isLoading, filters, setFilters, attentionLabel } =
     useAdminOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [deepLinkDismissed, setDeepLinkDismissed] = useState(false);
-  const [prevDeepLinkOrderId, setPrevDeepLinkOrderId] = useState(deepLinkOrderId);
 
-  if (deepLinkOrderId !== prevDeepLinkOrderId) {
-    setPrevDeepLinkOrderId(deepLinkOrderId);
-    setDeepLinkDismissed(false);
-  }
-
-  const activeOrderId =
-    selectedOrderId ??
-    (deepLinkOrderId && !deepLinkDismissed ? deepLinkOrderId : null);
+  const activeOrderId = selectedOrderId ?? deepLinkOrderId;
 
   const columns = [
     {
@@ -229,7 +220,7 @@ export default function AdminOrdersPage() {
         isOpen={!!activeOrderId}
         onClose={() => {
           setSelectedOrderId(null);
-          if (deepLinkOrderId) setDeepLinkDismissed(true);
+          setUrlState({ order: null });
         }}
       />
     </div>

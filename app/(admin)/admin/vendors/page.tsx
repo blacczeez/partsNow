@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
 import { Plus } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import { VENDOR_VERIFICATION_STATUS } from '@/lib/constants/vendors';
 import { toast } from '@/components/ui/toast';
 
 export default function AdminVendorsPage() {
-  const searchParams = useSearchParams();
+  const { values, setUrlState } = useAdminUrlState(['vendor', 'activate', 'filter']);
   const {
     vendors,
     pagination,
@@ -40,9 +40,20 @@ export default function AdminVendorsPage() {
     (typeof vendors)[0] | null
   >(null);
 
-  const deepLinkVendorId = searchParams.get('vendor');
-  const deepLinkActivateId = searchParams.get('activate');
-  const urlFilter = searchParams.get('filter');
+  const deepLinkVendorId = values.vendor || null;
+  const deepLinkActivateId = values.activate || null;
+  const urlFilter = values.filter || null;
+
+  const dismissActivateSheet = () => {
+    setActivatingVendorState(null);
+    setActivateFetchVendor(null);
+    setUrlState({ activate: null });
+  };
+
+  const dismissVendorDetail = () => {
+    setDetailVendorId(null);
+    setUrlState({ vendor: null });
+  };
 
   const [prevUrlFilter, setPrevUrlFilter] = useState(urlFilter);
   if (urlFilter !== prevUrlFilter) {
@@ -306,7 +317,7 @@ export default function AdminVendorsPage() {
 
       <ActivateVendorSheet
         isOpen={!!activatingVendor}
-        onClose={() => setActivatingVendorState(null)}
+        onClose={dismissActivateSheet}
         vendorName={activatingVendor?.name ?? ''}
         defaultLocation={activatingVendor?.location_in_market}
         onConfirm={handleActivate}
@@ -316,11 +327,11 @@ export default function AdminVendorsPage() {
       <VendorDetailSheet
         vendorId={activeDetailVendorId}
         isOpen={!!activeDetailVendorId}
-        onClose={() => setDetailVendorId(null)}
+        onClose={dismissVendorDetail}
         onEdit={() => {
           const vendor = vendors.find((v) => v.id === activeDetailVendorId);
           if (vendor) {
-            setDetailVendorId(null);
+            dismissVendorDetail();
             setEditingVendor(vendor);
             setFormOpen(true);
           }
