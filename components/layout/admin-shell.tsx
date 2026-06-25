@@ -26,23 +26,25 @@ function AdminBrandMark() {
   );
 }
 
-function AdminBrandHeader({
-  className,
-  trailing,
-}: {
-  className?: string;
-  trailing?: React.ReactNode;
-}) {
+function AdminBrandHeader({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-4 lg:px-6',
+        'flex h-14 shrink-0 items-center border-b border-slate-200 px-4 lg:px-6',
         className
       )}
     >
       <AdminBrandMark />
-      {trailing}
     </div>
+  );
+}
+
+function getAdminPageLabel(pathname: string): string {
+  return (
+    adminNavItems.find((item) => isAdminNavActive(pathname, item.href))?.label ??
+    (isAdminNavActive(pathname, adminAccountNavItem.href)
+      ? adminAccountNavItem.label
+      : 'Admin')
   );
 }
 
@@ -170,15 +172,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="font-sans flex h-dvh overflow-hidden bg-slate-50">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
-        <AdminBrandHeader
-          trailing={
-            <AdminNotificationBell
-              onPendingVendorsChange={(count) =>
-                setNavBadges({ pendingVendors: count })
-              }
-            />
-          }
-        />
+        <AdminBrandHeader />
         <div className="scrollbar-subtle flex-1 overflow-y-auto overscroll-contain">
           <AdminNav pathname={pathname} badges={navBadges} />
         </div>
@@ -214,28 +208,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden">
+        <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:px-6">
           <button
             type="button"
             aria-label="Open navigation"
             onClick={() => setMobileNavOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-button text-slate-600 hover:bg-slate-100"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-button text-slate-600 hover:bg-slate-100 lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {adminNavItems.find((item) => isAdminNavActive(pathname, item.href))?.label ??
-                (isAdminNavActive(pathname, adminAccountNavItem.href)
-                  ? adminAccountNavItem.label
-                  : 'Admin')}
+            <p className="truncate text-sm font-semibold text-slate-900 lg:text-base">
+              {getAdminPageLabel(pathname)}
             </p>
           </div>
-          <AdminNotificationBell
-            onPendingVendorsChange={(count) =>
-              setNavBadges({ pendingVendors: count })
-            }
-          />
+          <div className="ml-auto shrink-0">
+            <AdminNotificationBell
+              onPendingVendorsChange={(count) =>
+                setNavBadges({ pendingVendors: count })
+              }
+            />
+          </div>
         </header>
 
         <main className="scrollbar-subtle flex-1 overflow-y-auto overscroll-contain">
