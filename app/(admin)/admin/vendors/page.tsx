@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAdminUrlState } from '@/lib/hooks/use-admin-url-state';
+import { useAdminDeepLinkSheet } from '@/lib/hooks/use-admin-deep-link-sheet';
 import { Plus } from 'lucide-react';
 import { DataTable } from '@/components/admin/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,9 @@ import { VENDOR_VERIFICATION_STATUS } from '@/lib/constants/vendors';
 import { toast } from '@/components/ui/toast';
 
 export default function AdminVendorsPage() {
-  const { values, setUrlState } = useAdminUrlState(['vendor', 'activate', 'filter']);
+  const { values } = useAdminUrlState(['filter']);
+  const activateSheet = useAdminDeepLinkSheet('activate');
+  const vendorDetailSheet = useAdminDeepLinkSheet('vendor');
   const {
     vendors,
     pagination,
@@ -40,19 +43,18 @@ export default function AdminVendorsPage() {
     (typeof vendors)[0] | null
   >(null);
 
-  const deepLinkVendorId = values.vendor || null;
-  const deepLinkActivateId = values.activate || null;
+  const deepLinkActivateId = activateSheet.deepLinkId;
   const urlFilter = values.filter || null;
 
   const dismissActivateSheet = () => {
     setActivatingVendorState(null);
     setActivateFetchVendor(null);
-    setUrlState({ activate: null });
+    activateSheet.dismiss();
   };
 
   const dismissVendorDetail = () => {
     setDetailVendorId(null);
-    setUrlState({ vendor: null });
+    vendorDetailSheet.dismiss();
   };
 
   const [prevUrlFilter, setPrevUrlFilter] = useState(urlFilter);
@@ -70,7 +72,7 @@ export default function AdminVendorsPage() {
     setActivateFetchVendor(null);
   }
 
-  const activeDetailVendorId = detailVendorId ?? deepLinkVendorId;
+  const activeDetailVendorId = detailVendorId ?? vendorDetailSheet.activeId;
   const activatingVendor =
     activatingVendorState ??
     (deepLinkActivateId
