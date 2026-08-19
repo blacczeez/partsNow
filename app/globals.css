@@ -51,6 +51,17 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+
+  --animate-hero-marquee: hero-marquee 40s linear infinite;
+}
+
+@keyframes hero-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 /* Safe area padding utility for iOS bottom nav */
@@ -67,6 +78,18 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Marketing landing display type (Figma: Helvetica Neue 500) */
+@utility font-marketing-display {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-marquee {
+    animation: none;
+  }
 }
 
 /* Focus ring utility */

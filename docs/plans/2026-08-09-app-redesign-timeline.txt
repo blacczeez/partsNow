@@ -1,0 +1,350 @@
+PARTSNOW APP REDESIGN — DESIGN TIMELINE
+========================================
+
+Date: August 9, 2026
+Deadline: October 31, 2026
+Duration: 12 weeks (Aug 11 — Oct 31)
+Cadence: Weekly sprints (Monday to Friday)
+
+STATUS: Landing Page — DONE
+
+
+TEAM
+----
+
+Lateefah (Senior Designer)
+  - Weeks 1-2: Sets the design foundation (design system, component library, key reference screens)
+  - Weeks 3-12: Reviews all work from Femi and Aisha, gives feedback, handles revisions on complex pages
+
+Femi (Intern)
+  - Weeks 3-12: Designs assigned pages based on the foundation set by Lateefah
+
+Aisha (Intern)
+  - Weeks 3-12: Designs assigned pages based on the foundation set by Lateefah
+
+
+NOTE ON OVERLAYS
+----------------
+
+Modals, bottom sheets, and inline overlays are listed as separate design items.
+They should be designed alongside or immediately after their parent page, but
+delivered as individual screens in the design file.
+
+
+========================================
+COMPLETE PAGE & COMPONENT INVENTORY
+========================================
+
+Excluding: Admin pages, Landing page (already done)
+
+
+SECTION A — AUTH (2 pages)
+--------------------------
+A1. Login (phone number input, send OTP)
+A2. Verify OTP (6-digit input, resend timer, redirect logic)
+
+
+SECTION B — CUSTOMER PAGES (13 pages)
+--------------------------------------
+B1.  Home (logged-in dashboard: wallet balance, category grid, recent orders)
+B2.  Search (search input, vehicle bar, category chips, part grid, load more)
+B3.  Cart (vehicle selector, line items, qty controls, order summary, delivery weight)
+B4.  Checkout (address input, delivery notes, items accordion, pricing breakdown, payment method select)
+B5.  Orders list (tab nav: Active/Completed/All, paginated order cards, empty state)
+B6.  Order detail (status badge, timeline, items, payment, delivery, rating form, cancel flow)
+B7.  Receipt (printable receipt layout: header, items table, pricing, payment info)
+B8.  Wallet (balance card, held balance, top-up button, transaction history with filters)
+B9.  Account (profile header, contact info, nav links, edit mode, setup form for new users)
+B10. Vehicles (vehicle list, add/edit/remove, empty state)
+B11. Loyalty (tier progress, all tiers list with requirements and benefits)
+B12. How Delivery Works (info page: weight tiers table, free delivery, examples)
+B13. How Loyalty Works (info page: tiers breakdown, what counts, timing)
+
+
+SECTION C — RUNNER PAGES (6 pages)
+-----------------------------------
+C1. Runner Dashboard (shift status card, float balance, start/end shift, assigned orders list)
+C2. Runner Order Detail (order info card, SLA timer, accept/reject, items with found/unavailable states, clarification thread, complete handoff)
+C3. Current Shift (active shift stats: duration, orders, sourced total, commission, float balance)
+C4. Shift History (list of past shifts)
+C5. Shift Detail (individual past shift summary and reconciliation data)
+C6. Runner Account (staff profile view, role label, logout)
+
+
+SECTION D — RIDER PAGES (4 pages)
+----------------------------------
+D1. Rider Dashboard (active deliveries list, empty state)
+D2. Rider Delivery Detail (status bar, COD banner, pickup/delivery actions, customer info, delivery attempts, high-value warning)
+D3. Rider History (stats grid, deliveries grouped by date, load more)
+D4. Rider Account (staff profile view, role label, logout)
+
+
+SECTION E — MARKETING PAGES (4 pages)
+--------------------------------------
+E1. Features listing
+E2. Feature detail (dynamic: /features/[slug])
+E3. Blog listing
+E4. Blog post detail (dynamic: /blog/[slug])
+
+
+SECTION F — MODALS (5 components)
+----------------------------------
+F1. Cancel Order confirmation (from B6 Order Detail)
+F2. Refund confirmation (from B6 Order Detail, for price changes)
+F3. End Shift summary (from C1 Runner Dashboard and C3 Current Shift)
+F4. Delete Vehicle confirmation (from B10 Vehicles)
+F5. Delete/Decline Delivery confirmation (from D2 Rider Delivery Detail)
+
+
+SECTION G — BOTTOM SHEETS (8 components)
+-----------------------------------------
+G1. Top Up Wallet form (from B8 Wallet — amount input, Paystack trigger)
+G2. Add Vehicle form (from B10 Vehicles — make, model, year, spec, nickname)
+G3. Edit Vehicle form (from B10 Vehicles — pre-filled vehicle form)
+G4. Part Detail Sheet (from B2 Search — part info, add to cart, qty selection)
+G5. Mark Item Found (from C2 Runner Order Detail — vendor select, price entry, QC photo upload)
+G6. Mark Item Unavailable (from C2 Runner Order Detail — reason dropdown)
+G7. Pickup Confirmation (from D2 Rider Delivery Detail — optional photo for high-value)
+G8. Delivery Confirmation (from D2 Rider Delivery Detail — photo, COD collection)
+G9. Delivery Failure Report (from D2 Rider Delivery Detail — reason, notes, photo, location)
+
+
+TOTAL: 29 pages + 14 overlay components = 43 design deliverables
+
+
+========================================
+WEEKLY TIMELINE
+========================================
+
+
+WEEK 1 — Aug 11-15
+-------------------
+Owner: Lateefah
+
+Deliverables:
+  - Design system foundation
+    - Color tokens and palette
+    - Typography scale and font choices
+    - Spacing and grid system
+    - Border radius, shadows, elevation
+    - Icon style guide (Lucide-based)
+  - Core component library
+    - Buttons (all variants and states)
+    - Input fields (text, phone, OTP, search, textarea)
+    - Cards (base card, order card, stat card)
+    - Badges (status badge, tier badge, loyalty badge)
+    - Navigation (bottom nav, sticky header, back header)
+    - Empty states pattern
+    - Loading / skeleton states
+
+Goal: Femi and Aisha can start designing pages using these components from Week 3.
+
+
+WEEK 2 — Aug 18-22
+-------------------
+Owner: Lateefah
+
+Deliverables:
+  - Reference screens (fully designed key pages that set the visual standard)
+    - B1. Home (logged-in dashboard) — sets card layout, spacing, hierarchy
+    - B6. Order Detail — sets complex page pattern (sections, timeline, actions)
+    - C2. Runner Order Detail — sets operations page pattern
+  - Bottom sheet and modal base patterns
+    - General modal layout (title, body, action buttons)
+    - General bottom sheet layout (handle, title, scrollable body, sticky action)
+
+Goal: These 3 reference screens plus the component library give Femi and Aisha
+      everything they need to design the remaining pages independently.
+
+
+WEEK 3 — Aug 25-29
+-------------------
+Owners: Femi, Aisha
+Reviewer: Lateefah
+
+Femi:
+  - A1. Login
+  - A2. Verify OTP
+  - B2. Search
+  - G4. Part Detail Sheet
+
+Aisha:
+  - B3. Cart
+  - B4. Checkout
+  - B12. How Delivery Works
+  - B13. How Loyalty Works
+
+Lateefah: Reviews all deliverables, provides feedback by end of week.
+
+
+WEEK 4 — Sep 1-5
+-----------------
+Owners: Femi, Aisha
+Reviewer: Lateefah
+
+Femi:
+  - B5. Orders list
+  - B7. Receipt
+  - B8. Wallet
+  - G1. Top Up Wallet form
+
+Aisha:
+  - B9. Account (profile + setup form + edit mode)
+  - B10. Vehicles
+  - G2. Add Vehicle form
+  - G3. Edit Vehicle form
+
+Lateefah: Reviews Week 3 revisions + Week 4 deliverables.
+
+
+WEEK 5 — Sep 8-12
+------------------
+Owners: Femi, Aisha
+Reviewer: Lateefah
+
+Femi:
+  - B11. Loyalty
+  - F1. Cancel Order confirmation modal
+  - F2. Refund confirmation modal
+  - F4. Delete Vehicle confirmation modal
+
+Aisha:
+  - C1. Runner Dashboard
+  - C3. Current Shift
+  - F3. End Shift summary modal
+
+Lateefah: Reviews + feedback. All customer pages should be near-final by end of this week.
+
+
+WEEK 6 — Sep 15-19
+-------------------
+Owners: Femi, Aisha
+Reviewer: Lateefah
+
+Femi:
+  - C4. Shift History
+  - C5. Shift Detail
+  - C6. Runner Account
+
+Aisha:
+  - G5. Mark Item Found sheet
+  - G6. Mark Item Unavailable sheet
+  - D1. Rider Dashboard
+
+Lateefah: Reviews. Runner pages should be near-final by end of this week.
+
+
+WEEK 7 — Sep 22-26
+-------------------
+Owners: Femi, Aisha
+Reviewer: Lateefah
+
+Femi:
+  - D2. Rider Delivery Detail
+  - G7. Pickup Confirmation sheet
+  - G8. Delivery Confirmation sheet
+
+Aisha:
+  - G9. Delivery Failure Report sheet
+  - D3. Rider History
+  - D4. Rider Account
+  - F5. Delete/Decline Delivery confirmation modal
+
+Lateefah: Reviews. All rider pages should be near-final by end of this week.
+
+
+WEEK 8 — Sep 29 - Oct 3
+------------------------
+Owners: Femi, Aisha
+Reviewer: Lateefah
+
+Femi:
+  - E1. Features listing
+  - E2. Feature detail
+
+Aisha:
+  - E3. Blog listing
+  - E4. Blog post detail
+
+Lateefah: Reviews marketing pages. Start compiling revision list for all sections.
+
+
+WEEK 9 — Oct 6-10
+------------------
+REVISION WEEK 1
+
+All team members revisit feedback and polish:
+  - Femi: Revisions on Auth + Customer pages (A1-A2, B2, B5, B7, B8, B11)
+  - Aisha: Revisions on Customer pages (B3, B4, B9, B10, B12, B13)
+  - Lateefah: Final review pass on all customer pages, sign off on completed screens
+
+Goal: All customer-facing pages finalized.
+
+
+WEEK 10 — Oct 13-17
+--------------------
+REVISION WEEK 2
+
+All team members revisit feedback and polish:
+  - Femi: Revisions on Runner pages + overlays (C4-C6, G5-G6, F1-F2, F4)
+  - Aisha: Revisions on Rider pages + overlays (D1-D4, G7-G9, F3, F5)
+  - Lateefah: Final review pass on all operations pages (runner + rider), sign off
+
+Goal: All runner and rider pages finalized.
+
+
+WEEK 11 — Oct 20-24
+--------------------
+REVISION WEEK 3 + RESPONSIVE
+
+All team members:
+  - Femi: Revisions on marketing pages (E1-E4). Responsive variants for customer pages (tablet/desktop breakpoints for B1-B6)
+  - Aisha: Responsive variants for remaining customer pages + runner/rider pages where applicable
+  - Lateefah: Final review on marketing pages. Review responsive variants. Cross-page consistency audit.
+
+Goal: Marketing pages finalized. Key responsive breakpoints designed.
+
+
+WEEK 12 — Oct 27-31
+--------------------
+FINAL WEEK — HANDOFF PREPARATION
+
+All team members:
+  - Femi + Aisha:
+    - Final revisions from Lateefah's feedback
+    - Organize design file (named frames, proper layering)
+    - Export assets if needed
+    - Ensure all states are covered (loading, empty, error, success)
+  - Lateefah:
+    - Final sign-off on every screen
+    - Write design handoff notes (key decisions, interaction specs, edge cases)
+    - Deliver complete design file
+
+DELIVERABLE: Complete design file with all 43 screens, all states, responsive
+variants, and handoff documentation.
+
+
+========================================
+SUMMARY
+========================================
+
+Weeks 1-2:   Lateefah sets foundation (design system + 3 reference screens)
+Weeks 3-5:   Femi and Aisha design all customer pages + auth
+Weeks 6-7:   Femi and Aisha design runner + rider pages
+Week 8:      Femi and Aisha design marketing pages
+Weeks 9-11:  Revisions, polish, responsive variants
+Week 12:     Final handoff preparation
+
+Total pages:      29
+Total overlays:   14
+Total items:      43
+
+Team:
+  Lateefah (Senior) — Foundation, reference screens, reviews, final sign-off
+  Femi (Intern) — ~22 items
+  Aisha (Intern) — ~21 items
+
+
+========================================
+END OF DOCUMENT
+========================================

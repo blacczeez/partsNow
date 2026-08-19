@@ -12,8 +12,8 @@ export function FeaturePageLayout({ data }: { data: Feature }) {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
             <Icon className="h-8 w-8 text-white" />
           </div>
-          <h1 className="mt-6 text-3xl font-bold sm:text-4xl">{data.title}</h1>
-          <p className="mt-3 text-lg text-blue-100">{data.tagline}</p>
+          <h1 className="mt-6 text-2xl font-bold sm:text-3xl md:text-4xl">{data.title}</h1>
+          <p className="mt-3 text-base text-blue-100 sm:text-lg">{data.tagline}</p>
           <p className="mx-auto mt-4 max-w-2xl text-base text-blue-200">
             {data.description}
           </p>
@@ -23,7 +23,7 @@ export function FeaturePageLayout({ data }: { data: Feature }) {
       {/* Benefits */}
       <section className="bg-slate-50 px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-center text-2xl font-bold text-slate-900 sm:text-3xl">
+          <h2 className="text-center text-xl font-bold text-slate-900 sm:text-2xl md:text-3xl">
             Key Benefits
           </h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -53,7 +53,7 @@ export function FeaturePageLayout({ data }: { data: Feature }) {
       {/* How It Works */}
       <section className="bg-white px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-center text-2xl font-bold text-slate-900 sm:text-3xl">
+          <h2 className="text-center text-xl font-bold text-slate-900 sm:text-2xl md:text-3xl">
             How It Works
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
@@ -64,7 +64,7 @@ export function FeaturePageLayout({ data }: { data: Feature }) {
                     {step.number}
                   </span>
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">
+                <h3 className="mt-4 text-base font-semibold text-slate-900 sm:text-lg">
                   {step.title}
                 </h3>
                 <p className="mt-2 text-sm text-slate-500">
@@ -84,7 +84,7 @@ export function FeaturePageLayout({ data }: { data: Feature }) {
               key={stat.label}
               className="rounded-card border border-slate-200 bg-white p-6 text-center shadow-sm"
             >
-              <p className="text-2xl font-bold text-primary">{stat.value}</p>
+              <p className="text-xl font-bold text-primary sm:text-2xl">{stat.value}</p>
               <p className="mt-1 text-sm text-slate-500">{stat.label}</p>
             </div>
           ))}

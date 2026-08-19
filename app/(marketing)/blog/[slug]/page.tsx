@@ -60,7 +60,7 @@ export default async function BlogPostPage({
 
         {/* Header */}
         <header className="mb-10">
-          <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl md:text-4xl">
             {post.title}
           </h1>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-500">

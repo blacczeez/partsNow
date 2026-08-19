@@ -27,8 +27,8 @@ export default async function BlogPage({
       {/* Header */}
       <section className="bg-gradient-to-br from-primary to-primary-dark px-4 py-16 text-white sm:px-6 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-bold sm:text-4xl">Blog</h1>
-          <p className="mt-3 text-lg text-blue-100">
+          <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">Blog</h1>
+          <p className="mt-3 text-base text-blue-100 sm:text-lg">
             Tips, guides, and stories from the spare parts frontline.
           </p>
         </div>

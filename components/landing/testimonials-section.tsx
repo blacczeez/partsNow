@@ -1,73 +1,191 @@
-import { Star } from 'lucide-react';
+import Image from 'next/image';
+import { marketingFont, workSans } from '@/lib/fonts/marketing-font';
+import { cn } from '@/lib/utils/cn';
+import { marketingType } from '@/components/layout/marketing-canvas';
 
-const testimonials = [
-  {
-    name: 'Chidi O.',
-    location: 'Ikeja, Lagos',
-    role: 'Mechanic',
-    quote:
-      'I used to send my boy to Ladipo 3 times a day. Now I just send a voice note and the parts show up. I finish more jobs and my customers are happier.',
-    rating: 5,
-  },
-  {
-    name: 'Blessing A.',
-    location: 'Lekki, Lagos',
-    role: 'Car Owner',
-    quote:
-      'My mechanic kept telling me "the boy has gone to buy parts" for hours. With PartsDey I ordered the parts myself and they arrived before he finished draining the oil.',
-    rating: 5,
-  },
-  {
-    name: 'Emeka N.',
-    location: 'Surulere, Lagos',
-    role: 'Mechanic',
-    quote:
-      'The first time I tried it, I thought 45 minutes was a lie. The brake pads arrived in 38 minutes. I\'ve used it every week since.',
-    rating: 5,
-  },
-];
+function OrangeWave() {
+  return (
+    <div
+      className="pointer-events-none absolute opacity-[0.29]"
+      style={{ left: -17, top: 38, width: 389, height: 324 }}
+      aria-hidden
+    >
+      <svg viewBox="0 0 389 324" className="h-full w-full" fill="none">
+        {Array.from({ length: 24 }, (_, i) => {
+          const t = i / 23;
+          return (
+            <ellipse
+              key={i}
+              cx={194 + t * 70}
+              cy={162 + t * 55}
+              rx={194 - t * 147}
+              ry={162 - t * 123}
+              stroke="#FEBA7A"
+              strokeWidth="0.3"
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function Author({
+  src,
+  name,
+  role,
+  light,
+}: {
+  src: string;
+  name: string;
+  role: string;
+  light?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Image
+        src={src}
+        alt=""
+        width={47}
+        height={47}
+        className="h-[47px] w-[47px] rounded-full object-cover"
+      />
+      <div className="flex min-w-0 flex-col gap-1">
+        <p
+          className={cn(
+            marketingFont.className,
+            'text-base font-semibold leading-[19px]',
+            light ? 'text-white' : 'text-[#232323]'
+          )}
+        >
+          {name}
+        </p>
+        <p
+          className={cn(
+            marketingFont.className,
+            'whitespace-nowrap text-base font-normal leading-[19px]',
+            light ? 'text-[#F1F1F1]' : 'text-[#6C6C6C]'
+          )}
+        >
+          {role}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function QuoteMark({ className }: { className: string }) {
+  return (
+    <span className={`${workSans.className} text-2xl font-normal leading-8 sm:text-[32px] sm:leading-[38px] ${className}`}>
+      “
+    </span>
+  );
+}
 
 export function TestimonialsSection() {
   return (
-    <section className="bg-white px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-6xl">
-        <h2 className="text-center text-2xl font-bold text-slate-900 sm:text-3xl">
-          What Mechanics and Car Owners Say
+    <section
+      id="testimonials"
+      className="scroll-mt-20 bg-[#F8F8F8] px-4 py-14 sm:px-10 lg:py-[59px]"
+    >
+      <div className="mx-auto flex w-full max-w-[1117px] flex-col items-center gap-12 lg:gap-[99px]">
+        <h2 className={`font-marketing-display max-w-[373px] text-center text-[#232323] ${marketingType.section}`}>
+          What our customers are saying
         </h2>
-        <p className="mx-auto mt-2 max-w-xl text-center text-slate-500">
-          Real people, real orders, real time saved.
-        </p>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {testimonials.map((t) => (
-            <div
-              key={t.name}
-              className="flex flex-col rounded-card border border-slate-200 bg-slate-50 p-6"
-            >
-              {/* Stars */}
-              <div className="flex gap-0.5">
-                {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className="h-4 w-4 fill-amber-400 text-amber-400"
-                  />
-                ))}
+        <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-stretch">
+          <article className="relative overflow-hidden rounded-xl bg-[#E57105] p-4 lg:w-[354px] lg:shrink-0">
+            <OrangeWave />
+            <div className="relative z-10 flex flex-col justify-between gap-8">
+              <div className="flex flex-col">
+                <QuoteMark className="text-white" />
+                <p
+                  className={`${marketingFont.className} text-base leading-5 tracking-[-0.01em] text-white`}
+                >
+                  used to spend half my day driving to Ladipo just to find one
+                  part. Now I place an order and keep working while it&apos;s
+                  delivered. It&apos;s saved me hours every week.
+                </p>
               </div>
+              <Author
+                src="/images/landing/avatars/tunde.jpg"
+                name="Tunde A."
+                role="Auto Mechanic, Yaba"
+                light
+              />
+            </div>
+          </article>
 
-              {/* Quote */}
-              <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-700">
-                &ldquo;{t.quote}&rdquo;
-              </p>
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="rounded-xl bg-white p-4">
+                <div className="flex flex-col justify-between gap-6">
+                  <div className="flex flex-col">
+                    <QuoteMark className="text-[#232323]" />
+                    <p
+                      className={`${marketingFont.className} text-base leading-5 tracking-[-0.01em] text-[#656565]`}
+                    >
+                      The delivery was much faster than I expected, and the part
+                      matched perfectly. No more calling multiple vendors or
+                      walking around the market looking for availability.
+                    </p>
+                  </div>
+                  <Author
+                    src="/images/landing/avatars/chinedu.jpg"
+                    name="Chinedu E."
+                    role="Car Owner, Lekki"
+                  />
+                </div>
+              </article>
 
-              {/* Author */}
-              <div className="mt-5 border-t border-slate-200 pt-4">
-                <p className="text-sm font-semibold text-slate-900">{t.name}</p>
-                <p className="text-xs text-slate-500">
-                  {t.role} &middot; {t.location}
+              <article className="rounded-xl bg-white p-4">
+                <div className="flex flex-col justify-between gap-6">
+                  <div className="flex flex-col">
+                    <QuoteMark className="text-[#232323]" />
+                    <p
+                      className={`${marketingFont.className} text-base leading-5 tracking-[-0.01em] text-[#656565]`}
+                    >
+                      The ordering process was straightforward, and I loved
+                      getting updates throughout the delivery. It&apos;s become
+                      our first option whenever we need replacement parts.
+                    </p>
+                  </div>
+                  <Author
+                    src="/images/landing/avatars/grace.jpg"
+                    name="Grace O."
+                    role="Fleet Operations Coordinator"
+                  />
+                </div>
+              </article>
+            </div>
+
+            <div
+              className={`${marketingFont.className} flex flex-col items-center justify-around gap-6 rounded-xl bg-white px-6 py-8 sm:flex-row sm:gap-0`}
+            >
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-2xl font-medium leading-8 text-[#232323] sm:text-[32px] sm:leading-[39px]">
+                  50,000+
+                </p>
+                <p className="text-base leading-[19px] text-[#4F4F4F]">Parts</p>
+              </div>
+              <div className="flex flex-col items-center gap-2 border-[#B9B9B9] text-center sm:border-l sm:border-dashed sm:px-[62px]">
+                <p className="text-2xl font-medium leading-8 text-[#232323] sm:text-[32px] sm:leading-[39px]">
+                  20+
+                </p>
+                <p className="text-base leading-[19px] text-[#4F4F4F]">
+                  Trusted Dealers
+                </p>
+              </div>
+              <div className="flex flex-col items-center gap-2 border-[#B9B9B9] text-center sm:border-l sm:border-dashed sm:px-[62px]">
+                <p className="text-2xl font-medium leading-8 text-[#232323] sm:text-[32px] sm:leading-[39px]">
+                  24/7
+                </p>
+                <p className="text-base leading-[19px] text-[#4F4F4F]">
+                  Availability
                 </p>
               </div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>

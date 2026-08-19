@@ -2,17 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { Menu, X, ChevronDown, Zap, ShieldCheck, Wallet, MapPin, Star } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { MarketingCanvas } from '@/components/layout/marketing-canvas';
+import { marketingFont } from '@/lib/fonts/marketing-font';
 
-const featureLinks = [
-  { href: '/features/instant-delivery', label: '45-Minute Delivery', icon: Zap },
-  { href: '/features/sourcing', label: 'Expert Sourcing', icon: ShieldCheck },
-  { href: '/features/wallet', label: 'PartsDey Wallet', icon: Wallet },
-  { href: '/features/tracking', label: 'Live Tracking', icon: MapPin },
-  { href: '/features/loyalty', label: 'Loyalty Rewards', icon: Star },
-];
+const NAV_DEFAULT = '#717171';
+const NAV_ACTIVE = '#784FE5';
+
+const navItems = [
+  { href: '/features', label: 'Features', match: '/features' },
+  { href: '/blog', label: 'Blog', match: '/blog' },
+  { href: '/#testimonials', label: 'Customer Stories' },
+  { href: '/#markets', label: 'Our Markets' },
+  { href: '/#faq', label: 'FAQs' },
+] as const;
 
 interface MarketingNavProps {
   variant?: 'transparent' | 'solid';
@@ -20,271 +25,104 @@ interface MarketingNavProps {
 
 export function MarketingNav({ variant = 'solid' }: MarketingNavProps) {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
   const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
-  const mobileOpen = mobileMenuPath === pathname;
-  const [featuresOpen, setFeaturesOpen] = useState(false);
-  const [mobileFeaturesOpen, setMobileFeaturesOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const isTransparent = variant === 'transparent';
-
-  // Close mobile menu on route change
-  useEffect(() => {
+  if (mobileMenuPath !== null && mobileMenuPath !== pathname) {
     setMobileMenuPath(null);
-    setMobileFeaturesOpen(false);
-  }, [pathname]);
+  }
+  const mobileOpen = mobileMenuPath === pathname;
 
-  // Close desktop dropdown on click outside
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setFeaturesOpen(false);
-      }
-    }
-    if (featuresOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [featuresOpen]);
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  function isActive(item: (typeof navItems)[number]) {
+    if (!('match' in item) || !item.match) return false;
+    return pathname === item.match || pathname.startsWith(`${item.match}/`);
+  }
 
   return (
     <header
       className={cn(
-        'sticky top-0 z-50',
-        !isTransparent && 'border-b border-slate-200 bg-white'
+        marketingFont.className,
+        'sticky top-0 z-50 transition-[background-color,border-color] duration-200',
+        (variant === 'solid' || scrolled) && 'bg-white',
+        scrolled && 'border-b border-[#E8E8E8]'
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        {/* Logo */}
+      <MarketingCanvas className="flex items-center justify-between px-4 py-5 sm:px-10">
         <Link
           href="/"
-          className={cn(
-            'text-xl font-bold',
-            isTransparent ? 'text-white' : 'text-slate-900'
-          )}
+          className="text-lg font-bold leading-none text-slate-900 sm:text-xl"
         >
           PartsDey
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-6 sm:flex">
-          {/* Features dropdown */}
-          <div
-            ref={dropdownRef}
-            className="relative"
-            onMouseEnter={() => setFeaturesOpen(true)}
-            onMouseLeave={() => setFeaturesOpen(false)}
-          >
-            <button
-              type="button"
-              onClick={() => setFeaturesOpen((v) => !v)}
-              className={cn(
-                'inline-flex items-center gap-1 text-sm font-medium transition-colors',
-                isTransparent
-                  ? 'text-white/80 hover:text-white'
-                  : 'text-slate-600 hover:text-slate-900',
-                pathname.startsWith('/features') &&
-                  (isTransparent ? 'text-white' : 'text-slate-900')
-              )}
-            >
-              Features
-              <ChevronDown
-                className={cn(
-                  'h-3.5 w-3.5 transition-transform',
-                  featuresOpen && 'rotate-180'
-                )}
-              />
-            </button>
-
-            {featuresOpen && (
-              <div className="absolute left-1/2 top-full z-50 w-64 -translate-x-1/2 pt-2">
-              <div className="rounded-card border border-slate-200 bg-white py-2 shadow-lg">
-                {featureLinks.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900',
-                      pathname === href && 'bg-slate-50 text-slate-900'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 text-primary" />
-                    {label}
-                  </Link>
-                ))}
-                <div className="mx-4 my-1.5 border-t border-slate-100" />
-                <Link
-                  href="/features"
-                  className="block px-4 py-2 text-sm font-medium text-primary hover:bg-slate-50"
-                >
-                  View all features
-                </Link>
-              </div>
-              </div>
-            )}
-          </div>
-
-          {/* Blog link */}
-          <Link
-            href="/blog"
-            className={cn(
-              'text-sm font-medium transition-colors',
-              isTransparent
-                ? 'text-white/80 hover:text-white'
-                : 'text-slate-600 hover:text-slate-900',
-              pathname.startsWith('/blog') &&
-                (isTransparent ? 'text-white' : 'text-slate-900')
-            )}
-          >
-            Blog
-          </Link>
-
-          <Link
-            href="/login"
-            className={cn(
-              'rounded-button px-4 py-2 text-sm font-medium transition-colors',
-              isTransparent
-                ? 'text-white/80 hover:text-white'
-                : 'text-slate-600 hover:text-slate-900'
-            )}
-          >
-            Login
-          </Link>
-          <Link
-            href="/login"
-            className={cn(
-              'rounded-button px-4 py-2 text-sm font-medium transition-colors',
-              isTransparent
-                ? 'bg-white text-primary hover:bg-white/90'
-                : 'bg-primary text-white hover:bg-primary-dark'
-            )}
-          >
-            Get Started
-          </Link>
+        <nav className="hidden items-center md:flex md:gap-8">
+          {navItems.map((item) => {
+            const active = isActive(item);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="text-center text-base leading-none transition-colors hover:text-[#784FE5]"
+                style={{ color: active ? NAV_ACTIVE : NAV_DEFAULT }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* Mobile hamburger */}
+        <Link
+          href="/login"
+          className="hidden text-base leading-none text-[#784FE5] transition-opacity hover:opacity-80 md:inline"
+        >
+          Get started
+        </Link>
+
         <button
           type="button"
-          className={cn(
-            'sm:hidden p-2 -mr-2',
-            isTransparent ? 'text-white' : 'text-slate-700'
-          )}
+          className="p-2 -mr-2 md:hidden"
+          style={{ color: NAV_DEFAULT }}
           onClick={() => setMobileMenuPath(mobileOpen ? null : pathname)}
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
         >
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
-      </div>
+      </MarketingCanvas>
 
-      {/* Mobile dropdown */}
       {mobileOpen && (
         <div
           className={cn(
-            'sm:hidden border-t px-4 pb-4 pt-2',
-            isTransparent
-              ? 'border-white/20 bg-primary-dark/95 backdrop-blur-sm'
-              : 'border-slate-200 bg-white'
+            'border-t border-slate-200 px-4 pb-4 pt-2 md:hidden',
+            variant === 'solid' || scrolled ? 'bg-white' : 'bg-white/95 backdrop-blur-sm'
           )}
         >
           <nav className="flex flex-col gap-1">
-            {/* Features expandable section */}
-            <button
-              type="button"
-              onClick={() => setMobileFeaturesOpen((v) => !v)}
-              className={cn(
-                'flex w-full items-center justify-between rounded-button px-3 py-2.5 text-sm font-medium transition-colors',
-                isTransparent
-                  ? 'text-white/80 hover:bg-white/10 hover:text-white'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-                pathname.startsWith('/features') &&
-                  (isTransparent
-                    ? 'bg-white/10 text-white'
-                    : 'bg-slate-50 text-slate-900')
-              )}
-            >
-              Features
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 transition-transform',
-                  mobileFeaturesOpen && 'rotate-180'
-                )}
-              />
-            </button>
-
-            {mobileFeaturesOpen && (
-              <div className="flex flex-col gap-0.5 pl-3">
-                {featureLinks.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded-button px-3 py-2 text-sm transition-colors',
-                      isTransparent
-                        ? 'text-white/70 hover:bg-white/10 hover:text-white'
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900',
-                      pathname === href &&
-                        (isTransparent
-                          ? 'bg-white/10 text-white'
-                          : 'bg-slate-50 text-slate-900')
-                    )}
-                  >
-                    <Icon className={cn('h-4 w-4', isTransparent ? 'text-white/60' : 'text-primary')} />
-                    {label}
-                  </Link>
-                ))}
+            {navItems.map((item) => {
+              const active = isActive(item);
+              return (
                 <Link
-                  href="/features"
-                  className={cn(
-                    'rounded-button px-3 py-2 text-sm font-medium transition-colors',
-                    isTransparent
-                      ? 'text-white/70 hover:bg-white/10 hover:text-white'
-                      : 'text-primary hover:bg-slate-50'
-                  )}
+                  key={item.label}
+                  href={item.href}
+                  className="rounded-button px-3 py-2.5 text-base leading-none"
+                  style={{ color: active ? NAV_ACTIVE : NAV_DEFAULT }}
+                  onClick={() => setMobileMenuPath(null)}
                 >
-                  View all features
+                  {item.label}
                 </Link>
-              </div>
-            )}
-
-            {/* Blog */}
-            <Link
-              href="/blog"
-              className={cn(
-                'rounded-button px-3 py-2.5 text-sm font-medium transition-colors',
-                isTransparent
-                  ? 'text-white/80 hover:bg-white/10 hover:text-white'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-                pathname.startsWith('/blog') &&
-                  (isTransparent
-                    ? 'bg-white/10 text-white'
-                    : 'bg-slate-50 text-slate-900')
-              )}
-            >
-              Blog
-            </Link>
-
+              );
+            })}
             <Link
               href="/login"
-              className={cn(
-                'rounded-button px-3 py-2.5 text-sm font-medium transition-colors',
-                isTransparent
-                  ? 'text-white/80 hover:bg-white/10 hover:text-white'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              )}
+              className="rounded-button px-3 py-2.5 text-base leading-none text-[#784FE5]"
+              onClick={() => setMobileMenuPath(null)}
             >
-              Login
-            </Link>
-            <Link
-              href="/login"
-              className={cn(
-                'mt-1 rounded-button px-3 py-2.5 text-center text-sm font-medium transition-colors',
-                isTransparent
-                  ? 'bg-white text-primary hover:bg-white/90'
-                  : 'bg-primary text-white hover:bg-primary-dark'
-              )}
-            >
-              Get Started
+              Get started
             </Link>
           </nav>
         </div>
