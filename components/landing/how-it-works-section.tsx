@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { MessageCircle, ShieldCheck, Package, type LucideIcon } from 'lucide-react';
 import { marketingFont } from '@/lib/fonts/marketing-font';
 import { cn } from '@/lib/utils/cn';
-import { MarketingCanvas, marketingType } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS, marketingType } from '@/components/layout/marketing-canvas';
 
 const steps = [
   {
@@ -106,7 +106,7 @@ function StepCopy({
   const Icon = step.icon as LucideIcon;
   const body = (
     <>
-      <span className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded bg-[#E57105]">
+      <span className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#E57105]">
         <Icon className="h-6 w-6 text-white" fill="white" strokeWidth={1.5} />
       </span>
       <span className="flex min-w-0 flex-col gap-2 sm:gap-4">
@@ -183,8 +183,8 @@ export function HowItWorksSection() {
       <section className="overflow-x-clip bg-[#3E208D] lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:overflow-hidden">
         <WavePattern />
 
-        <MarketingCanvas className="relative flex flex-col px-4 py-16 sm:px-10 lg:h-full lg:min-h-0 lg:px-[87px] lg:py-10">
-          <h2 className={`font-marketing-display shrink-0 text-center text-white lg:pt-2 ${marketingType.section}`}>
+        <MarketingCanvas className={`relative flex flex-col py-16 lg:h-full lg:min-h-0 lg:py-10 ${MARKETING_GUTTER_CLASS}`}>
+          <h2 className={`font-marketing-display ${marketingFont.className} text-center text-xl font-semibold tracking-[-0.025em] text-[#fff] sm:text-[24px] sm:leading-10`}>
             How It Works
           </h2>
 

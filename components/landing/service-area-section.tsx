@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { Clock, Bus, BadgeCheck, Package } from 'lucide-react';
 import { marketingFont } from '@/lib/fonts/marketing-font';
-import { marketingType } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS, marketingType } from '@/components/layout/marketing-canvas';
 
 function Stat({
   icon: Icon,
@@ -49,7 +49,7 @@ function MarketCard({
     >
       <div className="relative z-10 flex flex-col gap-4">
         <div className="flex max-w-[317px] flex-col gap-3">
-          <h3 className="font-marketing-display text-xl leading-7 text-white sm:text-2xl sm:leading-[29px]">
+          <h3 className="font-marketing-display text-xl leading-7 text-white sm:leading-[29px]">
             {title}
           </h3>
           <p
@@ -76,15 +76,16 @@ function MarketCard({
 
 export function ServiceAreaSection() {
   return (
-    <section id="markets" className="scroll-mt-20 bg-[#F8F8F8] px-4 py-7 sm:px-10">
-      <div className="relative mx-auto w-full max-w-[1360px] overflow-hidden rounded-[20px] bg-white lg:h-[683px]">
+    <section id="markets" className="scroll-mt-20 bg-[#F8F8F8]">
+      <MarketingCanvas className={`py-7 ${MARKETING_GUTTER_CLASS}`}>
+      <div className="relative w-full overflow-hidden rounded-[20px] bg-white lg:h-[683px]">
         <div className="absolute inset-0 lg:-left-[347px] lg:-top-[5px] lg:h-[872px] lg:w-[1309px] lg:inset-auto">
           <Image
             src="/images/landing/markets-banner.png"
             alt="Mechanic inspecting a vehicle wheel"
             fill
             className="object-cover object-[-80%_center]"
-            sizes="1360px"
+            sizes="(min-width: 1440px) 1440px, 100vw"
           />
         </div>
         <div
@@ -101,7 +102,7 @@ export function ServiceAreaSection() {
               Serving Lagos Markets
             </h2>
             <p
-              className={`${marketingFont.className} mt-2 max-w-[338px] text-base leading-5 tracking-[-0.01em] text-[#E7E7E7]`}
+              className={`${marketingFont.className} mt-2 max-w-[338px] text-sm leading-5 tracking-[-0.01em] text-[#E7E7E7]`}
             >
               No apps to learn, no market trips, no guesswork. Just parts at
               your door.
@@ -130,6 +131,7 @@ export function ServiceAreaSection() {
           </div>
         </div>
       </div>
+      </MarketingCanvas>
     </section>
   );
 }

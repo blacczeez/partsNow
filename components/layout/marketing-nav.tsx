@@ -2,42 +2,34 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { MarketingCanvas } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS } from '@/components/layout/marketing-canvas';
+import { BrandLogo } from '@/components/layout/brand-logo';
 import { marketingFont } from '@/lib/fonts/marketing-font';
 
-const NAV_DEFAULT = '#717171';
-const NAV_ACTIVE = '#784FE5';
+const NAV_LINK = '#000000';
+const HEADER_HEIGHT_CLASS = 'h-[69px]';
 
 const navItems = [
   { href: '/features', label: 'Features', match: '/features' },
   { href: '/blog', label: 'Blog', match: '/blog' },
   { href: '/#testimonials', label: 'Customer Stories' },
   { href: '/#markets', label: 'Our Markets' },
-  { href: '/#faq', label: 'FAQs' },
 ] as const;
 
 interface MarketingNavProps {
   variant?: 'transparent' | 'solid';
 }
 
-export function MarketingNav({ variant = 'solid' }: MarketingNavProps) {
+export function MarketingNav({ variant: _variant = 'solid' }: MarketingNavProps) {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
   if (mobileMenuPath !== null && mobileMenuPath !== pathname) {
     setMobileMenuPath(null);
   }
   const mobileOpen = mobileMenuPath === pathname;
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   function isActive(item: (typeof navItems)[number]) {
     if (!('match' in item) || !item.match) return false;
@@ -45,88 +37,105 @@ export function MarketingNav({ variant = 'solid' }: MarketingNavProps) {
   }
 
   return (
-    <header
-      className={cn(
-        marketingFont.className,
-        'sticky top-0 z-50 transition-[background-color,border-color] duration-200',
-        (variant === 'solid' || scrolled) && 'bg-white',
-        scrolled && 'border-b border-[#E8E8E8]'
-      )}
-    >
-      <MarketingCanvas className="flex items-center justify-between px-4 py-5 sm:px-10">
-        <Link
-          href="/"
-          className="text-lg font-bold leading-none text-slate-900 sm:text-xl"
-        >
-          PartsDey
-        </Link>
+    <>
+      <header
+        className={cn(
+          marketingFont.className,
+          'fixed inset-x-0 top-0 z-50  bg-white'
+        )}
+      >
+        <MarketingCanvas className={`flex items-center justify-between py-3 ${MARKETING_GUTTER_CLASS}`}>
+          <BrandLogo variant="color" height={32} priority />
 
-        <nav className="hidden items-center md:flex md:gap-8">
-          {navItems.map((item) => {
-            const active = isActive(item);
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="text-center text-base leading-none transition-colors hover:text-[#784FE5]"
-                style={{ color: active ? NAV_ACTIVE : NAV_DEFAULT }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <Link
-          href="/login"
-          className="hidden text-base leading-none text-[#784FE5] transition-opacity hover:opacity-80 md:inline"
-        >
-          Get started
-        </Link>
-
-        <button
-          type="button"
-          className="p-2 -mr-2 md:hidden"
-          style={{ color: NAV_DEFAULT }}
-          onClick={() => setMobileMenuPath(mobileOpen ? null : pathname)}
-          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-        >
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </MarketingCanvas>
-
-      {mobileOpen && (
-        <div
-          className={cn(
-            'border-t border-slate-200 px-4 pb-4 pt-2 md:hidden',
-            variant === 'solid' || scrolled ? 'bg-white' : 'bg-white/95 backdrop-blur-sm'
-          )}
-        >
-          <nav className="flex flex-col gap-1">
+          <nav className="hidden items-center md:flex md:gap-8">
             {navItems.map((item) => {
               const active = isActive(item);
               return (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="rounded-button px-3 py-2.5 text-base leading-none"
-                  style={{ color: active ? NAV_ACTIVE : NAV_DEFAULT }}
-                  onClick={() => setMobileMenuPath(null)}
+                  className={cn(
+                    'text-center text-[0.875rem] font-medium leading-none transition-colors hover:text-slate-700',
+                    active && 'text-slate-700'
+                  )}
+                  style={{ color: active ? undefined : NAV_LINK }}
                 >
                   {item.label}
                 </Link>
               );
             })}
+          </nav>
+
+          <div className="hidden items-center gap-3 md:flex">
             <Link
               href="/login"
-              className="rounded-button px-3 py-2.5 text-base leading-none text-[#784FE5]"
-              onClick={() => setMobileMenuPath(null)}
+              className="inline-flex h-10 items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-5 text-[0.875rem] font-medium leading-none text-[#0F172A] transition-opacity hover:opacity-80"
+            >
+              Login
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex h-10 items-center justify-center rounded-full bg-[#3E208D] px-5 text-[0.875rem] font-medium leading-none text-white transition-opacity hover:opacity-90"
             >
               Get started
             </Link>
-          </nav>
-        </div>
-      )}
-    </header>
+          </div>
+
+          <button
+            type="button"
+            className="-mr-2 p-2 md:hidden"
+            style={{ color: NAV_LINK }}
+            onClick={() => setMobileMenuPath(mobileOpen ? null : pathname)}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileOpen ? (
+              <X className="h-6 w-6" strokeWidth={3} />
+            ) : (
+              <Menu className="h-6 w-6" strokeWidth={3} />
+            )}
+          </button>
+        </MarketingCanvas>
+
+        {mobileOpen && (
+          <div className="border-t border-[#f3f4f6] bg-white md:hidden">
+            <MarketingCanvas className={`pb-4 pt-2 ${MARKETING_GUTTER_CLASS}`}>
+              <nav className="flex flex-col gap-1">
+                {navItems.map((item) => {
+                  const active = isActive(item);
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="rounded-button px-3 py-2.5 text-[0.875rem] font-medium leading-none"
+                      style={{ color: active ? '#334155' : NAV_LINK }}
+                      onClick={() => setMobileMenuPath(null)}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+                <div className="mt-3 flex flex-col gap-2 px-3">
+                  <Link
+                    href="/login"
+                    className="inline-flex h-10 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[0.875rem] font-medium leading-none text-[#0F172A]"
+                    onClick={() => setMobileMenuPath(null)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-10 items-center justify-center rounded-full bg-[#3E208D] text-[0.875rem] font-medium leading-none text-white"
+                    onClick={() => setMobileMenuPath(null)}
+                  >
+                    Get started
+                  </Link>
+                </div>
+              </nav>
+            </MarketingCanvas>
+          </div>
+        )}
+      </header>
+      <div className={HEADER_HEIGHT_CLASS} aria-hidden />
+    </>
   );
 }

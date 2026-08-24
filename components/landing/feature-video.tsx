@@ -21,7 +21,7 @@ export function FeatureVideo() {
   }, []);
 
   return (
-    <div className="relative aspect-[430/516] w-full shrink-0 overflow-hidden rounded-xl bg-[#0D0D0D] lg:w-[430px]">
+    <div className="relative h-[220px] w-full shrink-0 overflow-hidden rounded-xl bg-[#0D0D0D] sm:h-[280px] lg:aspect-[430/516] lg:h-auto lg:w-[430px]">
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-contain"

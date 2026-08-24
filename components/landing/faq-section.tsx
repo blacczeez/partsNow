@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { marketingType } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS, marketingType } from '@/components/layout/marketing-canvas';
 import { marketingFont } from '@/lib/fonts/marketing-font';
 
 const faqs = [
@@ -55,7 +55,7 @@ function FaqItem({
         className="flex w-full items-center justify-between gap-4 text-left"
         aria-expanded={isOpen}
       >
-        <span className="text-base font-medium leading-5 tracking-[-0.01em] text-[#232323] sm:text-lg">
+        <span className="text-base font-semibold leading-5 tracking-[-0.01em] text-[#232323] sm:text-lg">
           {question}
         </span>
         <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-white">
@@ -69,7 +69,7 @@ function FaqItem({
         </span>
       </button>
       {isOpen && (
-        <p className="mt-5 max-w-[844px] text-sm font-normal leading-5 tracking-[-0.01em] text-[#838383]">
+        <p className="mt-5 max-w-[844px] text-sm font-normal leading-5 tracking-[-0.01em] text-[#93a3af]">
           {answer}
         </p>
       )}
@@ -79,18 +79,20 @@ function FaqItem({
 
 export function FaqSection() {
   return (
-    <section id="faq" className="scroll-mt-20 bg-[#F8F8F8] px-4 py-16 sm:px-6">
-      <div className="mx-auto flex w-full max-w-[959px] flex-col items-center gap-[76px]">
-        <h2 className={`font-marketing-display text-center text-[#232323] ${marketingType.section}`}>
-          Frequently Asked Questions
-        </h2>
+    <section id="faq" className="scroll-mt-20 bg-[#F8F8F8]">
+      <MarketingCanvas className={`flex flex-col items-center py-6 ${MARKETING_GUTTER_CLASS}`}>
+        <div className="flex w-full max-w-[959px] flex-col items-center gap-[26px]">
+          <h2             className={`${marketingFont.className} text-center text-xl font-semibold tracking-[-0.025em] text-[#000929] sm:text-[24px] sm:leading-10`}>
+            Frequently Asked Questions
+          </h2>
 
-        <div className="flex w-full flex-col gap-3">
-          {faqs.map((faq, index) => (
-            <FaqItem key={faq.question} {...faq} defaultOpen={index === 0} />
-          ))}
+          <div className="flex w-full flex-col gap-3">
+            {faqs.map((faq, index) => (
+              <FaqItem key={faq.question} {...faq} defaultOpen={index === 0} />
+            ))}
+          </div>
         </div>
-      </div>
+      </MarketingCanvas>
     </section>
   );
 }

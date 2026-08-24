@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { marketingFont, workSans } from '@/lib/fonts/marketing-font';
 import { cn } from '@/lib/utils/cn';
-import { marketingType } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS, marketingType } from '@/components/layout/marketing-canvas';
 
 function OrangeWave() {
   return (
@@ -64,7 +64,7 @@ function Author({
           className={cn(
             marketingFont.className,
             'whitespace-nowrap text-base font-normal leading-[19px]',
-            light ? 'text-[#F1F1F1]' : 'text-[#6C6C6C]'
+            light ? 'text-[#F1F1F1]' : 'text-[#93a3af]'
           )}
         >
           {role}
@@ -86,10 +86,11 @@ export function TestimonialsSection() {
   return (
     <section
       id="testimonials"
-      className="scroll-mt-20 bg-[#F8F8F8] px-4 py-14 sm:px-10 lg:py-[59px]"
+      className="scroll-mt-20 bg-[#F8F8F8]"
     >
-      <div className="mx-auto flex w-full max-w-[1117px] flex-col items-center gap-12 lg:gap-[99px]">
-        <h2 className={`font-marketing-display max-w-[373px] text-center text-[#232323] ${marketingType.section}`}>
+      <MarketingCanvas className={`flex flex-col items-center py-14 lg:py-[59px] ${MARKETING_GUTTER_CLASS}`}>
+      <div className="flex w-full max-w-[1117px] flex-col items-center gap-12 lg:gap-[59px]">
+        <h2             className={`${marketingFont.className} text-center text-xl font-semibold tracking-[-0.025em] text-[#000929] sm:text-[24px] sm:leading-10`}>
           What our customers are saying
         </h2>
 
@@ -100,7 +101,7 @@ export function TestimonialsSection() {
               <div className="flex flex-col">
                 <QuoteMark className="text-white" />
                 <p
-                  className={`${marketingFont.className} text-base leading-5 tracking-[-0.01em] text-white`}
+                  className={`${marketingFont.className} text-sm leading-5 tracking-[-0.01em] text-white`}
                 >
                   used to spend half my day driving to Ladipo just to find one
                   part. Now I place an order and keep working while it&apos;s
@@ -123,7 +124,7 @@ export function TestimonialsSection() {
                   <div className="flex flex-col">
                     <QuoteMark className="text-[#232323]" />
                     <p
-                      className={`${marketingFont.className} text-base leading-5 tracking-[-0.01em] text-[#656565]`}
+                      className={`${marketingFont.className} text-sm leading-5 tracking-[-0.01em] text-[#93a3af]`}
                     >
                       The delivery was much faster than I expected, and the part
                       matched perfectly. No more calling multiple vendors or
@@ -143,7 +144,7 @@ export function TestimonialsSection() {
                   <div className="flex flex-col">
                     <QuoteMark className="text-[#232323]" />
                     <p
-                      className={`${marketingFont.className} text-base leading-5 tracking-[-0.01em] text-[#656565]`}
+                      className={`${marketingFont.className} text-sm leading-5 tracking-[-0.01em] text-[#93a3af]`}
                     >
                       The ordering process was straightforward, and I loved
                       getting updates throughout the delivery. It&apos;s become
@@ -160,27 +161,27 @@ export function TestimonialsSection() {
             </div>
 
             <div
-              className={`${marketingFont.className} flex flex-col items-center justify-around gap-6 rounded-xl bg-white px-6 py-8 sm:flex-row sm:gap-0`}
+              className={`${marketingFont.className} flex flex-row items-center justify-around gap-2 rounded-xl bg-white px-3 py-6 sm:gap-0 sm:px-6 sm:py-8`}
             >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <p className="text-2xl font-medium leading-8 text-[#232323] sm:text-[32px] sm:leading-[39px]">
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
+                <p className="text-xl font-semibold leading-7 text-[#232323] sm:text-[32px] sm:leading-[39px]">
                   50,000+
                 </p>
-                <p className="text-base leading-[19px] text-[#4F4F4F]">Parts</p>
+                <p className="text-sm leading-[19px] text-[#93a3af] sm:text-base">Parts</p>
               </div>
-              <div className="flex flex-col items-center gap-2 border-[#B9B9B9] text-center sm:border-l sm:border-dashed sm:px-[62px]">
-                <p className="text-2xl font-medium leading-8 text-[#232323] sm:text-[32px] sm:leading-[39px]">
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2 border-l border-dashed border-[#B9B9B9] px-2 text-center sm:px-[62px]">
+                <p className="text-xl font-semibold leading-7 text-[#232323] sm:text-[32px] sm:leading-[39px]">
                   20+
                 </p>
-                <p className="text-base leading-[19px] text-[#4F4F4F]">
+                <p className="text-sm leading-[19px] text-[#93a3af] sm:text-base">
                   Trusted Dealers
                 </p>
               </div>
-              <div className="flex flex-col items-center gap-2 border-[#B9B9B9] text-center sm:border-l sm:border-dashed sm:px-[62px]">
-                <p className="text-2xl font-medium leading-8 text-[#232323] sm:text-[32px] sm:leading-[39px]">
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2 border-l border-dashed border-[#B9B9B9] px-2 text-center sm:px-[62px]">
+                <p className="text-xl font-semibold leading-7 text-[#232323] sm:text-[32px] sm:leading-[39px]">
                   24/7
                 </p>
-                <p className="text-base leading-[19px] text-[#4F4F4F]">
+                <p className="text-sm leading-[19px] text-[#93a3af] sm:text-base">
                   Availability
                 </p>
               </div>
@@ -188,6 +189,7 @@ export function TestimonialsSection() {
           </div>
         </div>
       </div>
+      </MarketingCanvas>
     </section>
   );
 }

@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { marketingFont } from '@/lib/fonts/marketing-font';
-import { MarketingCanvas, MARKETING_SECTION_SPACE, marketingType } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS, MARKETING_SECTION_SPACE, marketingType } from '@/components/layout/marketing-canvas';
 import { FeatureVideo } from '@/components/landing/feature-video';
 
 const leftFeatures = [
@@ -69,11 +69,11 @@ function FeatureCard({
     >
       <div className="flex w-full flex-col items-start gap-3">
         <Icon className="h-[25px] w-[25px]" color="#F4AF6E" strokeWidth={2} />
-        <h3 className="font-marketing-display text-base leading-5 text-[#151515]">
+        <h3 className="font-marketing-display text-base font-semibold leading-5 text-[#151515]">
           {title}
         </h3>
         <p
-          className={`${marketingFont.className} text-base leading-[22px] tracking-[-0.01em] text-[#828282]`}
+          className={`${marketingFont.className} text-sm leading-[22px] tracking-[-0.01em] text-[#93a3af]`}
         >
           {description}
         </p>
@@ -101,8 +101,9 @@ function FeatureColumn({
 export function FeaturesSection() {
   return (
     <section className="bg-[#F8F8F8]">
-      <MarketingCanvas className={`flex flex-col items-center gap-12 px-4 sm:px-10 lg:gap-[100px] ${MARKETING_SECTION_SPACE}`}>
-        <h2 className={`font-marketing-display max-w-[528px] text-center text-[#202020] ${marketingType.section}`}>
+      <MarketingCanvas className={`flex flex-col items-center gap-12 lg:gap-[30px] ${MARKETING_GUTTER_CLASS} ${MARKETING_SECTION_SPACE}`}>
+        <h2 
+            className={`${marketingFont.className} text-center text-xl font-semibold tracking-[-0.025em] text-[#000929] sm:text-[24px] sm:leading-10`}>
           Built for How You Actually Work
         </h2>
 

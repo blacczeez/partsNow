@@ -2,10 +2,13 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils/cn';
 
 /** Landing / marketing content width. Change this once to update every section. */
-export const MARKETING_MAX_WIDTH_CLASS = 'max-w-[1520px]';
+export const MARKETING_MAX_WIDTH_CLASS = 'max-w-[1340px]';
+
+/** Shared left/right inset so header, sections, and footer share the same edges. */
+export const MARKETING_GUTTER_CLASS = 'px-4 sm:px-10';
 
 /** Vertical rhythm for marketing sections. Prefer padding over fixed heights. */
-export const MARKETING_SECTION_SPACE = 'py-16 lg:py-24';
+export const MARKETING_SECTION_SPACE = 'py-8 lg:py-10';
 
 /** Display type. Mobile-first sizes; larger screens pick up the sm/lg steps. */
 export const marketingType = {

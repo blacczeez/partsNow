@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { marketingFont } from '@/lib/fonts/marketing-font';
 import { cn } from '@/lib/utils/cn';
-import { MarketingCanvas, marketingType } from '@/components/layout/marketing-canvas';
+import { MarketingCanvas, MARKETING_GUTTER_CLASS } from '@/components/layout/marketing-canvas';
+import { BrandLogo } from '@/components/layout/brand-logo';
 
 const productLinks = [
   { href: '/search?category=engine', label: 'Engine Parts' },
@@ -37,7 +38,7 @@ function FooterColumn({
 }) {
   return (
     <div className="flex flex-col items-start gap-7">
-      <p className="text-sm leading-5 tracking-[-0.01em] text-[#ABABAB]">
+      <p className="text-sm font-bold leading-5 tracking-[-0.01em] text-[#FFF]">
         {title}
       </p>
       <ul className="flex flex-col items-start gap-4">
@@ -45,7 +46,7 @@ function FooterColumn({
           <li key={link.label}>
             <Link
               href={link.href}
-              className="text-base leading-5 tracking-[-0.01em] text-[#EBEBEB] transition-opacity hover:opacity-80"
+              className="text-sm leading-5 tracking-[-0.01em] text-[#EBEBEB] transition-opacity hover:opacity-80"
             >
               {link.label}
             </Link>
@@ -90,18 +91,17 @@ export function Footer({ overlapCta = false }: { overlapCta?: boolean }) {
       <div className="relative">
         <MarketingCanvas
           className={cn(
-            'relative flex flex-col items-center gap-[62px] px-4 pb-8 sm:px-[52px]',
+            'relative flex flex-col items-center gap-[62px] pb-8',
+            MARKETING_GUTTER_CLASS,
             overlapCta ? 'pt-28 sm:pt-[221px]' : 'pt-20 sm:pt-[120px]'
           )}
         >
-          <div className="flex w-full max-w-[1335px] flex-col justify-between gap-12 lg:flex-row lg:items-start lg:gap-[168px]">
+          <div className="flex w-full flex-col justify-between gap-12 lg:flex-row lg:items-start lg:gap-[168px]">
             <div className="flex w-full max-w-[380px] flex-col items-start gap-9">
-              <Link href="/" className={`text-white ${marketingType.brand}`}>
-                PartsDey
-              </Link>
+              <BrandLogo variant="white" height={36} />
 
-              <div className="flex w-full flex-col items-start gap-4">
-                <p className="text-base leading-5 tracking-[-0.01em] text-[#A3A3A3]">
+              <div className="flex w-full flex-col items-start gap-3">
+                <p className="text-sm sm:text-sm leading-5 tracking-[-0.01em] text-[#FFF]">
                   Keeping trucks moving with reliable parts, trusted suppliers,
                   and fast nationwide delivery.
                 </p>
