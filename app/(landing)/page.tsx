@@ -15,7 +15,7 @@ export default function HomePage() {
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || user) return null;
-
+  // Always render the landing page immediately — no blank screen.
+  // If auth resolves with a user, the effect above redirects to /dashboard.
   return <LandingPage />;
 }
