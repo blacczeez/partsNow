@@ -3,14 +3,15 @@ import type { UserType } from '@/lib/types/database';
 export type AppArea = 'customer' | 'admin' | 'runner' | 'rider' | 'auth';
 
 const ROLE_HOME_PATHS: Record<UserType, string> = {
-  car_owner: '/',
-  mechanic: '/',
+  car_owner: '/dashboard',
+  mechanic: '/dashboard',
   admin: '/admin/dashboard',
   runner: '/runner/dashboard',
   rider: '/rider/dashboard',
 };
 
 const CUSTOMER_PREFIXES = [
+  '/dashboard',
   '/search',
   '/orders',
   '/order',
@@ -60,9 +61,6 @@ export function getPathArea(pathname: string): AppArea | null {
   }
   if (pathname.startsWith('/login') || pathname.startsWith('/verify')) {
     return 'auth';
-  }
-  if (pathname === '/') {
-    return 'customer';
   }
   if (
     CUSTOMER_PREFIXES.some(

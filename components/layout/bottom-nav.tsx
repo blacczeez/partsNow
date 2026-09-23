@@ -17,7 +17,7 @@ interface BottomNavProps {
 }
 
 const navItems: NavItem[] = [
-  { href: '/', icon: Home, label: 'Home' },
+  { href: '/dashboard', icon: Home, label: 'Home' },
   { href: '/search', icon: Search, label: 'Search' },
   { href: '/cart', icon: ShoppingCart, label: 'Cart' },
   { href: '/orders', icon: Package, label: 'Orders' },
@@ -33,7 +33,7 @@ export function BottomNav({ cartCount = 0 }: BottomNavProps) {
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href ||
-            (href !== '/' && pathname.startsWith(href)) ||
+            pathname.startsWith(href + '/') ||
             (href === '/orders' && pathname.startsWith('/order/'));
 
           const isCart = href === '/cart';

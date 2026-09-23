@@ -1,36 +1,26 @@
 'use client';
 
-import { Home, Search, Package, Wallet, User } from 'lucide-react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { MobileCustomerHeader } from '@/components/layout/mobile-customer-header';
-import { TopNav } from '@/components/layout/top-nav';
+import { CustomerNav } from '@/components/layout/customer-nav';
 import { SetupRedirect } from '@/components/auth/setup-redirect';
 import { UserProvider, useUser } from '@/lib/hooks/use-user';
 import { CartProvider } from '@/lib/contexts/cart-context';
 import { SelectedVehicleProvider } from '@/lib/contexts/selected-vehicle-context';
 import { useCart } from '@/lib/hooks/use-cart';
 import { AppFontShell } from '@/components/layout/app-font-shell';
-
-const navItems = [
-  { href: '/', icon: Home, label: 'Home' },
-  { href: '/search', icon: Search, label: 'Search' },
-  { href: '/orders', icon: Package, label: 'Orders' },
-  { href: '/wallet', icon: Wallet, label: 'Wallet' },
-  { href: '/account', icon: User, label: 'Account' },
-];
+import { Footer } from '@/components/layout/footer';
 
 function CustomerTopNav() {
-  const { wallet } = useUser();
+  const { user } = useUser();
   const { itemCount } = useCart();
 
   return (
-    <TopNav
-      items={navItems}
-      showSearch
-      showCartBadge
-      showWalletBadge
+    <CustomerNav
       cartCount={itemCount}
-      walletBalance={wallet?.balance ?? 0}
+      userName={user?.full_name}
     />
   );
 }
@@ -38,22 +28,25 @@ function CustomerTopNav() {
 function CustomerShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading, needsSetup } = useUser();
   const { itemCount } = useCart();
+  const router = useRouter();
 
-  // Loading or unauthenticated — render children bare (no app chrome).
-  // The page component shows <LandingPage /> when there's no user,
-  // so unauthenticated visitors never see a spinner.
-  if (isLoading || (!user && !needsSetup)) {
-    return <>{children}</>;
-  }
+  // Redirect unauthenticated users to landing page
+  useEffect(() => {
+    if (!isLoading && !user && !needsSetup) {
+      router.replace('/');
+    }
+  }, [isLoading, user, needsSetup, router]);
 
+  // Always render the shell so layout is stable from first paint
   return (
     <>
-      <SetupRedirect />
+      {!isLoading && user && <SetupRedirect />}
       <CustomerTopNav />
       <MobileCustomerHeader cartCount={itemCount} />
       <main className="min-h-full flex-1 pb-20 lg:pb-0">
-        <div className="mx-auto w-full lg:max-w-5xl">{children}</div>
+        <div className="mx-auto w-full max-w-7xl lg:px-6">{children}</div>
       </main>
+      <Footer />
       <BottomNav cartCount={itemCount} />
     </>
   );
