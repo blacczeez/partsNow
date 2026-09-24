@@ -35,7 +35,7 @@ export function CustomerHero() {
   return (
     <div className="px-4 pt-4 lg:px-0 lg:pt-10">
       {/* Banner cards */}
-      <div className="flex gap-4 h-[360px]">
+      <div className="flex gap-2 h-[360px]">
         {/* Left banner — Explore Popular Categories */}
         <div className="relative flex-[60] overflow-hidden rounded-xl p-6 lg:p-8">
           {/* Background image — swap src to your actual banner */}
@@ -99,8 +99,8 @@ export function CustomerHero() {
           className="rounded-2xl bg-[#C1BDE3] p-4 lg:px-5 lg:py-3"
         >
           {/* Text search */}
-          <div className="flex items-center gap-3 rounded-xl bg-white px-4 py-2.5">
-            <Search className="h-5 w-5 shrink-0 text-slate-900/40" />
+          <div className="flex items-center gap-3 rounded-lg bg-white px-4 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-slate-900/40" />
             <input
               type="text"
               placeholder="What are you looking for"
@@ -113,12 +113,12 @@ export function CustomerHero() {
           {/* Filters row */}
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Year */}
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2.5">
+            <div className="flex flex-1 items-center gap-2 rounded-lg bg-white px-3 py-2.5">
               <Calendar className="h-4 w-4 shrink-0 text-[#C8880A]" />
               <select
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                className="w-full appearance-none bg-transparent text-sm text-slate-900 focus:outline-none"
+                className="w-full appearance-none bg-transparent text-sm text-slate-900/50 focus:outline-none"
               >
                 <option value="">Select year</option>
                 {YEARS.map((y) => (
@@ -128,12 +128,12 @@ export function CustomerHero() {
             </div>
 
             {/* Brand */}
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2.5">
+            <div className="flex flex-1 items-center gap-2 rounded-lg bg-white px-3 py-2.5">
               <Car className="h-4 w-4 shrink-0 text-[#C8880A]" />
               <select
                 value={brand}
                 onChange={(e) => handleBrandChange(e.target.value)}
-                className="w-full appearance-none bg-transparent text-sm text-slate-900 focus:outline-none"
+                className="w-full appearance-none bg-transparent text-sm text-slate-900/50 focus:outline-none"
               >
                 <option value="">Select brand</option>
                 {VEHICLE_MAKES.map((m) => (
@@ -143,13 +143,13 @@ export function CustomerHero() {
             </div>
 
             {/* Model */}
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2.5">
+            <div className="flex flex-1 items-center gap-2 rounded-lg bg-white px-3 py-2.5">
               <LayoutGrid className="h-4 w-4 shrink-0 text-[#C8880A]" />
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 disabled={!brand}
-                className="w-full appearance-none bg-transparent text-sm text-slate-900 disabled:text-slate-400 focus:outline-none"
+                className="w-full appearance-none bg-transparent text-sm text-slate-900/50 disabled:text-slate-400 focus:outline-none"
               >
                 <option value="">Select model</option>
                 {models.map((m) => (
@@ -161,7 +161,7 @@ export function CustomerHero() {
             {/* Submit */}
             <button
               type="submit"
-              className="shrink-0 rounded-xl bg-[#3E208D] px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="shrink-0 rounded-lg bg-[#3E208D] px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               Browse part
             </button>

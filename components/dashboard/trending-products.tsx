@@ -47,7 +47,7 @@ export function TrendingProducts() {
   return (
     <section className="px-4 py-8 lg:px-0 lg:py-10">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Trending Product</h2>
+        <h2 className="text-2xl font-semibold text-slate-900">Trending Product</h2>
         <Link
           href="/search"
           className="text-sm font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
@@ -78,15 +78,15 @@ export function TrendingProducts() {
             <div className="mt-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{product.name}</p>
-                  <p className="text-xs text-slate-400">{product.sku}</p>
+                  <p className="text-base font-medium text-[#404040]">{product.name}</p>
+                  <p className="text-xs text-[#404040]">{product.sku}</p>
                 </div>
                 {product.inStock && (
-                  <span className="shrink-0 text-xs font-medium text-green-700">In-stock</span>
+                  <span className="shrink-0 text-xs font-medium text-[#1C7C4E]">In-stock</span>
                 )}
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <p className="text-base font-bold text-slate-900">{formatNaira(product.price)}</p>
+                <p className="text-base font-semibold text-[#404040]">{formatNaira(product.price)}</p>
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"

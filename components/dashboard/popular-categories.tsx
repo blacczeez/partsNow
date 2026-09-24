@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 interface Category {
@@ -21,24 +21,14 @@ const categoryImages: Record<string, string> = {
 
 const fallbackImage = '/images/landing/category-engine.jpg';
 
-export function PopularCategories() {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+interface PopularCategoriesProps {
+  categories: Category[];
+}
 
-  useEffect(() => {
-    fetch('/api/inventory/categories')
-      .then(async (res) => {
-        const data = await res.json();
-        if (res.ok) {
-          setCategories(
-            (data.categories ?? []).filter(
-              (c: Category) => c.part_count > 0
-            )
-          );
-        }
-      })
-      .catch(() => setCategories([]));
-  }, []);
+export function PopularCategories({ categories }: PopularCategoriesProps) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  const visible = categories.filter((c) => c.part_count > 0);
 
   function scrollNext() {
     const scroller = scrollerRef.current;
@@ -48,11 +38,11 @@ export function PopularCategories() {
     scroller.scrollBy({ left: step, behavior: 'smooth' });
   }
 
-  if (categories.length === 0) return null;
+  if (visible.length === 0) return null;
 
   return (
     <section className="px-4 py-8 lg:px-0 lg:py-10">
-      <h2 className="text-2xl font-bold text-slate-900">
+      <h2 className="text-2xl font-semibold text-slate-900">
         Explore Popular Categories
       </h2>
 
@@ -61,14 +51,14 @@ export function PopularCategories() {
           ref={scrollerRef}
           className="-mx-4 flex gap-4 overflow-x-auto scroll-smooth px-4 scrollbar-hidden lg:-mx-0 lg:px-0"
         >
-          {categories.map((cat) => (
+          {visible.map((cat) => (
             <Link
               key={cat.slug}
               href={`/search?category=${cat.slug}`}
               data-cat-card
-              className="flex w-[220px] shrink-0 flex-col rounded-xl border border-slate-200 bg-white p-3 transition-shadow hover:shadow-md sm:w-[240px]"
+              className="flex w-[220px] shrink-0 flex-col rounded-xl border border-[#E5E2E2] bg-[#F5F5F5] p-3 transition-shadow hover:shadow-md sm:w-[240px]"
             >
-              <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-slate-100">
+              <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-[#F5F5F5]">
                 <Image
                   src={categoryImages[cat.slug] ?? fallbackImage}
                   alt={cat.name}
@@ -77,14 +67,14 @@ export function PopularCategories() {
                   sizes="240px"
                 />
               </div>
-              <span className="mt-3 text-sm font-bold text-slate-900">
+              <span className="mt-3 text-base font-semibold text-slate-900">
                 {cat.name}
               </span>
             </Link>
           ))}
         </div>
 
-        {categories.length > 4 && (
+        {visible.length > 4 && (
           <button
             type="button"
             onClick={scrollNext}
