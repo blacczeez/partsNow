@@ -64,7 +64,7 @@ function HowDeliveryWorksContent() {
         >
           <ArrowLeft className="h-4 w-4 text-slate-600" />
         </button>
-        <h1 className="text-xl font-bold text-slate-900">
+        <h1 className="font-marketing-display text-xl font-bold text-slate-900">
           How delivery pricing works
         </h1>
       </div>
@@ -82,7 +82,7 @@ function HowDeliveryWorksContent() {
           {/* Hero explainer */}
           <div className="rounded-2xl bg-[#1E1145] px-6 py-8 text-white">
             <Scale className="h-8 w-8 text-[#E07A3A]" />
-            <h2 className="mt-3 text-lg font-bold">Based on package weight</h2>
+            <h2 className="font-marketing-display mt-3 text-lg font-bold">Based on package weight</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
               Delivery fees are calculated from the total weight of your order.
               Each part&apos;s weight is multiplied by quantity, then summed. We use
@@ -98,7 +98,7 @@ function HowDeliveryWorksContent() {
 
           {/* Weight tiers table */}
           <div className="rounded-xl border border-slate-200 bg-white p-6">
-            <h2 className="mb-4 text-base font-bold text-slate-900">
+            <h2 className="font-marketing-display mb-4 text-base font-bold text-slate-900">
               Weight tiers & fees
             </h2>
             <div className="overflow-x-auto">
@@ -158,7 +158,7 @@ function HowDeliveryWorksContent() {
           <div className="rounded-xl border border-green-200 bg-green-50 p-6">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-green-600" />
-              <h2 className="text-base font-bold text-green-900">Free delivery</h2>
+              <h2 className="font-marketing-display text-base font-bold text-green-900">Free delivery</h2>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-green-800">
               Orders with a parts subtotal of{' '}
@@ -178,7 +178,7 @@ function HowDeliveryWorksContent() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-[#E07A3A]" />
-              <h2 className="text-base font-bold text-slate-900">Example</h2>
+              <h2 className="font-marketing-display text-base font-bold text-slate-900">Example</h2>
             </div>
             <div className="mt-3 rounded-lg bg-slate-50 p-4">
               <div className="space-y-2 text-sm">
@@ -209,7 +209,7 @@ function HowDeliveryWorksContent() {
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-slate-400" />
-              <h2 className="text-base font-bold text-slate-600">
+              <h2 className="font-marketing-display text-base font-bold text-slate-600">
                 Distance zones
               </h2>
               <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
@@ -224,7 +224,7 @@ function HowDeliveryWorksContent() {
 
           {/* Key points */}
           <div className="rounded-xl border border-slate-200 bg-white p-6">
-            <h2 className="mb-3 text-base font-bold text-slate-900">Key points</h2>
+            <h2 className="font-marketing-display mb-3 text-base font-bold text-slate-900">Key points</h2>
             <div className="space-y-3">
               {[
                 'Delivery fees are based on weight, not distance',

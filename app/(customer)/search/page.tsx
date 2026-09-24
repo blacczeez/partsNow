@@ -165,7 +165,7 @@ function SearchContent() {
             <div className="flex-1 overflow-y-auto pr-2 scrollbar-subtle">
               {/* Category heading + result count */}
               <div className="mb-5 flex items-baseline justify-between">
-                <h3 className="text-base font-bold uppercase tracking-wide text-slate-900">
+                <h3 className="font-marketing-display text-base font-bold uppercase tracking-wide text-slate-900">
                   Category
                 </h3>
                 <p className="text-sm text-slate-400">
@@ -246,7 +246,7 @@ function SearchContent() {
               {/* ── Price Range ── */}
               <hr className="my-6 border-slate-200" />
 
-              <h3 className="mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
+              <h3 className="font-marketing-display mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
                 Price Range
               </h3>
 
@@ -350,7 +350,7 @@ function SearchContent() {
               {/* ── Popular Brands ── */}
               <hr className="my-6 border-slate-200" />
 
-              <h3 className="mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
+              <h3 className="font-marketing-display mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
                 Popular Brands
               </h3>
 
@@ -403,7 +403,7 @@ function SearchContent() {
               {/* ── Popular Models ── */}
               <hr className="my-6 border-slate-200" />
 
-              <h3 className="mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
+              <h3 className="font-marketing-display mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
                 Popular Model
               </h3>
 
@@ -609,7 +609,7 @@ function SearchContent() {
           />
           <div className="absolute bottom-0 left-0 right-0 max-h-[75vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-8">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">Filters</h3>
+              <h3 className="font-marketing-display text-lg font-bold text-slate-900">Filters</h3>
               <button
                 type="button"
                 onClick={() => setMobileFilterOpen(false)}
@@ -619,7 +619,7 @@ function SearchContent() {
               </button>
             </div>
 
-            <h4 className="mb-4 text-base font-bold uppercase tracking-wide text-slate-900">
+            <h4 className="font-marketing-display mb-4 text-base font-bold uppercase tracking-wide text-slate-900">
               Category
             </h4>
 
@@ -660,7 +660,7 @@ function SearchContent() {
 
             <hr className="my-5 border-slate-200" />
 
-            <h4 className="mb-4 text-base font-bold uppercase tracking-wide text-slate-900">
+            <h4 className="font-marketing-display mb-4 text-base font-bold uppercase tracking-wide text-slate-900">
               Price Range
             </h4>
 

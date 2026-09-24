@@ -289,7 +289,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-bold text-slate-900 lg:text-2xl">
+        <h1 className="font-marketing-display text-xl font-bold text-slate-900 lg:text-2xl">
           Track orders
         </h1>
         <div className="ml-auto">
@@ -305,7 +305,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       <div className="space-y-3">
         {isDeliveryTerminal && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <h3 className="text-sm font-semibold text-red-900">
+            <h3 className="font-marketing-display text-sm font-semibold text-red-900">
               {displayStatus === 'rejected'
                 ? 'Delivery was refused'
                 : 'Delivery could not be completed'}
@@ -337,7 +337,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
 
         {(order as { delivery_resolution?: string }).delivery_resolution === 'admin_review' && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <h3 className="text-sm font-semibold text-amber-900">Delivery issue under review</h3>
+            <h3 className="font-marketing-display text-sm font-semibold text-amber-900">Delivery issue under review</h3>
             <p className="mt-1 text-sm text-amber-800">
               Our team is reviewing a delivery problem and will contact you shortly.
             </p>
@@ -363,7 +363,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:gap-8">
         {/* ── Left: Tracking ── */}
         <div className="min-w-0 flex-1">
-          <h2 className="mb-4 text-lg font-bold text-slate-900">Tracking order</h2>
+          <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">Tracking order</h2>
 
           {/* Order ID box */}
           <div className="mb-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4">
@@ -494,7 +494,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
 
             {order.rating && (
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <h3 className="mb-2 text-sm font-medium text-slate-900">Your Rating</h3>
+                <h3 className="font-marketing-display mb-2 text-sm font-medium text-slate-900">Your Rating</h3>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <span
@@ -567,7 +567,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
 
             {/* Your order summary */}
             <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-4 text-lg font-bold text-slate-900">Your order</h2>
+              <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">Your order</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Order value</span>

@@ -79,7 +79,7 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
         <div className="min-w-0 flex-1">
           <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
             <p className="text-sm font-medium text-[#E07A3A]">Thank you!</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">
+            <h1 className="font-marketing-display mt-1 text-2xl font-bold text-slate-900">
               Your order has been received
             </h1>
 

@@ -95,7 +95,7 @@ export default function VehiclesPage() {
         <Link href="/account" className="rounded-button p-1 hover:bg-slate-100">
           <ArrowLeft className="h-5 w-5 text-slate-600" />
         </Link>
-        <h1 className="flex-1 text-lg font-semibold text-slate-900">My Vehicles</h1>
+        <h1 className="font-marketing-display flex-1 text-lg font-semibold text-slate-900">My Vehicles</h1>
         <Button size="sm" onClick={() => setShowAdd(true)}>
           <Plus className="mr-1.5 h-4 w-4" />
           Add

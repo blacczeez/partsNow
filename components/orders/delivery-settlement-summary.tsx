@@ -29,7 +29,7 @@ export function DeliverySettlementSummary({
 
     return (
       <div className="rounded-card border border-slate-200 bg-white p-4">
-        <h3 className="mb-3 text-sm font-medium text-slate-900">Settlement</h3>
+        <h3 className="font-marketing-display mb-3 text-sm font-medium text-slate-900">Settlement</h3>
         {settlementBreakdown.isFullRefund ? (
           <p className="text-sm text-slate-700">
             Full refund: <strong>{formatCurrency(refund)}</strong>
@@ -64,7 +64,7 @@ export function DeliverySettlementSummary({
 
   return (
     <div className="rounded-card border border-amber-200 bg-amber-50 p-4">
-      <h3 className="text-sm font-semibold text-amber-900">Settlement in progress</h3>
+      <h3 className="font-marketing-display text-sm font-semibold text-amber-900">Settlement in progress</h3>
       <p className="mt-1 text-sm text-amber-800">
         We are processing your delivery failure settlement per our policy. Service and delivery
         fees may apply. You will be notified when the refund amount is finalized.

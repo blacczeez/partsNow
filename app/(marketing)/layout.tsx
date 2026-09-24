@@ -1,5 +1,6 @@
 import { MarketingNav } from '@/components/layout/marketing-nav';
 import { Footer } from '@/components/layout/footer';
+import { AppFontShell } from '@/components/layout/app-font-shell';
 
 export default function MarketingLayout({
   children,
@@ -7,10 +8,10 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen">
+    <AppFontShell className="min-h-screen">
       <MarketingNav variant="solid" />
       <main>{children}</main>
       <Footer />
-    </div>
+    </AppFontShell>
   );
 }

@@ -29,7 +29,7 @@ export function Header({ title, showBack, rightAction, className }: HeaderProps)
           <ChevronLeft className="h-6 w-6" />
         </button>
       )}
-      <h1 className="flex-1 text-lg font-semibold text-slate-900">{title}</h1>
+      <h1 className="font-marketing-display flex-1 text-lg font-semibold text-slate-900">{title}</h1>
       {rightAction && <div>{rightAction}</div>}
     </header>
   );

@@ -94,7 +94,7 @@ function HowLoyaltyWorksContent() {
         >
           <ArrowLeft className="h-4 w-4 text-slate-600" />
         </Link>
-        <h1 className="text-xl font-bold text-slate-900">How loyalty works</h1>
+        <h1 className="font-marketing-display text-xl font-bold text-slate-900">How loyalty works</h1>
       </div>
 
       {isLoading ? (
@@ -110,7 +110,7 @@ function HowLoyaltyWorksContent() {
           {/* Hero */}
           <div className="rounded-2xl bg-[#1E1145] px-6 py-8 text-white">
             <Crown className="h-8 w-8 text-[#E07A3A]" />
-            <h2 className="mt-3 text-lg font-bold">The short version</h2>
+            <h2 className="font-marketing-display mt-3 text-lg font-bold">The short version</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
               The more delivered and paid orders you complete, the higher your
               loyalty tier. Higher tiers can lower the service fee (platform
@@ -131,7 +131,7 @@ function HowLoyaltyWorksContent() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-2">
               <PackageCheck className="h-5 w-5 text-[#E07A3A]" />
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="font-marketing-display text-base font-bold text-slate-900">
                 What counts toward your tier
               </h2>
             </div>
@@ -176,7 +176,7 @@ function HowLoyaltyWorksContent() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-[#E07A3A]" />
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="font-marketing-display text-base font-bold text-slate-900">
                 Checkout vs after delivery
               </h2>
             </div>
@@ -202,7 +202,7 @@ function HowLoyaltyWorksContent() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-[#E07A3A]" />
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="font-marketing-display text-base font-bold text-slate-900">
                 Tiers & benefits
               </h2>
             </div>
@@ -255,7 +255,7 @@ function HowLoyaltyWorksContent() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-[#E07A3A]" />
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="font-marketing-display text-base font-bold text-slate-900">
                 Verified vs Trusted
               </h2>
             </div>
@@ -276,7 +276,7 @@ function HowLoyaltyWorksContent() {
 
           {/* Good to know */}
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
-            <h2 className="mb-3 text-base font-bold text-slate-600">
+            <h2 className="font-marketing-display mb-3 text-base font-bold text-slate-600">
               Good to know
             </h2>
             <div className="space-y-2.5">

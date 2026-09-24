@@ -1,4 +1,9 @@
-import { GeistSans } from 'geist/font/sans';
+import { Inter } from 'next/font/google';
 
-/** Consumer app sans-serif (customer, runner, rider, auth). Admin uses system `font-sans`. */
-export const appFont = GeistSans;
+/** App-wide sans-serif (customer, runner, rider, auth, landing). Admin uses system `font-sans`. */
+export const appFont = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-app',
+});

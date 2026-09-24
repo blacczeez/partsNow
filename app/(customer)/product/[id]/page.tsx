@@ -205,7 +205,7 @@ export default function ProductDetailPage({
         {/* ── Product Info ── */}
         <div className="w-full lg:w-1/2">
           {/* Product name */}
-          <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">
+          <h1 className="font-marketing-display text-2xl font-bold text-slate-900 lg:text-3xl">
             {part.name}
           </h1>
 
@@ -251,7 +251,7 @@ export default function ProductDetailPage({
           {/* Compatible vehicles */}
           {part.compatible_vehicles && part.compatible_vehicles.length > 0 && (
             <div className="mb-5">
-              <h3 className="mb-2 text-sm font-semibold text-slate-700">
+              <h3 className="font-marketing-display mb-2 text-sm font-semibold text-slate-700">
                 Compatible Vehicles
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -325,7 +325,7 @@ export default function ProductDetailPage({
 
           {/* Description */}
           <div className="mt-6">
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">
+            <h3 className="font-marketing-display mb-2 text-sm font-semibold text-slate-700">
               Description
             </h3>
             <p className="text-sm leading-relaxed text-slate-600">

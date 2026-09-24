@@ -67,7 +67,7 @@ function ReceiptContent({ orderId }: { orderId: string }) {
         <div className="rounded-card border border-slate-200 bg-white p-6 print:rounded-none print:border-0 print:shadow-none">
           {/* Header */}
           <div className="mb-6 text-center">
-            <h1 className="text-xl font-bold text-slate-900">PartsDey</h1>
+            <h1 className="font-marketing-display text-xl font-bold text-slate-900">PartsDey</h1>
             <p className="mt-1 text-xs uppercase tracking-widest text-slate-400">
               Receipt
             </p>

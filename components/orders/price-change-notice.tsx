@@ -54,7 +54,7 @@ export function PriceChangeBanner({
       <div className="mb-3 flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
         <div>
-          <h3 className="font-semibold text-slate-900">Price update required</h3>
+          <h3 className="font-marketing-display font-semibold text-slate-900">Price update required</h3>
           <p className="mt-1 text-sm text-slate-600">
             The market price for part(s) in order {orderNumber} is higher than our
             estimate. Choose how to proceed.

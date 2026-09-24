@@ -42,7 +42,7 @@ export function PopularCategories({ categories }: PopularCategoriesProps) {
 
   return (
     <section className="px-4 py-8 lg:px-0 lg:py-10">
-      <h2 className="text-2xl font-semibold text-slate-900">
+      <h2 className="font-marketing-display text-2xl font-semibold text-slate-900">
         Explore Popular Categories
       </h2>
 

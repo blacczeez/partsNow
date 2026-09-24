@@ -29,7 +29,7 @@ export function DeliveryFeeBreakdownPanel({
 
   return (
     <div className={className}>
-      <h4 className="mb-2 text-sm font-medium text-slate-900">How delivery was calculated</h4>
+      <h4 className="font-marketing-display mb-2 text-sm font-medium text-slate-900">How delivery was calculated</h4>
       {data ? (
         <ul className="space-y-1.5 text-sm text-slate-600">
           <li>

@@ -190,7 +190,7 @@ function SetupForm({ phone, onComplete }: { phone?: string; onComplete: () => vo
 
   return (
     <div className="px-4 py-6">
-      <h1 className="mb-2 text-2xl font-bold text-slate-900">Complete Your Profile</h1>
+      <h1 className="font-marketing-display mb-2 text-2xl font-bold text-slate-900">Complete Your Profile</h1>
       <p className="mb-6 text-sm text-slate-500">
         {phone ? `Signed in as ${formatPhone(phone)}` : 'Set up your account to start ordering'}
       </p>
@@ -282,7 +282,7 @@ function ProfileSection({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-900">My Profile</h2>
+      <h2 className="font-marketing-display text-xl font-bold text-slate-900">My Profile</h2>
 
       {/* Profile card */}
       <div className="rounded-xl border border-slate-200 bg-white p-6">
@@ -348,7 +348,7 @@ function ProfileSection({
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-2">
           <Gift className="h-5 w-5 text-[#E07A3A]" />
-          <h3 className="text-base font-bold text-slate-900">Loyalty Program</h3>
+          <h3 className="font-marketing-display text-base font-bold text-slate-900">Loyalty Program</h3>
         </div>
 
         <p className="mt-2 text-sm text-slate-500">
@@ -473,7 +473,7 @@ function EditProfileForm({
 
   return (
     <div>
-      <h2 className="mb-6 text-xl font-bold text-slate-900">Edit Profile</h2>
+      <h2 className="font-marketing-display mb-6 text-xl font-bold text-slate-900">Edit Profile</h2>
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <fieldset className="rounded-lg border border-slate-300 px-3 pb-3 pt-2">
@@ -647,7 +647,7 @@ function OrdersSection() {
           {/* Active Orders */}
           {activeOrders.length > 0 && (
             <div className="mb-8">
-              <h3 className="mb-4 text-base font-bold text-slate-900">
+              <h3 className="font-marketing-display mb-4 text-base font-bold text-slate-900">
                 Active Orders
               </h3>
               <div className="space-y-4">
@@ -665,7 +665,7 @@ function OrdersSection() {
           {/* Past Orders */}
           {pastOrders.length > 0 && (
             <div>
-              <h3 className="mb-4 text-base font-bold text-slate-900">
+              <h3 className="font-marketing-display mb-4 text-base font-bold text-slate-900">
                 Past Orders
               </h3>
               <div className="space-y-4">
@@ -920,7 +920,7 @@ function OrderDetailView({
           )}
 
           {/* Products */}
-          <h3 className="mb-4 mt-8 text-lg font-bold text-slate-900">Products</h3>
+          <h3 className="font-marketing-display mb-4 mt-8 text-lg font-bold text-slate-900">Products</h3>
           <div className="space-y-4">
             {order.order_items.map((item) => (
               <div
@@ -962,7 +962,7 @@ function OrderDetailView({
 
           {/* Order summary */}
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
-            <h3 className="mb-4 text-lg font-bold text-slate-900">
+            <h3 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
               Order summary
             </h3>
             <div className="space-y-3 text-sm">
@@ -996,7 +996,7 @@ function OrderDetailView({
           {/* How delivery was calculated */}
           <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="font-marketing-display text-lg font-bold text-slate-900">
                 How delivery was calculated
               </h3>
               <Link
@@ -1050,7 +1050,7 @@ function OrderDetailView({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-slate-400" />
-                  <h3 className="text-base font-bold text-slate-900">Receipt</h3>
+                  <h3 className="font-marketing-display text-base font-bold text-slate-900">Receipt</h3>
                 </div>
                 <button
                   type="button"
@@ -1133,7 +1133,7 @@ function OrderDetailView({
         <aside className="w-full shrink-0 lg:w-72">
           {/* About Rider */}
           <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <h4 className="mb-3 text-base font-bold text-slate-900">
+            <h4 className="font-marketing-display mb-3 text-base font-bold text-slate-900">
               About Rider
             </h4>
             <div className="flex items-center gap-3">
@@ -1158,7 +1158,7 @@ function OrderDetailView({
 
           {/* Shipping Address */}
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5">
-            <h4 className="mb-3 text-base font-bold text-slate-900">
+            <h4 className="font-marketing-display mb-3 text-base font-bold text-slate-900">
               Shipping Address
             </h4>
             {/* Map placeholder */}
@@ -1183,7 +1183,7 @@ function OrderDetailView({
 
           {/* Contact Information */}
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5">
-            <h4 className="mb-3 text-base font-bold text-slate-900">
+            <h4 className="font-marketing-display mb-3 text-base font-bold text-slate-900">
               Contact Information
             </h4>
             <div className="space-y-2">
@@ -1281,7 +1281,7 @@ function OrderRating({
 
   return (
     <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-      <h3 className="text-base font-bold text-slate-900">
+      <h3 className="font-marketing-display text-base font-bold text-slate-900">
         {submitted ? 'Your Rating' : 'Rate this order'}
       </h3>
 
@@ -1484,7 +1484,7 @@ function WalletSection() {
         ) : (
           dateGroups.map((group) => (
             <div key={group.label} className="mb-6">
-              <h4 className="mb-3 text-base font-bold text-slate-900">
+              <h4 className="font-marketing-display mb-3 text-base font-bold text-slate-900">
                 {group.label}
               </h4>
               <div className="space-y-2">
@@ -1760,7 +1760,7 @@ function VehiclesSection() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">My Vehicles</h2>
+        <h2 className="font-marketing-display text-xl font-bold text-slate-900">My Vehicles</h2>
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-1.5 rounded-full bg-[#1E1145] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
@@ -1906,7 +1906,7 @@ function ShippingSection({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-900">Shipping Address</h2>
+      <h2 className="font-marketing-display text-xl font-bold text-slate-900">Shipping Address</h2>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         {editing ? (
@@ -2073,13 +2073,13 @@ function TrackOrdersSection() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-slate-900">Track Orders</h2>
+      <h2 className="font-marketing-display text-xl font-bold text-slate-900">Track Orders</h2>
 
       {/* Search card */}
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-2">
           <Truck className="h-5 w-5 text-[#E07A3A]" />
-          <h3 className="text-base font-bold text-slate-900">Find your order</h3>
+          <h3 className="font-marketing-display text-base font-bold text-slate-900">Find your order</h3>
         </div>
         <p className="mt-1 text-sm text-slate-500">
           Enter your order number to track delivery status
@@ -2123,7 +2123,7 @@ function TrackOrdersSection() {
         </div>
       ) : recentOrders.length > 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="mb-4 text-base font-bold text-slate-900">
+          <h3 className="font-marketing-display mb-4 text-base font-bold text-slate-900">
             Active orders
           </h3>
           <div className="space-y-3">
@@ -2258,7 +2258,7 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
   if (submitted) {
     return (
       <div>
-        <h2 className="mb-6 text-xl font-bold text-slate-900">Report an Issue</h2>
+        <h2 className="font-marketing-display mb-6 text-xl font-bold text-slate-900">Report an Issue</h2>
         <div className="rounded-xl border border-slate-200 bg-white p-8">
           <div className="py-8 text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
@@ -2282,7 +2282,7 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
 
   return (
     <div>
-      <h2 className="mb-6 text-xl font-bold text-slate-900">Report a part problem</h2>
+      <h2 className="font-marketing-display mb-6 text-xl font-bold text-slate-900">Report a part problem</h2>
 
       <form onSubmit={handleSubmit} className="space-y-7">
         {/* Select order */}

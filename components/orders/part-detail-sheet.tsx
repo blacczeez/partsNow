@@ -98,7 +98,7 @@ export function PartDetailSheet({
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">{part.name}</h3>
+          <h3 className="font-marketing-display text-lg font-semibold text-slate-900">{part.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge variant="default">{part.category_name}</Badge>
             {part.subcategory && <Badge variant="info">{part.subcategory}</Badge>}

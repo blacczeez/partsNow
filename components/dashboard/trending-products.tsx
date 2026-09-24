@@ -47,7 +47,7 @@ export function TrendingProducts() {
   return (
     <section className="px-4 py-8 lg:px-0 lg:py-10">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-slate-900">Trending Product</h2>
+        <h2 className="font-marketing-display text-2xl font-semibold text-slate-900">Trending Product</h2>
         <Link
           href="/search"
           className="text-sm font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
@@ -89,7 +89,7 @@ export function TrendingProducts() {
                 <p className="text-base font-semibold text-[#404040]">{formatNaira(product.price)}</p>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#A3A3A3] text-slate-500 transition-colors hover:bg-slate-50"
                   aria-label="Add to cart"
                   onClick={(e) => e.preventDefault()}
                 >

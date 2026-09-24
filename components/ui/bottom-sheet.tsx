@@ -75,7 +75,7 @@ export function BottomSheet({
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300 lg:hidden" />
           {title && (
             <div className="mb-4 flex items-center justify-between">
-              <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+              <h2 id={titleId} className="font-marketing-display text-lg font-semibold text-slate-900">
                 {title}
               </h2>
               <button

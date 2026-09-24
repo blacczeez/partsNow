@@ -332,7 +332,7 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             {/* Order summary */}
             <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-4 text-lg font-bold text-slate-900">
+              <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
                 Order summary
               </h2>
               <div className="space-y-2 text-sm">
@@ -359,7 +359,7 @@ export default function CheckoutPage() {
 
             {/* Payment method */}
             <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-4 text-lg font-bold text-slate-900">
+              <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
                 Payment method
               </h2>
               <div className="space-y-3">

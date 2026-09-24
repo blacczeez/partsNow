@@ -94,7 +94,7 @@ export default function CartPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-xl font-bold text-slate-900 lg:text-2xl">
+        <h1 className="font-marketing-display text-xl font-bold text-slate-900 lg:text-2xl">
           My Cart ({itemCount})
         </h1>
       </div>
@@ -215,7 +215,7 @@ export default function CartPage() {
           {/* How delivery was calculated */}
           <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="font-marketing-display text-base font-bold text-slate-900">
                 How delivery was calculated
               </h3>
               <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
@@ -277,7 +277,7 @@ export default function CartPage() {
         {/* ── Order summary sidebar (desktop) ── */}
         <aside className="w-full lg:w-80 lg:shrink-0">
           <div className="sticky top-28 rounded-xl border border-slate-200 bg-white p-5">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">
+            <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
               Order summary
             </h2>
 

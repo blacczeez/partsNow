@@ -52,7 +52,7 @@ export default function LoyaltyPage() {
         <Link href="/account" className="rounded-button p-1 hover:bg-slate-100">
           <ArrowLeft className="h-5 w-5 text-slate-600" />
         </Link>
-        <h1 className="text-lg font-semibold text-slate-900">Loyalty</h1>
+        <h1 className="font-marketing-display text-lg font-semibold text-slate-900">Loyalty</h1>
       </div>
 
       <div className="space-y-4 p-4">
@@ -77,7 +77,7 @@ export default function LoyaltyPage() {
         )}
 
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-900">All tiers</h2>
+          <h2 className="font-marketing-display text-sm font-semibold text-slate-900">All tiers</h2>
           {(data?.tiers ?? []).map((tierDef) => {
             const isCurrent = tierDef.tier === tier;
             return (
