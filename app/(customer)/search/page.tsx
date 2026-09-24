@@ -15,15 +15,11 @@ import {
 } from 'lucide-react';
 import { SearchInput } from '@/components/forms/search-input';
 import { PartCard } from '@/components/orders/part-card';
-import { PartDetailSheet } from '@/components/orders/part-detail-sheet';
 import { usePartsSearch } from '@/lib/hooks/use-parts-search';
-import { useCart } from '@/lib/hooks/use-cart';
 import { useSelectedVehicle } from '@/lib/contexts/selected-vehicle-context';
 import { SearchVehicleBar } from '@/components/search/search-vehicle-bar';
-import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils/cn';
 import { useState, useEffect, Suspense } from 'react';
-import type { CatalogPart } from '@/lib/types/catalog';
 
 type ViewMode = 'grid' | 'list';
 type SortOption = 'trending' | 'price_asc' | 'price_desc' | 'newest';
@@ -34,6 +30,29 @@ const sortLabels: Record<SortOption, string> = {
   price_desc: 'Price: High to Low',
   newest: 'Newest',
 };
+
+const MAX_PRICE = 500000;
+
+const PRICE_PRESETS = [
+  { label: 'All Price', min: 0, max: MAX_PRICE },
+  { label: 'Under \u20A620,000', min: 0, max: 20000 },
+  { label: '\u20A620,000 to \u20A650,000', min: 20000, max: 50000 },
+  { label: '\u20A650,000 to \u20A6100,000', min: 50000, max: 100000 },
+  { label: '\u20A6100,000 to \u20A6200,000', min: 100000, max: 200000 },
+  { label: 'Over \u20A6200,000', min: 200000, max: MAX_PRICE },
+];
+
+const POPULAR_BRANDS = [
+  'Denso', 'Bosch', 'NGK', 'Toyota Genuine', 'Brembo', 'Aisin',
+  'Monroe', 'Delphi', 'Castrol', 'Mobil 1', 'Mann Filter', 'Champion',
+  'One Plus',
+];
+
+const POPULAR_MODELS = [
+  'Corolla', 'Camry', 'Accord', 'TV', 'RX 350', 'Avalon',
+  'Highlander', 'Rav 4', 'Hilux', 'Sienna', 'Rio', 'Sportage',
+  'Land cruiser',
+];
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -70,7 +89,6 @@ function SearchContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
   const [categories, setCategories] = useState<
     Array<{ id: string; slug: string; name: string; part_count: number }>
   >([]);
@@ -78,8 +96,10 @@ function SearchContent() {
   const [sortBy, setSortBy] = useState<SortOption>('trending');
   const [sortOpen, setSortOpen] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-
-  const cart = useCart();
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState(MAX_PRICE);
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/inventory/categories')
@@ -89,24 +109,6 @@ function SearchContent() {
       })
       .catch(() => setCategories([]));
   }, []);
-
-  function addToCart(part: CatalogPart, quantity: number) {
-    if (!part.average_price) return;
-    if (!part.weight_kg || part.weight_kg <= 0) {
-      toast('error', 'This part is not available for order yet (weight missing).');
-      return;
-    }
-    cart.addItem({
-      partId: part.id,
-      name: part.name,
-      category: part.category_name,
-      price: part.average_price,
-      weightKg: part.weight_kg,
-      quantity,
-      imageUrl: part.image_url || undefined,
-    });
-    toast('success', `${part.name} added to cart`);
-  }
 
   function handleCategorySelect(slug: string) {
     const newCat = category === slug ? '' : slug;
@@ -152,82 +154,279 @@ function SearchContent() {
 
       <div className="flex gap-8">
         {/* ── Left Sidebar (desktop) ── */}
-        <aside className="hidden w-56 shrink-0 lg:block">
-          <div className="sticky top-24">
+        <aside className="relative z-10 hidden w-60 shrink-0 lg:block">
+          <div className="sticky top-[4.5rem] flex max-h-[calc(100vh-5rem)] flex-col">
             {/* Vehicle bar — desktop */}
-            <div className="mb-6">
+            <div className="mb-4 shrink-0">
               <SearchVehicleBar />
             </div>
 
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900">
-              Category
-            </h3>
+            {/* Scrollable filter content */}
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-subtle">
+              {/* Category heading + result count */}
+              <div className="mb-5 flex items-baseline justify-between">
+                <h3 className="text-base font-bold uppercase tracking-wide text-slate-900">
+                  Category
+                </h3>
+                <p className="text-sm text-slate-400">
+                  <span className="font-semibold text-slate-700">{total.toLocaleString()}</span>{' '}
+                  Results found.
+                </p>
+              </div>
 
-            <div className="space-y-1">
-              {/* All categories option */}
-              <label
-                className={cn(
-                  'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-                  !category
-                    ? 'bg-slate-100 font-medium text-slate-900'
-                    : 'text-slate-600 hover:bg-slate-50'
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2',
-                    !category
-                      ? 'border-slate-900'
-                      : 'border-slate-300'
-                  )}
-                >
-                  {!category && (
-                    <span className="h-2 w-2 rounded-full bg-slate-900" />
-                  )}
-                </span>
-                <input
-                  type="radio"
-                  name="category"
-                  className="sr-only"
-                  checked={!category}
-                  onChange={() => handleCategorySelect('')}
-                />
-                All Categories
-              </label>
-
-              {categories.map((cat) => (
-                <label
-                  key={cat.id}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-                    category === cat.slug
-                      ? 'bg-slate-100 font-medium text-slate-900'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  )}
-                >
+              {/* Category radio list */}
+              <div className="space-y-4">
+                {/* All Categories */}
+                <label className="flex cursor-pointer items-center gap-3 text-sm">
                   <span
                     className={cn(
-                      'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2',
-                      category === cat.slug
-                        ? 'border-slate-900'
-                        : 'border-slate-300'
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                      !category ? 'border-[#E07A3A]' : 'border-slate-300'
                     )}
                   >
-                    {category === cat.slug && (
-                      <span className="h-2 w-2 rounded-full bg-slate-900" />
+                    {!category && (
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
                     )}
                   </span>
                   <input
                     type="radio"
                     name="category"
                     className="sr-only"
-                    checked={category === cat.slug}
-                    onChange={() => handleCategorySelect(cat.slug)}
+                    checked={!category}
+                    onChange={() => handleCategorySelect('')}
                   />
-                  <span className="flex-1">{cat.name}</span>
-                  <span className="text-xs text-slate-400">{cat.part_count}</span>
+                  <span
+                    className={cn(
+                      'transition-colors',
+                      !category ? 'font-semibold text-slate-900' : 'text-slate-500'
+                    )}
+                  >
+                    All Categories
+                  </span>
                 </label>
-              ))}
+
+                {categories.map((cat) => (
+                  <label
+                    key={cat.id}
+                    className="flex cursor-pointer items-center gap-3 text-sm"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                        category === cat.slug
+                          ? 'border-[#E07A3A]'
+                          : 'border-slate-300'
+                      )}
+                    >
+                      {category === cat.slug && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                      )}
+                    </span>
+                    <input
+                      type="radio"
+                      name="category"
+                      className="sr-only"
+                      checked={category === cat.slug}
+                      onChange={() => handleCategorySelect(cat.slug)}
+                    />
+                    <span
+                      className={cn(
+                        'transition-colors',
+                        category === cat.slug
+                          ? 'font-semibold text-slate-900'
+                          : 'text-slate-500'
+                      )}
+                    >
+                      {cat.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* ── Price Range ── */}
+              <hr className="my-6 border-slate-200" />
+
+              <h3 className="mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
+                Price Range
+              </h3>
+
+              {/* Range slider */}
+              <div className="relative mb-4 h-6">
+                <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-slate-200" />
+                <div
+                  className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded bg-[#E07A3A]"
+                  style={{
+                    left: `${(priceMin / MAX_PRICE) * 100}%`,
+                    right: `${100 - (priceMax / MAX_PRICE) * 100}%`,
+                  }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={MAX_PRICE}
+                  step={1000}
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(Math.min(Number(e.target.value), priceMax - 1000))}
+                  className="price-range-thumb pointer-events-none absolute left-0 right-0 top-1/2 -translate-y-1/2"
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={MAX_PRICE}
+                  step={1000}
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(Math.max(Number(e.target.value), priceMin + 1000))}
+                  className="price-range-thumb pointer-events-none absolute left-0 right-0 top-1/2 -translate-y-1/2"
+                />
+              </div>
+
+              {/* Min / Max inputs */}
+              <div className="mb-4 flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Min price"
+                  value={priceMin > 0 ? priceMin.toLocaleString() : ''}
+                  onChange={(e) => {
+                    const v = Number(e.target.value.replace(/\D/g, ''));
+                    if (!isNaN(v)) setPriceMin(v);
+                  }}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#E07A3A] focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Max price"
+                  value={priceMax < MAX_PRICE ? priceMax.toLocaleString() : ''}
+                  onChange={(e) => {
+                    const v = Number(e.target.value.replace(/\D/g, ''));
+                    if (!isNaN(v)) setPriceMax(v);
+                  }}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#E07A3A] focus:outline-none"
+                />
+              </div>
+
+              {/* Price presets */}
+              <div className="space-y-4">
+                {PRICE_PRESETS.map((preset) => (
+                  <label
+                    key={preset.label}
+                    className="flex cursor-pointer items-center gap-3 text-sm"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                        priceMin === preset.min && priceMax === preset.max
+                          ? 'border-[#E07A3A]'
+                          : 'border-slate-300'
+                      )}
+                    >
+                      {priceMin === preset.min && priceMax === preset.max && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                      )}
+                    </span>
+                    <input
+                      type="radio"
+                      name="price-range"
+                      className="sr-only"
+                      checked={priceMin === preset.min && priceMax === preset.max}
+                      onChange={() => {
+                        setPriceMin(preset.min);
+                        setPriceMax(preset.max);
+                      }}
+                    />
+                    <span
+                      className={cn(
+                        'transition-colors',
+                        priceMin === preset.min && priceMax === preset.max
+                          ? 'font-semibold text-slate-900'
+                          : 'text-slate-500'
+                      )}
+                    >
+                      {preset.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* ── Popular Brands ── */}
+              <hr className="my-6 border-slate-200" />
+
+              <h3 className="mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
+                Popular Brands
+              </h3>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {POPULAR_BRANDS.map((brand) => {
+                  const isSelected = selectedBrands.has(brand);
+                  return (
+                    <label
+                      key={brand}
+                      className="flex cursor-pointer items-center gap-2.5 text-sm"
+                    >
+                      <span
+                        className={cn(
+                          'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors',
+                          isSelected
+                            ? 'border-[#E07A3A] bg-[#E07A3A]'
+                            : 'border-slate-300 bg-white'
+                        )}
+                      >
+                        {isSelected && (
+                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedBrands((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(brand)) {
+                              next.delete(brand);
+                            } else {
+                              next.add(brand);
+                            }
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className={cn('transition-colors', isSelected ? 'font-medium text-slate-900' : 'text-slate-500')}>
+                        {brand}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* ── Popular Models ── */}
+              <hr className="my-6 border-slate-200" />
+
+              <h3 className="mb-5 text-base font-bold uppercase tracking-wide text-slate-900">
+                Popular Model
+              </h3>
+
+              <div className="flex flex-wrap gap-2 pb-4">
+                {POPULAR_MODELS.map((model) => {
+                  const isSelected = selectedModel === model;
+                  return (
+                    <button
+                      key={model}
+                      type="button"
+                      onClick={() => setSelectedModel(isSelected ? null : model)}
+                      className={cn(
+                        'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                        isSelected
+                          ? 'border-[#E07A3A] font-medium text-[#E07A3A]'
+                          : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      )}
+                    >
+                      {model}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </aside>
@@ -378,7 +577,6 @@ function SearchContent() {
                 <PartCard
                   key={part.id}
                   part={part}
-                  onClick={() => setSelectedPart(part)}
                 />
               ))}
             </div>
@@ -409,8 +607,8 @@ function SearchContent() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileFilterOpen(false)}
           />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[75vh] overflow-y-auto rounded-t-2xl bg-white p-4">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[75vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-8">
+            <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900">Filters</h3>
               <button
                 type="button"
@@ -421,57 +619,24 @@ function SearchContent() {
               </button>
             </div>
 
-            <h4 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-900">
+            <h4 className="mb-4 text-base font-bold uppercase tracking-wide text-slate-900">
               Category
             </h4>
 
-            <div className="space-y-1">
-              <label
-                className={cn(
-                  'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-sm',
-                  !category
-                    ? 'bg-slate-100 font-medium text-slate-900'
-                    : 'text-slate-600'
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
-                    !category ? 'border-slate-900' : 'border-slate-300'
-                  )}
-                >
-                  {!category && (
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
-                  )}
-                </span>
-                <input
-                  type="radio"
-                  name="mobile-category"
-                  className="sr-only"
-                  checked={!category}
-                  onChange={() => handleCategorySelect('')}
-                />
-                All Categories
-              </label>
-
+            <div className="space-y-4">
               {categories.map((cat) => (
                 <label
                   key={cat.id}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-sm',
-                    category === cat.slug
-                      ? 'bg-slate-100 font-medium text-slate-900'
-                      : 'text-slate-600'
-                  )}
+                  className="flex cursor-pointer items-center gap-3 text-sm"
                 >
                   <span
                     className={cn(
-                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
-                      category === cat.slug ? 'border-slate-900' : 'border-slate-300'
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                      category === cat.slug ? 'border-[#E07A3A]' : 'border-slate-300'
                     )}
                   >
                     {category === cat.slug && (
-                      <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
                     )}
                   </span>
                   <input
@@ -481,8 +646,62 @@ function SearchContent() {
                     checked={category === cat.slug}
                     onChange={() => handleCategorySelect(cat.slug)}
                   />
-                  <span className="flex-1">{cat.name}</span>
-                  <span className="text-xs text-slate-400">{cat.part_count}</span>
+                  <span
+                    className={cn(
+                      'flex-1 transition-colors',
+                      category === cat.slug ? 'font-semibold text-slate-900' : 'text-slate-500'
+                    )}
+                  >
+                    {cat.name}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <hr className="my-5 border-slate-200" />
+
+            <h4 className="mb-4 text-base font-bold uppercase tracking-wide text-slate-900">
+              Price Range
+            </h4>
+
+            <div className="space-y-4">
+              {PRICE_PRESETS.map((preset) => (
+                <label
+                  key={preset.label}
+                  className="flex cursor-pointer items-center gap-3 text-sm"
+                >
+                  <span
+                    className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                      priceMin === preset.min && priceMax === preset.max
+                        ? 'border-[#E07A3A]'
+                        : 'border-slate-300'
+                    )}
+                  >
+                    {priceMin === preset.min && priceMax === preset.max && (
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                    )}
+                  </span>
+                  <input
+                    type="radio"
+                    name="mobile-price-range"
+                    className="sr-only"
+                    checked={priceMin === preset.min && priceMax === preset.max}
+                    onChange={() => {
+                      setPriceMin(preset.min);
+                      setPriceMax(preset.max);
+                    }}
+                  />
+                  <span
+                    className={cn(
+                      'transition-colors',
+                      priceMin === preset.min && priceMax === preset.max
+                        ? 'font-semibold text-slate-900'
+                        : 'text-slate-500'
+                    )}
+                  >
+                    {preset.label}
+                  </span>
                 </label>
               ))}
             </div>
@@ -490,13 +709,6 @@ function SearchContent() {
         </div>
       )}
 
-      {/* Part Detail Sheet */}
-      <PartDetailSheet
-        part={selectedPart}
-        isOpen={!!selectedPart}
-        onClose={() => setSelectedPart(null)}
-        onAddToCart={addToCart!}
-      />
     </div>
   );
 }

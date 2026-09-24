@@ -15,6 +15,7 @@ const CUSTOMER_PREFIXES = [
   '/search',
   '/orders',
   '/order',
+  '/product',
   '/cart',
   '/checkout',
   '/wallet',

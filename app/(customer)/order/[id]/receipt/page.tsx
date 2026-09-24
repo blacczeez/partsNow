@@ -31,7 +31,7 @@ function ReceiptContent({ orderId }: { orderId: string }) {
       <div className="flex flex-col items-center gap-3 px-4 py-20">
         <AlertTriangle className="h-12 w-12 text-slate-300" />
         <p className="text-sm text-slate-500">{error || 'Order not found'}</p>
-        <Button variant="secondary" onClick={() => router.push('/orders')}>
+        <Button variant="secondary" onClick={() => router.push('/account?tab=orders')}>
           Back to Orders
         </Button>
       </div>

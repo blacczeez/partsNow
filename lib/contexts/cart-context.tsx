@@ -57,13 +57,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [vehicleId, setVehicleId] = useState<string | undefined>();
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Hydrate cart from localStorage on the client (avoids setState in useEffect).
-  if (typeof window !== 'undefined' && !isHydrated) {
+  // Hydrate cart from localStorage after mount to avoid SSR mismatch
+  useEffect(() => {
     const saved = loadCart();
     setItems(saved.items);
     setVehicleId(saved.vehicleId);
     setIsHydrated(true);
-  }
+  }, []);
 
   // Persist on change
   useEffect(() => {

@@ -127,6 +127,38 @@ body {
   }
 }
 
+/* Price range slider — dual thumb styling */
+.price-range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  pointer-events: none;
+  height: 0;
+}
+
+.price-range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #E07A3A;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.price-range-thumb::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #E07A3A;
+  cursor: pointer;
+  pointer-events: all;
+}
+
 /* Print styles — clean receipt output */
 @media print {
   /* Hide navigation and non-essential chrome */

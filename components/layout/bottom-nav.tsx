@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, Search, Package, User, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { LucideIcon } from 'lucide-react';
@@ -20,22 +20,44 @@ const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'Home' },
   { href: '/search', icon: Search, label: 'Search' },
   { href: '/cart', icon: ShoppingCart, label: 'Cart' },
-  { href: '/orders', icon: Package, label: 'Orders' },
+  { href: '/account?tab=orders', icon: Package, label: 'Orders' },
   { href: '/account', icon: User, label: 'Account' },
 ];
 
 export function BottomNav({ cartCount = 0 }: BottomNavProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function getIsActive(item: NavItem): boolean {
+    const basePath = item.href.split('?')[0];
+
+    if (item.label === 'Orders') {
+      // Active on /order/* pages or when account page has tab=orders
+      if (pathname.startsWith('/order/')) return true;
+      if (pathname === '/account' && searchParams.get('tab') === 'orders') return true;
+      if (pathname === '/orders' || pathname.startsWith('/orders/')) return true;
+      return false;
+    }
+
+    if (item.label === 'Account') {
+      // Active on /account only when NOT on the orders tab
+      if (pathname === '/account') {
+        const tab = searchParams.get('tab');
+        return !tab || tab !== 'orders';
+      }
+      if (pathname.startsWith('/account/')) return true;
+      return false;
+    }
+
+    return pathname === basePath || pathname.startsWith(basePath + '/');
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white pb-safe lg:hidden">
       <div className="flex h-16 items-center justify-around">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive =
-            pathname === href ||
-            pathname.startsWith(href + '/') ||
-            (href === '/orders' && pathname.startsWith('/order/'));
-
+        {navItems.map((item) => {
+          const { href, icon: Icon, label } = item;
+          const isActive = getIsActive(item);
           const isCart = href === '/cart';
 
           return (

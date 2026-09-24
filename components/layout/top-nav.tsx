@@ -98,7 +98,7 @@ export function TopNav({
 
             {showWalletBadge && (
               <Link
-                href="/wallet"
+                href="/account?tab=wallet"
                 className="flex items-center gap-1.5 rounded-button px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 <Wallet className="h-4 w-4" />

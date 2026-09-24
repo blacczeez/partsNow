@@ -1,30 +1,37 @@
 'use client';
 
-import { Minus, Plus, Trash2, ShoppingCart, ArrowRight } from 'lucide-react';
+import {
+  ArrowLeft,
+  Award,
+  Minus,
+  Plus,
+  ShoppingCart,
+  ShieldCheck,
+  X,
+  Package,
+} from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { VehicleSelect } from '@/components/forms/vehicle-select';
-import { DeliveryWeightSummary } from '@/components/orders/delivery-weight-summary';
-import { LoyaltyCheckoutBanner } from '@/components/loyalty/loyalty-checkout-banner';
 import { useCart } from '@/lib/hooks/use-cart';
 import { useUser } from '@/lib/hooks/use-user';
 import { useDeliveryConfig } from '@/lib/hooks/use-delivery-config';
 import { useLoyaltyConfig } from '@/lib/hooks/use-loyalty-config';
 import { calculatePricing } from '@/lib/utils/pricing';
 import { formatCurrency } from '@/lib/utils/format';
+import { formatLoyaltyTier } from '@/lib/utils/loyalty';
+import { cn } from '@/lib/utils/cn';
 import type { LoyaltyTier } from '@/lib/types/database';
 
 export default function CartPage() {
+  const router = useRouter();
   const {
     items,
-    vehicleId,
     itemCount,
     subtotal,
     totalWeightKg,
     updateQuantity,
     removeItem,
-    setVehicle,
   } = useCart();
   const { user } = useUser();
   const { deliveryConfig } = useDeliveryConfig();
@@ -53,7 +60,9 @@ export default function CartPage() {
       <div className="flex flex-col items-center gap-4 px-4 py-20">
         <ShoppingCart className="h-16 w-16 text-slate-300" />
         <p className="text-lg font-medium text-slate-500">Your cart is empty</p>
-        <p className="text-sm text-slate-400">Browse parts and add them to your cart</p>
+        <p className="text-sm text-slate-400">
+          Browse parts and add them to your cart
+        </p>
         <Link href="/search">
           <Button>Browse Parts</Button>
         </Link>
@@ -62,177 +71,275 @@ export default function CartPage() {
   }
 
   return (
-    <div className="lg:px-4">
-      {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 lg:top-[6.5rem] lg:px-0">
-        <h1 className="text-lg font-semibold text-slate-900">
-          Cart ({itemCount} item{itemCount !== 1 ? 's' : ''})
+    <div className="px-4 pb-12 lg:px-0">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 py-4 text-sm">
+        <Link href="/dashboard" className="text-slate-500 hover:text-slate-700">
+          Home
+        </Link>
+        <span className="text-slate-400">&rsaquo;</span>
+        <Link href="/search" className="text-slate-500 hover:text-slate-700">
+          Shop
+        </Link>
+        <span className="text-slate-400">&rsaquo;</span>
+        <span className="font-medium text-slate-900">Cart</span>
+      </nav>
+
+      {/* Title with back */}
+      <div className="mb-5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="text-slate-700 hover:text-slate-900"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-xl font-bold text-slate-900 lg:text-2xl">
+          My Cart ({itemCount})
         </h1>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 lg:pt-4">
-        <div className="min-w-0">
-          {/* Vehicle Selection */}
-          <div className="border-b border-slate-200 bg-white px-4 py-3 lg:border lg:rounded-card lg:px-4">
-            <p className="mb-2 text-sm font-medium text-slate-700">Vehicle</p>
-            <VehicleSelect
-              selectedId={vehicleId}
-              onSelect={(v) => setVehicle(v?.id)}
-            />
-          </div>
+      {/* Step indicator */}
+      <div className="mb-6 flex items-center gap-0 text-sm">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E07A3A] text-xs font-bold text-white">
+          1
+        </span>
+        <span className="ml-2 font-medium text-[#E07A3A]">Shopping cart</span>
+        <span className="mx-3 h-px w-8 bg-slate-300" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400">
+          2
+        </span>
+        <span className="ml-2 text-slate-400">Checkout details</span>
+        <span className="mx-3 hidden h-px w-8 bg-slate-300 sm:block" />
+        <span className="hidden h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400 sm:flex">
+          3
+        </span>
+        <span className="ml-2 hidden text-slate-400 sm:inline">
+          Order complete
+        </span>
+      </div>
 
-          {/* Items List */}
-          <div className="space-y-2 p-4 lg:px-0 lg:pt-4">
-            {items.map((item) => (
+      {/* Main layout: items table + sidebar */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        {/* ── Items table ── */}
+        <div className="min-w-0 flex-1">
+          <div className="rounded-xl border border-slate-200 bg-white">
+            {/* Table header — desktop */}
+            <div className="hidden border-b border-slate-200 px-6 py-3 sm:flex">
+              <span className="flex-1 text-sm font-medium text-slate-600">
+                Product
+              </span>
+              <span className="w-40 text-sm font-medium text-slate-600">
+                Quantity
+              </span>
+              <span className="w-36 text-sm font-medium text-slate-600">
+                Total
+              </span>
+              <span className="w-8" />
+            </div>
+
+            {/* Items */}
+            {items.map((item, index) => (
               <div
                 key={item.partId}
-                className="rounded-card border border-slate-200 bg-white p-4 shadow-sm"
+                className={cn(
+                  'flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-6',
+                  index < items.length - 1 && 'border-b border-slate-100'
+                )}
               >
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">
-                      {item.name}
-                    </p>
-                    <Badge variant="default" className="mt-1">
-                      {item.category}
-                    </Badge>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {item.weightKg} kg each ·{' '}
-                      {(item.weightKg * item.quantity).toFixed(1)} kg line total
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                      {formatCurrency(item.price)}
-                    </p>
+                {/* Product: image + name */}
+                <div className="flex flex-1 items-center gap-4">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-6 w-6 text-slate-300" />
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => removeItem(item.partId)}
-                    className="ml-2 rounded-button p-1.5 text-slate-400 hover:bg-red-50 hover:text-error"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <p className="text-sm font-medium text-slate-900 line-clamp-2">
+                    {item.name}
+                  </p>
                 </div>
 
-                {/* Quantity Controls */}
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                {/* Quantity + Total + Remove */}
+                <div className="flex items-center justify-between gap-4 sm:justify-start">
+                  {/* Quantity controls */}
+                  <div className="flex w-40 items-center gap-0">
                     <button
-                      onClick={() => updateQuantity(item.partId, item.quantity - 1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
+                      type="button"
+                      onClick={() =>
+                        updateQuantity(item.partId, item.quantity - 1)
+                      }
+                      className="flex h-9 w-9 items-center justify-center rounded-l-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="w-8 text-center font-medium text-slate-900">
-                      {item.quantity}
+                    <span className="flex h-9 w-10 items-center justify-center border-y border-slate-300 text-sm font-medium text-slate-900">
+                      {String(item.quantity).padStart(2, '0')}
                     </span>
                     <button
-                      onClick={() => updateQuantity(item.partId, item.quantity + 1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
+                      type="button"
+                      onClick={() =>
+                        updateQuantity(item.partId, item.quantity + 1)
+                      }
+                      className="flex h-9 w-9 items-center justify-center rounded-r-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="font-semibold text-slate-900">
+
+                  {/* Total */}
+                  <p className="w-36 text-sm font-semibold text-slate-900">
                     {formatCurrency(item.price * item.quantity)}
                   </p>
+
+                  {/* Remove */}
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.partId)}
+                    className="flex h-8 w-8 items-center justify-center text-red-400 hover:text-red-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="space-y-3 px-4 pb-6 lg:px-0 lg:pb-8">
-            <LoyaltyCheckoutBanner
-              tier={loyaltyTier}
-              subtotal={subtotal}
-              loyaltySavings={pricingPreview.loyaltySavings}
-              thresholds={loyaltyThresholds}
-              loyaltyDiscountsEnabled={enabled}
-              baseMarkupPercentage={baseMarkupPercentage}
-            />
-            <DeliveryWeightSummary pricing={pricingPreview} />
-            <p className="text-center text-xs text-slate-500 lg:text-left">
-              <Link href="/how-loyalty-works?from=cart" className="text-primary hover:underline">
+          {/* How delivery was calculated */}
+          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">
+                How delivery was calculated
+              </h3>
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-white">
+                  <Award className="h-3.5 w-3.5" />
+                </span>
+                {formatLoyaltyTier(loyaltyTier)} tier
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Total weight</span>
+                <span className="text-slate-900">
+                  {pricingPreview.totalWeightKg ?? totalWeightKg} kg
+                  {pricingPreview.deliveryTierLabel
+                    ? ` (${pricingPreview.deliveryTierLabel})`
+                    : ''}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Express delivery</span>
+                <span className="text-slate-900">
+                  {pricingPreview.deliveryFeeLabel
+                    ? pricingPreview.deliveryFeeLabel
+                    : pricingPreview.deliveryTierLabel
+                      ? `${pricingPreview.deliveryTierLabel} delivery (${pricingPreview.totalWeightKg ?? totalWeightKg} kg)`
+                      : 'Standard'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Delivery fee</span>
+                <span className="font-medium text-slate-900">
+                  {pricingPreview.deliveryFee === 0
+                    ? 'FREE'
+                    : formatCurrency(pricingPreview.deliveryFee)}
+                </span>
+              </div>
+            </div>
+
+            <p className="mt-5 text-center text-sm text-slate-500">
+              <Link
+                href="/how-loyalty-works?from=cart"
+                className="text-[#E07A3A] hover:underline"
+              >
                 How loyalty works
               </Link>
               {' · '}
-              <Link href="/how-delivery-works?from=cart" className="text-primary hover:underline">
+              <Link
+                href="/how-delivery-works?from=cart"
+                className="text-[#E07A3A] hover:underline"
+              >
                 How delivery pricing works
               </Link>
             </p>
           </div>
         </div>
 
-        {/* Desktop order summary — in document flow, not fixed */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-28 rounded-card border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">Order summary</h2>
-            <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
-              <span>
-                Delivery
-                {pricingPreview.deliveryTierLabel
-                  ? ` (${pricingPreview.deliveryTierLabel})`
-                  : ''}
+        {/* ── Order summary sidebar (desktop) ── */}
+        <aside className="w-full lg:w-80 lg:shrink-0">
+          <div className="sticky top-28 rounded-xl border border-slate-200 bg-white p-5">
+            <h2 className="mb-4 text-lg font-bold text-slate-900">
+              Order summary
+            </h2>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">Subtotal :</span>
+                <span className="text-slate-900">
+                  {formatCurrency(subtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">VAT</span>
+                <span className="text-slate-900">
+                  {formatCurrency(pricingPreview.markupAmount)}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+              <span className="text-sm font-semibold text-slate-900">
+                Total
               </span>
-              <span>
-                {pricingPreview.deliveryFee === 0
-                  ? 'FREE'
-                  : formatCurrency(pricingPreview.deliveryFee)}
+              <span className="text-xl font-bold text-slate-900">
+                {formatCurrency(pricingPreview.total)}
               </span>
             </div>
-            <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
-              <span>Total weight</span>
-              <span>{totalWeightKg} kg</span>
-            </div>
-            <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
-              <span className="text-sm text-slate-500">Parts subtotal</span>
-              <span className="text-lg font-bold text-slate-900">
-                {formatCurrency(subtotal)}
-              </span>
-            </div>
-            <Link href="/checkout">
-              <Button fullWidth>
-                Proceed to Checkout
-                <ArrowRight className="ml-2 h-5 w-5" />
+
+            <p className="mt-2 text-center text-xs text-slate-400">
+              Shipping fee will be calculated in checkout
+            </p>
+
+            <Link href="/checkout" className="mt-4 block">
+              <Button fullWidth className="h-12 text-base">
+                Continue to check out
               </Button>
             </Link>
+
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500">
+              <ShieldCheck className="h-4 w-4 text-green-600" />
+              <span>100% payment security</span>
+            </div>
           </div>
         </aside>
       </div>
 
       {/* Mobile sticky bottom bar */}
       <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:hidden">
-        <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
-          <span>
-            Delivery
-            {pricingPreview.deliveryTierLabel
-              ? ` (${pricingPreview.deliveryTierLabel})`
-              : ''}
-          </span>
-          <span>
-            {pricingPreview.deliveryFee === 0
-              ? 'FREE'
-              : formatCurrency(pricingPreview.deliveryFee)}
-          </span>
-        </div>
-        <div className="mb-1 flex items-center justify-between text-sm text-slate-500">
-          <span>Total weight</span>
-          <span>{totalWeightKg} kg</span>
-        </div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm text-slate-500">Parts subtotal</span>
+          <span className="text-sm text-slate-500">Total</span>
           <span className="text-lg font-bold text-slate-900">
-            {formatCurrency(subtotal)}
+            {formatCurrency(pricingPreview.total)}
           </span>
         </div>
         <Link href="/checkout">
-          <Button fullWidth>
-            Proceed to Checkout
-            <ArrowRight className="ml-2 h-5 w-5" />
+          <Button fullWidth className="h-12 text-base">
+            Continue to check out
           </Button>
         </Link>
       </div>
 
       {/* Spacer so mobile content clears the fixed bar */}
-      <div className="h-44 lg:hidden" aria-hidden />
+      <div className="h-32 lg:hidden" aria-hidden />
     </div>
   );
 }

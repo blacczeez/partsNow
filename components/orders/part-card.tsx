@@ -1,5 +1,4 @@
-'use client';
-
+import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { VehicleFitmentBadge } from '@/components/vehicles/vehicle-fitment-badge';
@@ -8,14 +7,12 @@ import type { CatalogPart } from '@/lib/types/catalog';
 
 interface PartCardProps {
   part: CatalogPart;
-  onClick: () => void;
 }
 
-export function PartCard({ part, onClick }: PartCardProps) {
+export function PartCard({ part }: PartCardProps) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Link
+      href={`/product/${part.id}`}
       className="mb-4 flex w-full flex-col overflow-hidden rounded-card border border-slate-200 bg-white text-left shadow-sm transition-shadow hover:shadow-md"
     >
       {/* Image area */}
@@ -53,6 +50,6 @@ export function PartCard({ part, onClick }: PartCardProps) {
           {part.average_price ? formatCurrency(part.average_price) : 'Price on request'}
         </p>
       </div>
-    </button>
+    </Link>
   );
 }

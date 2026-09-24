@@ -20,8 +20,8 @@ interface CustomerNavProps {
 const navItems = [
   { href: '/dashboard', label: 'Home' },
   { href: '/search', label: 'Shop' },
-  { href: '/orders', label: 'Orders' },
-  { href: '/wallet', label: 'Wallet' },
+  { href: '/account?tab=orders', label: 'Orders' },
+  { href: '/account?tab=wallet', label: 'Wallet' },
 ];
 
 function getInitials(name: string): string {
@@ -138,11 +138,23 @@ export function CustomerNav({ cartCount = 0, userName }: CustomerNavProps) {
         {/* Nav Links */}
         <nav className="ml-16 flex items-center gap-7">
           {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              pathname.startsWith(item.href + '/') ||
-              (item.href === '/orders' &&
-                pathname.startsWith('/order/'));
+            let isActive: boolean;
+            if (item.label === 'Orders') {
+              isActive =
+                pathname.startsWith('/order/') ||
+                (pathname === '/account' && searchParams.get('tab') === 'orders') ||
+                pathname === '/orders' ||
+                pathname.startsWith('/orders/');
+            } else if (item.label === 'Wallet') {
+              isActive =
+                (pathname === '/account' && searchParams.get('tab') === 'wallet') ||
+                pathname === '/wallet' ||
+                pathname.startsWith('/wallet/');
+            } else {
+              isActive =
+                pathname === item.href ||
+                pathname.startsWith(item.href + '/');
+            }
 
             return (
               <Link
