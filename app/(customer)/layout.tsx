@@ -44,7 +44,7 @@ function CustomerShell({ children }: { children: React.ReactNode }) {
       <CustomerTopNav />
       <MobileCustomerHeader cartCount={itemCount} />
       <main className="min-h-full flex-1 pb-20 lg:pb-0">
-        <div className="mx-auto w-full max-w-7xl lg:px-6">{children}</div>
+        <div className="mx-auto w-full max-w-7xl lg:px-1">{children}</div>
       </main>
       <Footer />
       <BottomNav cartCount={itemCount} />

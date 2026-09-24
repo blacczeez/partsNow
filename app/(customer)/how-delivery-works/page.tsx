@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2, Scale, Truck, MapPin, ArrowLeft, Package, CheckCircle2 } from 'lucide-react';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { formatCurrency } from '@/lib/utils/format';
 import type { DeliveryWeightTier } from '@/lib/types/delivery';
 
@@ -46,14 +47,12 @@ function HowDeliveryWorksContent() {
 
   return (
     <div className="px-4 pb-12 pt-4 lg:px-0">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 py-4 text-sm">
-        <Link href="/dashboard" className="text-slate-500 hover:text-slate-700">
-          Home
-        </Link>
-        <span className="text-slate-400">&rsaquo;</span>
-        <span className="font-medium text-slate-900">Delivery Pricing</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Delivery Pricing' },
+        ]}
+      />
 
       {/* Back + title */}
       <div className="mb-6 flex items-center gap-3">

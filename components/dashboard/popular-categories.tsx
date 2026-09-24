@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Category {
   slug: string;
@@ -75,14 +76,15 @@ export function PopularCategories({ categories }: PopularCategoriesProps) {
         </div>
 
         {visible.length > 4 && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="icon"
             onClick={scrollNext}
             aria-label="Next categories"
-            className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full bg-slate-200 p-2.5 text-slate-700 shadow-sm transition-opacity hover:opacity-80 lg:flex"
+            className="absolute right-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 rounded-full shadow-sm lg:flex"
           >
             <ChevronRight className="h-5 w-5" strokeWidth={2.5} />
-          </button>
+          </Button>
         )}
       </div>
     </section>

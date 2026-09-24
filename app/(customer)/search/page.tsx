@@ -6,7 +6,6 @@ import {
   Loader2,
   Package,
   Search as SearchIcon,
-  ChevronRight,
   ChevronDown,
   LayoutGrid,
   List,
@@ -18,6 +17,8 @@ import { PartCard } from '@/components/orders/part-card';
 import { usePartsSearch } from '@/lib/hooks/use-parts-search';
 import { useSelectedVehicle } from '@/lib/contexts/selected-vehicle-context';
 import { SearchVehicleBar } from '@/components/search/search-vehicle-bar';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { useState, useEffect, Suspense } from 'react';
 
@@ -126,21 +127,15 @@ function SearchContent() {
   const activeCategoryName = categories.find((c) => c.slug === category)?.name;
 
   return (
-    <div className="px-4 lg:px-0">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 py-4 text-sm">
-        <Link href="/dashboard" className="text-slate-500 hover:text-slate-700">
-          Home
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <span className="font-medium text-slate-900">Shop</span>
-        {activeCategoryName && (
-          <>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-            <span className="font-medium text-slate-900">{activeCategoryName}</span>
-          </>
-        )}
-      </nav>
+    <div className="px-4 lg:px-0 pt-4 lg:pt-6">
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          ...(activeCategoryName
+            ? [{ label: 'Shop', href: '/search' }, { label: activeCategoryName }]
+            : [{ label: 'Shop' }]),
+        ]}
+      />
 
       {/* Search bar — mobile only (desktop uses navbar search) */}
       <div className="mb-4 lg:hidden">
@@ -152,7 +147,7 @@ function SearchContent() {
         <SearchVehicleBar />
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex gap-8 pt-4 lg:pt-6">
         {/* ── Left Sidebar (desktop) ── */}
         <aside className="relative z-10 hidden w-60 shrink-0 lg:block">
           <div className="sticky top-[4.5rem] flex max-h-[calc(100vh-5rem)] flex-col">
@@ -165,11 +160,11 @@ function SearchContent() {
             <div className="flex-1 overflow-y-auto pr-2 scrollbar-subtle">
               {/* Category heading + result count */}
               <div className="mb-5 flex items-baseline justify-between">
-                <h3 className="font-marketing-display text-base font-bold uppercase tracking-wide text-slate-900">
+                <h3 className="font-marketing-display text-base font-bold uppercase tracking-wide text-[#0A0A0A]">
                   Category
                 </h3>
-                <p className="text-sm text-slate-400">
-                  <span className="font-semibold text-slate-700">{total.toLocaleString()}</span>{' '}
+                <p className="text-sm text-[#737373]">
+                  <span className="font-semibold text-[#0A0A0A]">{total.toLocaleString()}</span>{' '}
                   Results found.
                 </p>
               </div>
@@ -181,11 +176,11 @@ function SearchContent() {
                   <span
                     className={cn(
                       'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                      !category ? 'border-[#E07A3A]' : 'border-slate-300'
+                      !category ? 'border-[#FF6600]' : 'border-slate-300'
                     )}
                   >
                     {!category && (
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#FF6600]" />
                     )}
                   </span>
                   <input
@@ -198,7 +193,7 @@ function SearchContent() {
                   <span
                     className={cn(
                       'transition-colors',
-                      !category ? 'font-semibold text-slate-900' : 'text-slate-500'
+                      !category ? 'font-semibold text-[#0A0A0A]' : 'text-[slate-500]'
                     )}
                   >
                     All Categories
@@ -214,12 +209,12 @@ function SearchContent() {
                       className={cn(
                         'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                         category === cat.slug
-                          ? 'border-[#E07A3A]'
+                          ? 'border-[#FF6600]'
                           : 'border-slate-300'
                       )}
                     >
                       {category === cat.slug && (
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#FF6600]" />
                       )}
                     </span>
                     <input
@@ -233,8 +228,8 @@ function SearchContent() {
                       className={cn(
                         'transition-colors',
                         category === cat.slug
-                          ? 'font-semibold text-slate-900'
-                          : 'text-slate-500'
+                          ? 'font-semibold text-[#0A0A0A]'
+                          : 'text-[slate-500]'
                       )}
                     >
                       {cat.name}
@@ -254,7 +249,7 @@ function SearchContent() {
               <div className="relative mb-4 h-6">
                 <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-slate-200" />
                 <div
-                  className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded bg-[#E07A3A]"
+                  className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded bg-[#FF6600]"
                   style={{
                     left: `${(priceMin / MAX_PRICE) * 100}%`,
                     right: `${100 - (priceMax / MAX_PRICE) * 100}%`,
@@ -290,7 +285,7 @@ function SearchContent() {
                     const v = Number(e.target.value.replace(/\D/g, ''));
                     if (!isNaN(v)) setPriceMin(v);
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#E07A3A] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#FF6600] focus:outline-none"
                 />
                 <input
                   type="text"
@@ -300,7 +295,7 @@ function SearchContent() {
                     const v = Number(e.target.value.replace(/\D/g, ''));
                     if (!isNaN(v)) setPriceMax(v);
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#E07A3A] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#FF6600] focus:outline-none"
                 />
               </div>
 
@@ -315,12 +310,12 @@ function SearchContent() {
                       className={cn(
                         'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                         priceMin === preset.min && priceMax === preset.max
-                          ? 'border-[#E07A3A]'
+                          ? 'border-[#FF6600]'
                           : 'border-slate-300'
                       )}
                     >
                       {priceMin === preset.min && priceMax === preset.max && (
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#FF6600]" />
                       )}
                     </span>
                     <input
@@ -366,7 +361,7 @@ function SearchContent() {
                         className={cn(
                           'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors',
                           isSelected
-                            ? 'border-[#E07A3A] bg-[#E07A3A]'
+                            ? 'border-[#FF6600] bg-[#FF6600]'
                             : 'border-slate-300 bg-white'
                         )}
                       >
@@ -418,7 +413,7 @@ function SearchContent() {
                       className={cn(
                         'rounded-lg border px-3 py-1.5 text-sm transition-colors',
                         isSelected
-                          ? 'border-[#E07A3A] font-medium text-[#E07A3A]'
+                          ? 'border-[#FF6600] font-medium text-[#FF6600]'
                           : 'border-slate-200 text-slate-500 hover:border-slate-300'
                       )}
                     >
@@ -584,18 +579,15 @@ function SearchContent() {
 
           {/* Load more */}
           {hasMore && (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              fullWidth
+              isLoading={isLoading}
               onClick={loadMore}
-              disabled={isLoading}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-card border border-slate-200 bg-white py-3 text-sm font-medium text-primary hover:bg-slate-50"
+              className="mt-6"
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Load more'
-              )}
-            </button>
+              Load more
+            </Button>
           )}
         </div>
       </div>
@@ -632,11 +624,11 @@ function SearchContent() {
                   <span
                     className={cn(
                       'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                      category === cat.slug ? 'border-[#E07A3A]' : 'border-slate-300'
+                      category === cat.slug ? 'border-[#FF6600]' : 'border-slate-300'
                     )}
                   >
                     {category === cat.slug && (
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#FF6600]" />
                     )}
                   </span>
                   <input
@@ -674,12 +666,12 @@ function SearchContent() {
                     className={cn(
                       'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                       priceMin === preset.min && priceMax === preset.max
-                        ? 'border-[#E07A3A]'
+                        ? 'border-[#FF6600]'
                         : 'border-slate-300'
                     )}
                   >
                     {priceMin === preset.min && priceMax === preset.max && (
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#E07A3A]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#FF6600]" />
                     )}
                   </span>
                   <input

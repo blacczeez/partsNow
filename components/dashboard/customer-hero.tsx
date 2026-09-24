@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, Calendar, Car, LayoutGrid } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { VEHICLE_MAKES, getModelsForMake } from '@/lib/data/vehicle-makes-models';
 
 const YEARS = Array.from({ length: 30 }, (_, i) => String(2025 - i));
@@ -159,12 +160,9 @@ export function CustomerHero() {
             </div>
 
             {/* Submit */}
-            <button
-              type="submit"
-              className="shrink-0 rounded-lg bg-[#3E208D] px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            >
+            <Button type="submit" className="shrink-0">
               Browse part
-            </button>
+            </Button>
           </div>
         </form>
         </div>

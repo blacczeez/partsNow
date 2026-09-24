@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import {
   Loader2,
   ArrowLeft,
@@ -73,18 +74,13 @@ function HowLoyaltyWorksContent() {
 
   return (
     <div className="px-4 pb-12 pt-4 lg:px-0">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 py-4 text-sm">
-        <Link href="/dashboard" className="text-slate-500 hover:text-slate-700">
-          Home
-        </Link>
-        <span className="text-slate-400">&rsaquo;</span>
-        <Link href={backHref} className="text-slate-500 hover:text-slate-700">
-          My Account
-        </Link>
-        <span className="text-slate-400">&rsaquo;</span>
-        <span className="font-medium text-slate-900">Loyalty Program</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'My Account', href: backHref },
+          { label: 'Loyalty Program' },
+        ]}
+      />
 
       {/* Back + title */}
       <div className="mb-6 flex items-center gap-3">

@@ -131,7 +131,7 @@ export function CustomerNav({ cartCount = 0, userName }: CustomerNavProps) {
 
   return (
     <div className="sticky top-0 z-40 hidden border-b border-slate-200 bg-white lg:block">
-      <div className="mx-auto flex h-14 max-w-7xl items-center px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center px-1">
         {/* Brand */}
         <BrandLogo variant="color" height={28} href="/dashboard" />
 

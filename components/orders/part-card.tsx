@@ -13,10 +13,10 @@ export function PartCard({ part }: PartCardProps) {
   return (
     <Link
       href={`/product/${part.id}`}
-      className="mb-4 flex w-full flex-col overflow-hidden rounded-card border border-slate-200 bg-white text-left shadow-sm transition-shadow hover:shadow-md"
+      className="mb-4 flex w-full flex-col overflow-hidden rounded-card  text-left hover:shadow-md"
     >
       {/* Image area */}
-      <div className="relative aspect-square w-full bg-slate-100">
+      <div className="relative aspect-square w-full bg-[#EEEEEE]">
         {part.image_url ? (
           <img
             src={part.image_url}

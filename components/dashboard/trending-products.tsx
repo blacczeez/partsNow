@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag } from 'lucide-react';
+import { ArrowRight, ShoppingBag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const trendingProducts = [
   {
@@ -50,9 +51,10 @@ export function TrendingProducts() {
         <h2 className="font-marketing-display text-2xl font-semibold text-slate-900">Trending Product</h2>
         <Link
           href="/search"
-          className="text-sm font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
         >
           See more
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
@@ -87,14 +89,15 @@ export function TrendingProducts() {
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <p className="text-base font-semibold text-[#404040]">{formatNaira(product.price)}</p>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#A3A3A3] text-slate-500 transition-colors hover:bg-slate-50"
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
                   aria-label="Add to cart"
                   onClick={(e) => e.preventDefault()}
                 >
                   <ShoppingBag className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           </Link>

@@ -4,7 +4,6 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ChevronRight,
   ChevronUp,
   ChevronDown,
   Loader2,
@@ -20,6 +19,7 @@ import {
 import { useCart } from '@/lib/hooks/use-cart';
 import { toast } from '@/components/ui/toast';
 import { formatCurrency } from '@/lib/utils/format';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { cn } from '@/lib/utils/cn';
 import type { Part } from '@/lib/types/database';
 
@@ -113,20 +113,13 @@ export default function ProductDetailPage({
 
   return (
     <div className="px-4 pb-12 lg:px-0">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 py-4 text-sm">
-        <Link href="/dashboard" className="text-slate-500 hover:text-slate-700">
-          Home
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <Link href="/search" className="text-slate-500 hover:text-slate-700">
-          Shop
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <span className="font-medium text-slate-900 line-clamp-1">
-          {part.name}
-        </span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Shop', href: '/search' },
+          { label: part.name },
+        ]}
+      />
 
       {/* Main content: image gallery + product info */}
       <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">

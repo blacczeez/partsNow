@@ -37,6 +37,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
@@ -2496,20 +2497,13 @@ export default function AccountPage() {
 
   return (
     <div className="px-4 pb-12 lg:px-0">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 py-4 text-sm">
-        <Link href="/dashboard" className="text-slate-500 hover:text-slate-700">
-          Home
-        </Link>
-        <span className="text-slate-400">&rsaquo;</span>
-        <Link href="/account" className="text-slate-500 hover:text-slate-700">
-          My Account
-        </Link>
-        <span className="text-slate-400">&rsaquo;</span>
-        <span className="font-medium text-slate-900">
-          {getSectionLabel(activeSection)}
-        </span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'My Account', href: '/account' },
+          { label: getSectionLabel(activeSection) },
+        ]}
+      />
 
       {/* Layout: sidebar + content */}
       <div className="flex flex-col gap-8 lg:flex-row">
