@@ -61,7 +61,7 @@ export default function CartPage() {
       <div className="flex flex-col items-center gap-4 px-4 py-20">
         <ShoppingCart className="h-16 w-16 text-slate-300" />
         <p className="text-lg font-medium text-slate-500">Your cart is empty</p>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-[#A3A3A3]">
           Browse parts and add them to your cart
         </p>
         <Link href="/search">
@@ -97,20 +97,20 @@ export default function CartPage() {
 
       {/* Step indicator */}
       <div className="mb-6 flex items-center gap-0 text-sm">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E07A3A] text-xs font-bold text-white">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6600] text-xs font-bold text-white">
           1
         </span>
-        <span className="ml-2 font-medium text-[#E07A3A]">Shopping cart</span>
-        <span className="mx-3 h-px w-8 bg-slate-300" />
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400">
+        <span className="ml-2 font-medium text-[#FF6600]">Shopping cart</span>
+        <span className="mx-3 h-px w-8 bg-[#A3A3A3]" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#A3A3A3] text-xs font-medium text-[#A3A3A3]">
           2
         </span>
-        <span className="ml-2 text-slate-400">Checkout details</span>
-        <span className="mx-3 hidden h-px w-8 bg-slate-300 sm:block" />
-        <span className="hidden h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400 sm:flex">
+        <span className="ml-2 text-[#A3A3A3]">Checkout details</span>
+        <span className="mx-3 hidden h-px w-8 bg-[#A3A3A3] sm:block" />
+        <span className="hidden h-6 w-6 items-center justify-center rounded-full border border-[#A3A3A3] text-xs font-medium text-[#A3A3A3] sm:flex">
           3
         </span>
-        <span className="ml-2 hidden text-slate-400 sm:inline">
+        <span className="ml-2 hidden text-[#A3A3A3] sm:inline">
           Order complete
         </span>
       </div>
@@ -119,7 +119,7 @@ export default function CartPage() {
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {/* ── Items table ── */}
         <div className="min-w-0 flex-1">
-          <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="bg-[#FFF] border border-[#E4E7E9]">
             {/* Table header — desktop */}
             <div className="hidden border-b border-slate-200 px-6 py-3 sm:flex">
               <span className="flex-1 text-sm font-medium text-slate-600">
@@ -209,13 +209,13 @@ export default function CartPage() {
           </div>
 
           {/* How delivery was calculated */}
-          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mt-6 border border-[#E4E7E9] bg-white p-5">
             <div className="flex items-center justify-between">
               <h3 className="font-marketing-display text-base font-bold text-slate-900">
                 How delivery was calculated
               </h3>
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-white">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#F4EBFF] px-3 py-1.5 text-sm font-medium text-[#2B1663]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#7348E3] text-white">
                   <Award className="h-3.5 w-3.5" />
                 </span>
                 {formatLoyaltyTier(loyaltyTier)} tier
@@ -255,14 +255,14 @@ export default function CartPage() {
             <p className="mt-5 text-center text-sm text-slate-500">
               <Link
                 href="/how-loyalty-works?from=cart"
-                className="text-[#E07A3A] hover:underline"
+                className="text-[#FF6600] hover:underline"
               >
                 How loyalty works
               </Link>
               {' · '}
               <Link
                 href="/how-delivery-works?from=cart"
-                className="text-[#E07A3A] hover:underline"
+                className="text-[#FF6600] hover:underline"
               >
                 How delivery pricing works
               </Link>
@@ -272,7 +272,7 @@ export default function CartPage() {
 
         {/* ── Order summary sidebar (desktop) ── */}
         <aside className="w-full lg:w-80 lg:shrink-0">
-          <div className="sticky top-28 rounded-xl border border-slate-200 bg-white p-5">
+          <div className="sticky top-28 rounded-xl border border-[#E4E7E9] bg-white p-5">
             <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
               Order summary
             </h2>
@@ -301,12 +301,12 @@ export default function CartPage() {
               </span>
             </div>
 
-            <p className="mt-2 text-center text-xs text-slate-400">
+            <p className="mt-2 text-center text-xs text-[#A3A3A3]">
               Shipping fee will be calculated in checkout
             </p>
 
             <Link href="/checkout" className="mt-4 block">
-              <Button fullWidth className="h-12 text-base">
+              <Button fullWidth className="h-12 text-base bg-[#321A71] rounded-xl">
                 Continue to check out
               </Button>
             </Link>
@@ -320,7 +320,7 @@ export default function CartPage() {
       </div>
 
       {/* Mobile sticky bottom bar */}
-      <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-slate-200 bg-white px-4 py-3 shadow-lg lg:hidden">
+      <div className="fixed bottom-16 left-0 right-0 z-10 border-t border-[#E4E7E9] bg-white px-4 py-3 shadow-lg lg:hidden">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm text-slate-500">Total</span>
           <span className="text-lg font-bold text-slate-900">

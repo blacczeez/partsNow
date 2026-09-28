@@ -127,7 +127,7 @@ function SearchContent() {
   const activeCategoryName = categories.find((c) => c.slug === category)?.name;
 
   return (
-    <div className="px-4 lg:px-0 pt-4 lg:pt-6">
+    <div className="px-4 lg:px-0">
       <Breadcrumb
         items={[
           { label: 'Home', href: '/dashboard' },
@@ -147,7 +147,7 @@ function SearchContent() {
         <SearchVehicleBar />
       </div>
 
-      <div className="flex gap-8 pt-4 lg:pt-6">
+      <div className="flex gap-8">
         {/* ── Left Sidebar (desktop) ── */}
         <aside className="relative z-10 hidden w-60 shrink-0 lg:block">
           <div className="sticky top-[4.5rem] flex max-h-[calc(100vh-5rem)] flex-col">
@@ -427,7 +427,7 @@ function SearchContent() {
         </aside>
 
         {/* ── Main Content ── */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 mb-5">
           {/* Top bar: result count + sort + view toggle */}
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -586,7 +586,7 @@ function SearchContent() {
               onClick={loadMore}
               className="mt-6"
             >
-              Load more
+              Load mores
             </Button>
           )}
         </div>

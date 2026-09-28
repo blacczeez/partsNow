@@ -12,8 +12,8 @@ import {
   Banknote,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { VehicleSelect } from '@/components/forms/vehicle-select';
 import { useCart } from '@/lib/hooks/use-cart';
 import { useUser } from '@/lib/hooks/use-user';
 import { calculatePricing, isCodAllowedForCustomer } from '@/lib/utils/pricing';
@@ -69,7 +69,7 @@ export default function CheckoutPage() {
   if (cart.items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 px-4 py-20">
-        <ShoppingCart className="h-16 w-16 text-slate-300" />
+        <ShoppingCart className="h-16 w-16 text-[#A3A3A3]" />
         <p className="text-lg font-medium text-slate-500">Your cart is empty</p>
         <Link href="/search">
           <Button>Browse Parts</Button>
@@ -188,26 +188,34 @@ export default function CheckoutPage() {
 
   return (
     <div className="px-4 pb-12 lg:px-0">
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Shop', href: '/search' },
+          { label: 'Checkout' },
+        ]}
+      />
+
       {/* Step indicator */}
       <div className="flex items-center gap-0 py-5 text-sm">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#A3A3A3] text-xs font-medium text-[#A3A3A3]">
           1
         </span>
-        <span className="ml-2 text-slate-400">Shopping cart</span>
-        <span className="mx-3 h-px w-8 bg-slate-300" />
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E07A3A] text-xs font-bold text-white">
+        <span className="ml-2 text-[#A3A3A3]">Shopping cart</span>
+        <span className="mx-3 h-px w-8 bg-[#A3A3A3]" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6600] text-xs font-bold text-white">
           2
         </span>
-        <span className="ml-2 font-medium text-[#E07A3A]">Checkout details</span>
-        <span className="mx-3 hidden h-px w-8 bg-slate-300 sm:block" />
-        <span className="hidden h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400 sm:flex">
+        <span className="ml-2 font-medium text-[#FF6600]">Checkout details</span>
+        <span className="mx-3 hidden h-px w-8 bg-[#A3A3A3] sm:block" />
+        <span className="hidden h-6 w-6 items-center justify-center rounded-full border border-[#A3A3A3] text-xs font-medium text-[#A3A3A3] sm:flex">
           3
         </span>
-        <span className="ml-2 hidden text-slate-400 sm:inline">Order complete</span>
+        <span className="ml-2 hidden text-[#A3A3A3] sm:inline">Order complete</span>
       </div>
 
       {/* Market price notice */}
-      <div className="mb-6 flex gap-3 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+      <div className="mb-6 flex gap-3 border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-950">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
         <div>
           <p className="font-semibold">Market prices may differ from estimates</p>
@@ -223,17 +231,8 @@ export default function CheckoutPage() {
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {/* ── Left: Form ── */}
         <div className="min-w-0 flex-1">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-8">
+          <div className="border border-[#E4E7E9] bg-white p-5 sm:p-8">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
-              {/* Vehicle */}
-              <FieldsetWrapper label="Vehicle" required>
-                <VehicleSelect
-                  selectedId={cart.vehicleId}
-                  onSelect={(v) => cart.setVehicle(v?.id)}
-                  className="!rounded-lg !border-slate-300 !shadow-none"
-                />
-              </FieldsetWrapper>
-
               {/* State */}
               <FieldsetWrapper label="State" required>
                 <input
@@ -241,7 +240,7 @@ export default function CheckoutPage() {
                   value={state}
                   onChange={(e) => setState(e.target.value)}
                   placeholder="Enter state"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -252,7 +251,7 @@ export default function CheckoutPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter first name"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -263,7 +262,7 @@ export default function CheckoutPage() {
                   value={surname}
                   onChange={(e) => setSurname(e.target.value)}
                   placeholder="Enter surname"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -274,7 +273,7 @@ export default function CheckoutPage() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Enter city"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -285,7 +284,7 @@ export default function CheckoutPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Enter address"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -296,7 +295,7 @@ export default function CheckoutPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Enter number"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -307,7 +306,7 @@ export default function CheckoutPage() {
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
                   placeholder="Enter code"
-                  className="h-11 w-full rounded-lg border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 w-full rounded-md border-0 bg-transparent px-3 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                 />
               </FieldsetWrapper>
 
@@ -319,7 +318,7 @@ export default function CheckoutPage() {
                     onChange={(e) => setDeliveryNotes(e.target.value)}
                     placeholder="Any special instructions"
                     rows={3}
-                    className="w-full resize-none rounded-lg border-0 bg-transparent px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                    className="w-full resize-none rounded-md border-0 bg-transparent px-3 py-2 text-base text-slate-900 placeholder:text-[#A3A3A3] placeholder:text-sm focus:outline-none"
                   />
                 </FieldsetWrapper>
               </div>
@@ -331,7 +330,7 @@ export default function CheckoutPage() {
         <aside className="w-full lg:w-80 lg:shrink-0">
           <div className="space-y-4">
             {/* Order summary */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="border border-[#E4E7E9] bg-white p-5">
               <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
                 Order summary
               </h2>
@@ -358,7 +357,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Payment method */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="border border-slate-200 bg-white p-5">
               <h2 className="font-marketing-display mb-4 text-lg font-bold text-slate-900">
                 Payment method
               </h2>
@@ -372,18 +371,18 @@ export default function CheckoutPage() {
                     className={cn(
                       'flex w-full items-center gap-3 rounded-xl border px-4 py-4 text-left transition-colors',
                       paymentMethod === method.id && !method.disabled
-                        ? 'border-primary bg-primary/5'
+                        ? 'border-[#3E208D] bg-[#F9F5FF]'
                         : method.disabled
-                          ? 'border-slate-100 bg-slate-50 opacity-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-[#DEDCDC] bg-slate-50 opacity-50'
+                          : 'border-[#DEDCDC] bg-white hover:border-[#A3A3A3]'
                     )}
                   >
                     <div
                       className={cn(
-                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-[130px]',
                         paymentMethod === method.id
-                          ? 'bg-primary text-white'
-                          : 'bg-slate-100 text-slate-400'
+                          ? 'bg-[#3E208D] text-white'
+                          : 'bg-[#F9F5FF] text-[#A3A3A3]'
                       )}
                     >
                       {method.icon}
@@ -398,8 +397,8 @@ export default function CheckoutPage() {
                       className={cn(
                         'h-5 w-5 shrink-0 rounded-full border-2',
                         paymentMethod === method.id
-                          ? 'border-primary bg-primary'
-                          : 'border-slate-300'
+                          ? 'border-[#3E208D] bg-[#3E208D]'
+                          : 'border-[#DEDCDC]'
                       )}
                     >
                       {paymentMethod === method.id && (
@@ -420,13 +419,13 @@ export default function CheckoutPage() {
               onClick={handlePlaceOrder}
               isLoading={isSubmitting}
               disabled={!address || address.length < 10 || !firstName.trim()}
-              className="h-12 text-base"
-            >
-              Place your order
+              className="h-12 text-base bg-[#3E208D] text-white !rounded-[50px]"
+            > 
+              Place your orders
             </Button>
 
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
-              <ShieldCheck className="h-4 w-4 text-green-600" />
+            <div className="flex items-center justify-center gap-2 text-sm text-[#000000]">
+              <ShieldCheck className="h-4 w-4 text-[#3E208D]" />
               <span>100% payment security</span>
             </div>
           </div>
@@ -467,7 +466,7 @@ function FieldsetWrapper({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="rounded-lg border border-slate-300 px-3 pb-2 pt-0">
+    <fieldset className="rounded-md border border-[#6B737A] px-3 pb-2">
       <legend className="px-1 text-xs text-slate-500">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}

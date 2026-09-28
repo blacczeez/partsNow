@@ -3,6 +3,7 @@
 import { use } from 'react';
 import { Loader2, Package, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { useOrder } from '@/lib/hooks/use-order';
 import { formatCurrency } from '@/lib/utils/format';
@@ -53,6 +54,14 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
 
   return (
     <div className="px-4 pb-12 lg:px-0">
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Shop', href: '/search' },
+          { label: 'Order Complete' },
+        ]}
+      />
+
       {/* Step indicator */}
       <div className="flex items-center gap-0 py-5 text-sm">
         <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400">

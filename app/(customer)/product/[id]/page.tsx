@@ -40,7 +40,6 @@ export default function ProductDetailPage({
   const [thumbStartIndex, setThumbStartIndex] = useState(0);
 
   useEffect(() => {
-    setIsLoading(true);
     fetch(`/api/inventory/parts/${id}`)
       .then(async (res) => {
         const data = await res.json();
@@ -262,7 +261,7 @@ export default function ProductDetailPage({
           )}
 
           {/* Quantity selector */}
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl bg-white border border-[#F5F5F5] px-4 py-3">
             <span className="text-sm font-medium text-slate-700">Quantity</span>
             <div className="flex items-center gap-3">
               <button
@@ -292,7 +291,7 @@ export default function ProductDetailPage({
               type="button"
               onClick={addToCart}
               disabled={!part.average_price}
-              className="flex h-12 flex-1 items-center justify-center rounded-lg bg-primary font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+              className="flex h-12 flex-1 items-center justify-center rounded-xl bg-[#3E208D] font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
             >
               Add to cart
             </button>
@@ -300,7 +299,7 @@ export default function ProductDetailPage({
               type="button"
               onClick={handleBuyNow}
               disabled={!part.average_price}
-              className="flex h-12 flex-1 items-center justify-center rounded-lg border-2 border-primary font-semibold text-primary transition-colors hover:bg-primary/5 disabled:opacity-50"
+              className="flex h-12 flex-1 items-center justify-center rounded-xl border-2 border-[#F9F5FF] bg-[#F9F5FF] font-semibold text-primary transition-colors hover:bg-primary/5 disabled:opacity-50"
             >
               Buy now
             </button>
