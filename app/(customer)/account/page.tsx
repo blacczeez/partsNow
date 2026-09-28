@@ -108,7 +108,7 @@ const WALLET_FILTERS: Array<{ id: WalletTransactionFilter; label: string }> = [
 
 /* ─── Loyalty tier config ─── */
 const LOYALTY_TIERS = [
-  { id: 'new', label: 'New', minOrders: 0, color: 'bg-slate-100 text-slate-600', discount: 0 },
+  { id: 'new', label: 'New', minOrders: 0, color: 'bg-slate-100 text-[#0A0A0A]', discount: 0 },
   { id: 'verified', label: 'Verified', minOrders: 5, color: 'bg-blue-100 text-blue-700', discount: 0 },
   { id: 'trusted', label: 'Trusted', minOrders: 20, color: 'bg-purple-100 text-purple-700', discount: 5 },
   { id: 'partner', label: 'Partner', minOrders: 50, color: 'bg-amber-100 text-amber-700', discount: 8 },
@@ -289,7 +289,7 @@ function ProfileSection({
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#3E208D] text-xl font-bold text-white">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#321A71] text-xl font-bold text-white">
               {initials}
             </div>
             <div>
@@ -307,7 +307,7 @@ function ProfileSection({
           </div>
           <button
             onClick={() => setEditing(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-[#0A0A0A] transition-colors hover:bg-slate-50"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
@@ -317,16 +317,16 @@ function ProfileSection({
         {/* Contact details */}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <fieldset className="rounded-lg border border-slate-200 px-3 pb-3 pt-2">
-            <legend className="px-1 text-xs text-slate-400">Phone</legend>
+            <legend className="px-1 text-xs text-[#0A0A0A]">Phone</legend>
             <p className="text-sm text-slate-900">{formatPhone(user.phone)}</p>
           </fieldset>
           <fieldset className="rounded-lg border border-slate-200 px-3 pb-3 pt-2">
-            <legend className="px-1 text-xs text-slate-400">Email</legend>
+            <legend className="px-1 text-xs text-[#0A0A0A]">Email</legend>
             <p className="text-sm text-slate-900">{user.email || '—'}</p>
           </fieldset>
           {(user.profile?.delivery_address as string) ? (
             <fieldset className="rounded-lg border border-slate-200 px-3 pb-3 pt-2 sm:col-span-2">
-              <legend className="px-1 text-xs text-slate-400">Delivery address</legend>
+              <legend className="px-1 text-xs text-[#0A0A0A]">Delivery address</legend>
               <p className="text-sm text-slate-900">{String(user.profile.delivery_address)}</p>
             </fieldset>
           ) : null}
@@ -348,7 +348,7 @@ function ProfileSection({
       {/* Loyalty program card */}
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-2">
-          <Gift className="h-5 w-5 text-[#E07A3A]" />
+          <Gift className="h-5 w-5 text-[#FF6600]" />
           <h3 className="font-marketing-display text-base font-bold text-slate-900">Loyalty Program</h3>
         </div>
 
@@ -363,16 +363,16 @@ function ProfileSection({
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-slate-900">{currentTier.label}</span>
             {nextTier && (
-              <span className="text-slate-400">{nextTier.label}</span>
+              <span className="text-[#0A0A0A]">{nextTier.label}</span>
             )}
           </div>
           <div className="relative mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#E07A3A] to-amber-400 transition-all duration-500"
+              className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#FF6600] to-amber-400 transition-all duration-500"
               style={{ width: `${tierProgress}%` }}
             />
           </div>
-          <p className="mt-1.5 text-xs text-slate-400">
+          <p className="mt-1.5 text-xs text-[#0A0A0A]">
             {user.total_orders} / {nextTier?.minOrders ?? currentTier.minOrders} orders
           </p>
         </div>
@@ -388,7 +388,7 @@ function ProfileSection({
                 className={cn(
                   'rounded-lg border px-3 py-2.5 text-center transition-colors',
                   isActive
-                    ? 'border-[#E07A3A] bg-orange-50'
+                    ? 'border-[#FF6600] bg-orange-50'
                     : isUnlocked
                       ? 'border-slate-200 bg-white'
                       : 'border-slate-100 bg-slate-50 opacity-60'
@@ -397,16 +397,16 @@ function ProfileSection({
                 <Crown
                   className={cn(
                     'mx-auto h-4 w-4',
-                    isActive ? 'text-[#E07A3A]' : isUnlocked ? 'text-slate-400' : 'text-slate-300'
+                    isActive ? 'text-[#FF6600]' : isUnlocked ? 'text-[#0A0A0A]' : 'text-slate-300'
                   )}
                 />
                 <p className={cn(
                   'mt-1 text-xs font-semibold',
-                  isActive ? 'text-[#E07A3A]' : 'text-slate-600'
+                  isActive ? 'text-[#FF6600]' : 'text-[#0A0A0A]'
                 )}>
                   {tier.label}
                 </p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[10px] text-[#0A0A0A]">
                   {tier.discount > 0 ? `${tier.discount}% off` : 'Base rate'}
                 </p>
               </div>
@@ -416,7 +416,7 @@ function ProfileSection({
 
         <Link
           href="/how-loyalty-works?from=loyalty"
-          className="mt-4 flex items-center gap-1.5 text-sm font-medium text-[#E07A3A] hover:underline"
+          className="mt-4 flex items-center gap-1.5 text-sm font-medium text-[#FF6600] hover:underline"
         >
           How loyalty works
           <ExternalLink className="h-3.5 w-3.5" />
@@ -481,7 +481,7 @@ function EditProfileForm({
             <legend className="px-1 text-xs text-slate-500">Full Name</legend>
             <input
               {...register('full_name')}
-              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
               placeholder="John Doe"
             />
             {errors.full_name && (
@@ -494,7 +494,7 @@ function EditProfileForm({
             <input
               {...register('email')}
               type="email"
-              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
               placeholder="john@example.com"
             />
             {errors.email && (
@@ -506,7 +506,7 @@ function EditProfileForm({
             <legend className="px-1 text-xs text-slate-500">Delivery Address</legend>
             <input
               {...register('profile.delivery_address')}
-              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
               placeholder="123 Main Street, Ikeja, Lagos"
             />
             {errors.profile?.delivery_address && (
@@ -515,18 +515,19 @@ function EditProfileForm({
           </fieldset>
 
           <div className="flex gap-3 pt-2">
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={onDone}
-              className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+              className="flex-1  py-2.5 text-sm font-medium text-[#0A0A0A] transition-colors hover:bg-slate-50"
             >
               Cancel
-            </button>
+            </Button>
             <Button
               type="submit"
               fullWidth
               isLoading={isSubmitting}
-              className="flex-1 rounded-full"
+              className="flex-1"
             >
               Save changes
             </Button>
@@ -599,7 +600,7 @@ function OrdersSection() {
   return (
     <div>
       {/* Filter tabs + Search row */}
-      <div className="mb-6 flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 bg-white rounded-xl p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {ORDER_FILTERS.map((f) => (
             <button
@@ -609,8 +610,8 @@ function OrdersSection() {
               className={cn(
                 'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
                 filter === f.id
-                  ? 'border-[#E07A3A] text-[#E07A3A]'
-                  : 'border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                  ? 'border-[#FF6600] text-[#FF6600]'
+                  : 'border-slate-200 text-[#A3A3A3] hover:border-slate-300 hover:text-[#0A0A0A]'
               )}
             >
               {f.label}
@@ -624,9 +625,9 @@ function OrdersSection() {
             placeholder="Item name, order ID"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#E07A3A] focus:outline-none focus:ring-1 focus:ring-[#E07A3A]"
+            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm text-slate-900 placeholder:text-[#A3A3A3] focus:border-[#FF6600] focus:outline-none focus:ring-1 focus:ring-[#FF6600]"
           />
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A3A3A3]" />
         </div>
       </div>
 
@@ -638,7 +639,7 @@ function OrdersSection() {
         <div className="flex flex-col items-center gap-3 py-16">
           <Package className="h-12 w-12 text-slate-300" />
           <p className="text-sm font-medium text-slate-500">No orders found</p>
-          <p className="text-xs text-slate-400">Orders you place will appear here</p>
+          <p className="text-xs text-[#0A0A0A]">Orders you place will appear here</p>
           <Link href="/search">
             <Button>Browse Parts</Button>
           </Link>
@@ -648,7 +649,7 @@ function OrdersSection() {
           {/* Active Orders */}
           {activeOrders.length > 0 && (
             <div className="mb-8">
-              <h3 className="font-marketing-display mb-4 text-base font-bold text-slate-900">
+              <h3 className="mb-4 text-xl font-semibold text-slate-900">
                 Active Orders
               </h3>
               <div className="space-y-4">
@@ -666,7 +667,7 @@ function OrdersSection() {
           {/* Past Orders */}
           {pastOrders.length > 0 && (
             <div>
-              <h3 className="font-marketing-display mb-4 text-base font-bold text-slate-900">
+              <h3 className="mb-4 text-xl font-semibold text-slate-900">
                 Past Orders
               </h3>
               <div className="space-y-4">
@@ -687,6 +688,61 @@ function OrdersSection() {
 }
 
 /* ─── Account-specific order card ─── */
+function getAccountOrderTitle(status: OrderStatus): string {
+  switch (status) {
+    case 'pending':
+      return 'Awaiting payment confirmation';
+    case 'confirmed':
+    case 'sourcing':
+    case 'picked':
+      return "We're processing your orders";
+    case 'dispatched':
+      return 'Your order is on its way';
+    case 'delivered':
+      return 'Your order has been delivered';
+    case 'cancelled':
+      return 'This order was cancelled';
+    case 'rejected':
+      return 'This order was rejected';
+    case 'failed':
+      return 'Delivery was unsuccessful';
+    default:
+      return getStatusMessage(status);
+  }
+}
+
+function getAccountOrderBadge(status: OrderStatus): {
+  label: string;
+  className: string;
+} {
+  if (ACTIVE_ORDER_STATUSES.includes(status)) {
+    return {
+      label: 'In Progress',
+      className: 'bg-[#FFF0E6] text-[#E57105]',
+    };
+  }
+  switch (status) {
+    case 'delivered':
+      return { label: 'Delivered', className: 'bg-green-100 text-green-800' };
+    case 'cancelled':
+      return { label: 'Cancelled', className: 'bg-red-100 text-red-800' };
+    case 'rejected':
+      return { label: 'Rejected', className: 'bg-red-100 text-red-800' };
+    case 'failed':
+      return { label: 'Failed', className: 'bg-red-100 text-red-800' };
+    default:
+      return { label: status, className: 'bg-slate-100 text-slate-700' };
+  }
+}
+
+function formatAccountOrderDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-NG', { month: 'long' });
+  const year = date.getFullYear();
+  return `${day}, ${month} ${year}`;
+}
+
 function AccountOrderCard({
   order,
   onViewDetails,
@@ -700,68 +756,89 @@ function AccountOrderCard({
     .filter(Boolean) as string[];
 
   const estimatedDate = order.delivered_at
-    ? formatOrderDate(order.delivered_at)
-    : order.dispatched_at && order.promised_delivery_minutes
-      ? formatOrderDate(order.dispatched_at)
-      : formatOrderDate(order.created_at);
+    ? formatAccountOrderDate(order.delivered_at)
+    : formatAccountOrderDate(order.created_at);
+
+  const badge = getAccountOrderBadge(order.status);
+  const overflowCount =
+    (thumbnails.length || order.order_items.length) > 4
+      ? (thumbnails.length || order.order_items.length) - 4
+      : 0;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
-      {/* Top row: order info + badge */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <span className="font-semibold text-slate-900">
-              {order.order_number}
-            </span>
-            <span className="text-slate-400">
-              Estimated Arrival:{' '}
-              <span className="text-slate-600">{estimatedDate}</span>
-            </span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <span className="text-slate-500">
-              Ship: {itemCount} item{itemCount !== 1 ? 's' : ''}
-            </span>
-            <span className="text-slate-600">
-              {getStatusMessage(order.status)}
-            </span>
-          </div>
-        </div>
-        <StatusBadge status={order.status} />
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      {/* Top metadata bar */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-[#F5F3FF] px-4 py-2.5 text-sm sm:px-5">
+        <p className="text-[#4B5563]">
+          Order ID:{' '}
+          <span className="font-semibold text-slate-900">
+            #{order.order_number}
+          </span>
+        </p>
+        <p className="text-[#4B5563]">
+          Estimated Arrival:{' '}
+          <span className="font-semibold text-slate-900">{estimatedDate}</span>
+        </p>
       </div>
 
-      {/* Thumbnails + view details */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex gap-2">
-          {thumbnails.length > 0
-            ? thumbnails.slice(0, 4).map((url, i) => (
-                <div
-                  key={i}
-                  className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50"
-                >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
-                </div>
-              ))
-            : order.order_items.slice(0, 4).map((item) => (
-                <div
-                  key={item.id}
-                  className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
-                >
-                  <Package className="h-5 w-5 text-slate-300" />
-                </div>
-              ))}
-          {(thumbnails.length > 4 ||
-            (!thumbnails.length && order.order_items.length > 4)) && (
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-100 bg-slate-50 text-xs font-medium text-slate-400">
-              +{(thumbnails.length || order.order_items.length) - 4}
-            </div>
-          )}
+      {/* Card body */}
+      <div className="flex flex-col gap-2 p-4 sm:flex-row  sm:justify-between sm:gap-6 sm:p-5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
+            <Truck className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            <span>
+              Ship | {itemCount} item{itemCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <h4 className="mt-1 text-lg font-semibold leading-snug text-slate-900 sm:text-xl">
+            {getAccountOrderTitle(order.status)}
+          </h4>
+
+          <span
+            className={cn(
+              'mt-2 inline-flex px-2  text-sm font-medium',
+              badge.className
+            )}
+          >
+            {badge.label}
+          </span>
+
+          <div className="mt-4 flex gap-2">
+            {thumbnails.length > 0
+              ? thumbnails.slice(0, 4).map((url, i) => (
+                  <div
+                    key={i}
+                    className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100 sm:h-16 sm:w-16"
+                  >
+                    <img
+                      src={url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ))
+              : order.order_items.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 sm:h-16 sm:w-16"
+                  >
+                    <Package className="h-5 w-5 text-slate-300" />
+                  </div>
+                ))}
+            {overflowCount > 0 && (
+              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-xs font-medium text-slate-500 sm:h-16 sm:w-16">
+                +{overflowCount}
+              </div>
+            )}
+          </div>
         </div>
 
-        <Button variant="secondary" size="sm" onClick={onViewDetails}>
+        <Button
+          onClick={onViewDetails}
+          className="h-11 w-full shrink-0 bg-[#321A71] text-white hover:bg-[#321A71]/opacity-90 sm:w-auto sm:px-6"
+        >
           View details
-          <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -816,7 +893,7 @@ function OrderDetailView({
     return (
       <div className="flex flex-col items-center gap-4 py-16">
         <Package className="h-12 w-12 text-slate-300" />
-        <p className="text-sm text-slate-600">{error || 'Order not found'}</p>
+        <p className="text-sm text-[#0A0A0A]">{error || 'Order not found'}</p>
         <Button variant="secondary" onClick={onBack}>
           Back to orders
         </Button>
@@ -856,13 +933,13 @@ function OrderDetailView({
           {/* Header: order ID + status */}
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-[#0A0A0A]">
                 Order ID:{' '}
                 <span className="font-bold text-slate-900">
                   #{order.order_number}
                 </span>
               </p>
-              <p className="mt-0.5 text-sm text-slate-400">
+              <p className="mt-0.5 text-sm text-[#0A0A0A]">
                 Order Date: {formatOrderDate(order.created_at)}
               </p>
             </div>
@@ -889,7 +966,7 @@ function OrderDetailView({
                     <span
                       className={cn(
                         'text-xs font-medium',
-                        i <= progressIdx ? 'text-slate-900' : 'text-slate-400'
+                        i <= progressIdx ? 'text-slate-900' : 'text-[#0A0A0A]'
                       )}
                     >
                       {i === progressIdx && '✨ '}
@@ -901,7 +978,7 @@ function OrderDetailView({
               {/* Progress bar */}
               <div className="relative mt-2 h-1.5 w-full rounded-full bg-slate-200">
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#E07A3A] to-amber-400"
+                  className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#FF6600] to-amber-400"
                   style={{
                     width:
                       progressIdx < 0
@@ -950,7 +1027,7 @@ function OrderDetailView({
                     </span>
                   )}
                   {item.oem_code && (
-                    <p className="mt-1 text-sm text-slate-400">{item.oem_code}</p>
+                    <p className="mt-1 text-sm text-[#0A0A0A]">{item.oem_code}</p>
                   )}
                   <p className="mt-1 text-lg font-bold text-slate-900">
                     {formatCurrency(item.selling_price)}
@@ -1002,7 +1079,7 @@ function OrderDetailView({
               </h3>
               <Link
                 href="/how-delivery-works"
-                className="text-sm font-medium text-[#E07A3A] hover:underline"
+                className="text-sm font-medium text-[#FF6600] hover:underline"
               >
                 How it works
               </Link>
@@ -1050,7 +1127,7 @@ function OrderDetailView({
             <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-slate-400" />
+                  <FileText className="h-5 w-5 text-[#0A0A0A]" />
                   <h3 className="font-marketing-display text-base font-bold text-slate-900">Receipt</h3>
                 </div>
                 <button
@@ -1058,7 +1135,7 @@ function OrderDetailView({
                   onClick={() => {
                     toast('success', 'Receipt download started');
                   }}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-[#0A0A0A] transition-colors hover:bg-slate-50"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Download
@@ -1138,7 +1215,7 @@ function OrderDetailView({
               About Rider
             </h4>
             <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#3E208D] text-lg font-bold text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#321A71] text-lg font-bold text-white">
                 {getRiderInitials(order)}
               </div>
               <div>
@@ -1177,7 +1254,7 @@ function OrderDetailView({
                 }}
               />
             </div>
-            <p className="text-sm leading-relaxed text-slate-600">
+            <p className="text-sm leading-relaxed text-[#0A0A0A]">
               {deliveryAddress || 'No address provided'}
             </p>
           </div>
@@ -1191,7 +1268,7 @@ function OrderDetailView({
               {user?.email && (
                 <a
                   href={`mailto:${user.email}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm text-[#3E208D] hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm text-[#321A71] hover:bg-slate-50"
                 >
                   <Mail className="h-3.5 w-3.5" />
                   {user.email}
@@ -1200,7 +1277,7 @@ function OrderDetailView({
               {user?.phone && (
                 <a
                   href={`tel:${user.phone}`}
-                  className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm text-[#3E208D] hover:bg-slate-50"
+                  className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm text-[#321A71] hover:bg-slate-50"
                 >
                   <Phone className="h-3.5 w-3.5" />
                   {user.phone}
@@ -1324,7 +1401,7 @@ function OrderRating({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={2}
-              className="w-full resize-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="w-full resize-none bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
               placeholder="Tell us about your experience..."
             />
           </fieldset>
@@ -1335,8 +1412,8 @@ function OrderRating({
             className={cn(
               'mt-3 w-full rounded-full py-2.5 text-sm font-medium transition-colors',
               rating > 0
-                ? 'bg-[#1E1145] text-white hover:bg-[#2a1a5e]'
-                : 'bg-slate-100 text-slate-400'
+                ? 'bg-[#321A71] text-white hover:bg-[#2a1a5e]'
+                : 'bg-slate-100 text-[#0A0A0A]'
             )}
           >
             {submitting ? 'Submitting...' : 'Submit rating'}
@@ -1377,7 +1454,7 @@ function WalletSection() {
   return (
     <div>
       {/* Balance hero card */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#1E1145] px-6 py-8">
+      <div className="relative overflow-hidden rounded-2xl bg-[#321A71] px-6 py-8">
         {/* Decorative grid pattern */}
         <div className="pointer-events-none absolute inset-0 opacity-10">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -1424,7 +1501,7 @@ function WalletSection() {
             className={cn(
               'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
               filter === f.id
-                ? 'border-[#E07A3A] text-[#E07A3A]'
+                ? 'border-[#FF6600] text-[#FF6600]'
                 : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
             )}
           >
@@ -1443,7 +1520,7 @@ function WalletSection() {
                 <p className="mt-1 text-lg font-bold text-slate-900">
                   {formatCurrency(summary.moneyIn)}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="mt-0.5 text-xs text-[#0A0A0A]">
                   {summary.periodLabel}
                 </p>
               </div>
@@ -1459,7 +1536,7 @@ function WalletSection() {
                 <p className="mt-1 text-lg font-bold text-slate-900">
                   {formatCurrency(summary.moneyOut)}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="mt-0.5 text-xs text-[#0A0A0A]">
                   {summary.periodLabel}
                 </p>
               </div>
@@ -1583,7 +1660,7 @@ function FundWalletModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Fund wallet">
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-[#0A0A0A]">
         Select amount to withdraw or enter amount
       </p>
 
@@ -1594,14 +1671,14 @@ function FundWalletModal({
           inputMode="numeric"
           value={customInput}
           onChange={(e) => handleInputChange(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg font-semibold text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg font-semibold text-slate-900 focus:border-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-[#0A0A0A]"
           placeholder="0"
         />
         {customInput && (
           <button
             type="button"
             onClick={clearInput}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0A0A0A] hover:text-[#0A0A0A]"
           >
             <X className="h-5 w-5" />
           </button>
@@ -1630,7 +1707,7 @@ function FundWalletModal({
       {/* Pay button */}
       <Button
         fullWidth
-        className="h-12 bg-[#1E1145] text-base hover:bg-[#2a1a5e]"
+        className="h-12 bg-[#321A71] text-base hover:bg-[#2a1a5e]"
         onClick={handlePay}
         isLoading={isSubmitting}
         disabled={!amount || amount < 100}
@@ -1667,7 +1744,7 @@ function WalletTransactionRow({ tx }: { tx: EnrichedWalletTransaction }) {
       {/* Label + time */}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-slate-900 truncate">{label}</p>
-        <p className="text-xs text-slate-400">{timeStr}</p>
+        <p className="text-xs text-[#0A0A0A]">{timeStr}</p>
       </div>
 
       {/* Amount + balance after */}
@@ -1681,7 +1758,7 @@ function WalletTransactionRow({ tx }: { tx: EnrichedWalletTransaction }) {
           {isCredit ? '+' : '-'}
           {formatCurrency(tx.amount)}
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-[#0A0A0A]">
           Bal: {formatCurrency(tx.balance_after)}
         </p>
       </div>
@@ -1764,7 +1841,7 @@ function VehiclesSection() {
         <h2 className="font-marketing-display text-xl font-bold text-slate-900">My Vehicles</h2>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 rounded-full bg-[#1E1145] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
+          className="flex items-center gap-1.5 rounded-md bg-[#321A71] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
         >
           <Plus className="h-4 w-4" />
           Add vehicle
@@ -1773,7 +1850,7 @@ function VehiclesSection() {
 
       {isLoading ? (
         <div className="flex h-40 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#0A0A0A]" />
         </div>
       ) : vehicles.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
@@ -1782,12 +1859,12 @@ function VehiclesSection() {
               <Car className="h-8 w-8 text-slate-300" />
             </div>
             <p className="mt-3 text-sm font-medium text-slate-700">No vehicles saved</p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-[#0A0A0A]">
               Add your car to speed up ordering and see compatible parts
             </p>
             <button
               onClick={() => setShowAdd(true)}
-              className="mt-4 rounded-full bg-[#1E1145] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
+              className="mt-4 rounded-full bg-[#321A71] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
             >
               Add your first vehicle
             </button>
@@ -1803,7 +1880,7 @@ function VehiclesSection() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50">
-                    <Car className="h-6 w-6 text-slate-400" />
+                    <Car className="h-6 w-6 text-[#0A0A0A]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -1825,7 +1902,7 @@ function VehiclesSection() {
               <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
                 <button
                   onClick={() => setEditVehicle(v)}
-                  className="flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                  className="flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-[#0A0A0A] transition-colors hover:bg-slate-50"
                 >
                   <Pencil className="h-3 w-3" />
                   Edit
@@ -1869,26 +1946,28 @@ function VehiclesSection() {
         onClose={() => setDeleteTarget(null)}
         title="Remove Vehicle"
       >
-        <p className="mb-4 text-sm text-slate-600">
+        <p className="mb-4 text-sm text-[#0A0A0A]">
           Remove {deleteTarget?.year} {deleteTarget?.make} {deleteTarget?.model}? This
           action cannot be undone.
         </p>
-        <div className="flex gap-3">
-          <button
+        <div className="flex flex-col gap-3">
+          <Button
             type="button"
+            variant="secondary"
+            fullWidth
             onClick={() => setDeleteTarget(null)}
-            className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="destructive"
+            fullWidth
+            isLoading={isDeleting}
             onClick={handleDelete}
-            disabled={isDeleting}
-            className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
           >
-            {isDeleting ? 'Removing...' : 'Remove'}
-          </button>
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            Remove
+          </Button>
         </div>
       </Modal>
     </div>
@@ -1928,13 +2007,13 @@ function ShippingSection({
             </div>
 
             <fieldset className="rounded-lg border border-slate-200 px-3 pb-3 pt-2">
-              <legend className="px-1 text-xs text-slate-400">Current address</legend>
+              <legend className="px-1 text-xs text-[#0A0A0A]">Current address</legend>
               <p className="text-sm text-slate-900">{address}</p>
             </fieldset>
 
             <button
               onClick={() => setEditing(true)}
-              className="mt-4 flex items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+              className="mt-4 flex items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-[#0A0A0A] transition-colors hover:bg-slate-50"
             >
               <Pencil className="h-3.5 w-3.5" />
               Change address
@@ -1948,12 +2027,12 @@ function ShippingSection({
             <p className="mt-3 text-sm font-medium text-slate-700">
               No shipping address saved
             </p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-[#0A0A0A]">
               Add your delivery address so we can deliver to you faster
             </p>
             <button
               onClick={() => setEditing(true)}
-              className="mt-4 rounded-full bg-[#1E1145] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
+              className="mt-4 rounded-full bg-[#321A71] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e]"
             >
               Add address
             </button>
@@ -2001,26 +2080,27 @@ function ShippingEditForm({
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           rows={3}
-          className="w-full resize-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+          className="w-full resize-none bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
           placeholder="Enter your full delivery address"
         />
       </fieldset>
       <div className="flex gap-3">
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={onDone}
-          className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          className="flex-1 py-2.5 text-sm font-medium text-[#0A0A0A] transition-colors hover:bg-slate-50"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={handleSave}
           disabled={!address.trim() || saving}
-          className="flex-1 rounded-full bg-[#1E1145] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e] disabled:opacity-50"
+          className="flex-1 bg-[#321A71] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e] disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save address'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -2079,7 +2159,7 @@ function TrackOrdersSection() {
       {/* Search card */}
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-2">
-          <Truck className="h-5 w-5 text-[#E07A3A]" />
+          <Truck className="h-5 w-5 text-[#FF6600]" />
           <h3 className="font-marketing-display text-base font-bold text-slate-900">Find your order</h3>
         </div>
         <p className="mt-1 text-sm text-slate-500">
@@ -2095,14 +2175,14 @@ function TrackOrdersSection() {
               value={orderId}
               onChange={(e) => { setOrderId(e.target.value); setError(''); }}
               onKeyDown={(e) => e.key === 'Enter' && handleTrack()}
-              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
             />
           </fieldset>
           <button
             type="button"
             onClick={handleTrack}
             disabled={!orderId.trim() || searching}
-            className="shrink-0 self-end rounded-full bg-[#1E1145] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e] disabled:opacity-50"
+            className="shrink-0 self-end rounded-full bg-[#321A71] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2a1a5e] disabled:opacity-50"
           >
             {searching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -2120,7 +2200,7 @@ function TrackOrdersSection() {
       {/* Active orders */}
       {loadingRecent ? (
         <div className="flex h-20 items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          <Loader2 className="h-5 w-5 animate-spin text-[#0A0A0A]" />
         </div>
       ) : recentOrders.length > 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
@@ -2144,7 +2224,7 @@ function TrackOrdersSection() {
                 </div>
                 <div className="ml-4 flex items-center gap-3">
                   <StatusBadge status={order.status} />
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                  <ChevronRight className="h-4 w-4 text-[#0A0A0A]" />
                 </div>
               </Link>
             ))}
@@ -2271,7 +2351,7 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
             </p>
             <button
               onClick={resetForm}
-              className="mt-5 text-sm font-medium text-[#E07A3A] hover:underline"
+              className="mt-5 text-sm font-medium text-[#FF6600] hover:underline"
             >
               Submit another report
             </button>
@@ -2291,11 +2371,11 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
           <legend className="px-1 text-xs text-slate-500">Select order</legend>
           {ordersLoading ? (
             <div className="flex h-10 items-center">
-              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-              <span className="ml-2 text-sm text-slate-400">Loading orders...</span>
+              <Loader2 className="h-4 w-4 animate-spin text-[#0A0A0A]" />
+              <span className="ml-2 text-sm text-[#0A0A0A]">Loading orders...</span>
             </div>
           ) : deliveredOrders.length === 0 ? (
-            <p className="py-2 text-sm text-slate-400">No delivered orders to report</p>
+            <p className="py-2 text-sm text-[#0A0A0A]">No delivered orders to report</p>
           ) : (
             <select
               value={selectedOrderId || ''}
@@ -2362,8 +2442,8 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
                 className={cn(
                   'rounded-full px-4 py-2 text-sm font-medium transition-colors',
                   selectedReason === reason
-                    ? 'bg-orange-100 text-[#E07A3A]'
-                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                    ? 'bg-orange-100 text-[#FF6600]'
+                    : 'bg-slate-100 text-[#0A0A0A] hover:bg-slate-200 hover:text-[#0A0A0A]'
                 )}
               >
                 {reason}
@@ -2379,7 +2459,7 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            className="w-full resize-none bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            className="w-full resize-none bg-transparent text-sm text-slate-900 placeholder:text-[#0A0A0A] focus:outline-none"
             placeholder="Leave a description of what happened"
           />
         </fieldset>
@@ -2393,9 +2473,9 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
             onClick={() => fileInputRef.current?.click()}
             className="flex cursor-pointer flex-col items-center justify-center rounded-lg bg-slate-50 py-8 transition-colors hover:bg-slate-100"
           >
-            <CloudUpload className="h-8 w-8 text-[#1E1145]" />
+            <CloudUpload className="h-8 w-8 text-[#321A71]" />
             <p className="mt-2 text-sm font-semibold text-slate-900">Upload file</p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-[#0A0A0A]">
               Must be {MAX_FILE_SIZE_MB}MB
             </p>
           </div>
@@ -2416,7 +2496,7 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
               <button
                 type="button"
                 onClick={removeFile}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-[#0A0A0A] hover:text-[#0A0A0A]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -2424,11 +2504,11 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
             <div className="mt-1.5 flex items-center gap-3">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
                 <div
-                  className="h-full rounded-full bg-[#E07A3A] transition-all duration-300"
+                  className="h-full rounded-full bg-[#FF6600] transition-all duration-300"
                   style={{ width: `${Math.min(uploadProgress ?? 0, 100)}%` }}
                 />
               </div>
-              <span className="shrink-0 text-xs text-slate-400">
+              <span className="shrink-0 text-xs text-[#0A0A0A]">
                 {(file.size / (1024 * 1024)).toFixed(1)}MB
               </span>
             </div>
@@ -2440,7 +2520,7 @@ function ReportSection({ user }: { user: { full_name: string; phone: string; ema
           type="submit"
           disabled={!selectedReason || !description.trim() || isSubmitting}
           isLoading={isSubmitting}
-          className="rounded-full bg-[#1E1145] px-8 text-white hover:bg-[#2a1a5e]"
+          className=" bg-[#321A71] px-8 text-white hover:bg-[#2a1a5e]"
         >
           Submit report
         </Button>
@@ -2506,9 +2586,9 @@ export default function AccountPage() {
       />
 
       {/* Layout: sidebar + content */}
-      <div className="flex flex-col gap-8 lg:flex-row">
-        {/* Sidebar — mobile: horizontal scroll, desktop: vertical */}
-        <aside className="w-full shrink-0 lg:w-56">
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+        {/* Sidebar — mobile: horizontal scroll, desktop: sticky while content scrolls */}
+        <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-56">
           {/* Mobile horizontal pills */}
           <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
             {SIDEBAR_ITEMS.map((item) => {
@@ -2521,8 +2601,8 @@ export default function AccountPage() {
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors',
                     activeSection === item.id
-                      ? 'bg-[#E07A3A] text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-[#FF6600] text-white'
+                      : 'bg-slate-100 text-[#0A0A0A] hover:bg-slate-200'
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -2534,7 +2614,7 @@ export default function AccountPage() {
 
           {/* Desktop vertical nav */}
           <nav className="hidden lg:block">
-            <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="rounded-xl border border-slate-200 bg-white px-3">
               {SIDEBAR_ITEMS.map((item, idx) => {
                 const Icon = item.icon;
                 return (
@@ -2543,19 +2623,19 @@ export default function AccountPage() {
                     type="button"
                     onClick={() => handleSectionChange(item.id)}
                     className={cn(
-                      'flex w-full items-center gap-3 px-4 py-3.5 text-sm font-medium transition-colors',
-                      idx < SIDEBAR_ITEMS.length - 1 && 'border-b border-slate-100',
+                      'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium transition-colors',
+                      idx < SIDEBAR_ITEMS.length - 1 && '',
                       activeSection === item.id
-                        ? 'text-[#E07A3A]'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'text-[#FF6600] bg-[#F5F5F5] rounded-lg'
+                        : 'text-[#0A0A0A] hover:bg-slate-50 hover:text-slate-900'
                     )}
                   >
                     <Icon
                       className={cn(
                         'h-5 w-5',
                         activeSection === item.id
-                          ? 'text-[#E07A3A]'
-                          : 'text-slate-400'
+                          ? 'text-[#FF6600]'
+                          : 'text-[#0A0A0A]'
                       )}
                     />
                     {item.label}

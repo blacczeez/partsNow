@@ -427,7 +427,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
                       className={cn(
                         'h-3 w-3 shrink-0 rounded-full',
                         isCompleted || isCurrent
-                          ? 'bg-green-600'
+                          ? 'bg-[#1A7755]'
                           : 'bg-slate-300'
                       )}
                     />
@@ -435,7 +435,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
                       <div
                         className={cn(
                           'w-px flex-1',
-                          isCompleted ? 'bg-green-600' : 'border-l border-dashed border-slate-300'
+                          isCompleted ? 'bg-[#1A7755]' : 'border-l border-dashed border-slate-300'
                         )}
                         style={{ minHeight: '3.5rem' }}
                       />
@@ -536,7 +536,6 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
             {canCancel && (
               <Button
                 variant="destructive"
-                fullWidth
                 onClick={() => setShowCancelModal(true)}
               >
                 Cancel Order
@@ -600,7 +599,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
 
             {/* Security badge */}
             <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
-              <ShieldCheck className="h-4 w-4 text-green-600" />
+              <ShieldCheck className="h-4 w-4 text-[#1A7755]" />
               <span>100% payment security</span>
             </div>
           </div>
@@ -621,10 +620,10 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
             ` Your wallet will be refunded ${formatCurrency(order.total)}.`}
         </p>
         <div className="flex gap-3">
-          <Button variant="secondary" fullWidth onClick={() => setShowCancelModal(false)}>
+          <Button variant="secondary"  onClick={() => setShowCancelModal(false)}>
             Keep Order
           </Button>
-          <Button variant="destructive" fullWidth isLoading={isCancelling} onClick={handleCancel}>
+          <Button variant="destructive"  isLoading={isCancelling} onClick={handleCancel}>
             Cancel Order
           </Button>
         </div>

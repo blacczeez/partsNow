@@ -66,7 +66,18 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'cod'>('wallet');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // While placing an order we clear the cart before navigation finishes.
+  // Show a loading state instead of flashing the empty-cart screen.
   if (cart.items.length === 0) {
+    if (isSubmitting) {
+      return (
+        <div className="flex flex-col items-center gap-4 px-4 py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-[#3E208D]" />
+          <p className="text-lg font-medium text-slate-700">Placing your order…</p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center gap-4 px-4 py-20">
         <ShoppingCart className="h-16 w-16 text-[#A3A3A3]" />
@@ -134,20 +145,28 @@ export default function CheckoutPage() {
 
       if (!res.ok) {
         toast('error', data.error || 'Failed to place order');
+        setIsSubmitting(false);
         return;
       }
 
-      cart.clearCart();
-      await refresh();
+      const orderId = data.id as string;
+      const paymentUrl =
+        typeof data.paymentUrl === 'string' ? data.paymentUrl : undefined;
 
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        router.push(`/order/${data.id}/complete`);
+      // Navigate first, then clear. Keep isSubmitting true so the empty-cart
+      // state never flashes between clearCart and the next page.
+      if (paymentUrl) {
+        cart.clearCart();
+        await refresh();
+        window.location.href = paymentUrl;
+        return;
       }
+
+      router.replace(`/order/${orderId}/complete`);
+      cart.clearCart();
+      void refresh();
     } catch {
       toast('error', 'Something went wrong. Please try again.');
-    } finally {
       setIsSubmitting(false);
     }
   }

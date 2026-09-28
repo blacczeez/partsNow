@@ -1,16 +1,29 @@
-'use client';
+"use client";
 
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox';
-import { createVehicleSchema, type CreateVehicleInput } from '@/lib/validators/user';
-import { VEHICLE_MAKES, getModelsForMake, getAllModels } from '@/lib/data/vehicle-makes-models';
-import type { Vehicle } from '@/lib/types/database';
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
+import {
+  createVehicleSchema,
+  type CreateVehicleInput,
+} from "@/lib/validators/user";
+import {
+  VEHICLE_MAKES,
+  getModelsForMake,
+  getAllModels,
+} from "@/lib/data/vehicle-makes-models";
+import type { Vehicle } from "@/lib/types/database";
 
-const specs = ['American', 'European', 'Nigerian', 'Japanese', 'Other'] as const;
+const specs = [
+  "American",
+  "European",
+  "Nigerian",
+  "Japanese",
+  "Other",
+] as const;
 
 interface VehicleFormProps {
   vehicle?: Vehicle;
@@ -32,14 +45,14 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
           make: vehicle.make,
           model: vehicle.model,
           year: vehicle.year,
-          spec: (vehicle.spec as CreateVehicleInput['spec']) || undefined,
-          nickname: vehicle.nickname || '',
+          spec: (vehicle.spec as CreateVehicleInput["spec"]) || undefined,
+          nickname: vehicle.nickname || "",
           is_primary: vehicle.is_primary,
         }
       : { is_primary: false },
   });
 
-  const selectedMake = watch('make');
+  const selectedMake = watch("make");
   const modelOptions = selectedMake
     ? getModelsForMake(selectedMake)
     : getAllModels();
@@ -55,7 +68,7 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
             id="make"
             placeholder="e.g. Toyota"
             options={VEHICLE_MAKES}
-            value={field.value ?? ''}
+            value={field.value ?? ""}
             onChange={field.onChange}
             error={errors.make?.message}
           />
@@ -70,7 +83,7 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
             id="model"
             placeholder="e.g. Camry"
             options={modelOptions}
-            value={field.value ?? ''}
+            value={field.value ?? ""}
             onChange={field.onChange}
             error={errors.model?.message}
           />
@@ -82,14 +95,10 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
         type="number"
         placeholder="e.g. 2020"
         error={errors.year?.message}
-        {...register('year', { valueAsNumber: true })}
+        {...register("year", { valueAsNumber: true })}
       />
 
-      <Select
-        label="Spec (optional)"
-        id="spec"
-        {...register('spec')}
-      >
+      <Select label="Spec (optional)" id="spec" {...register("spec")}>
         <option value="">Select spec</option>
         {specs.map((s) => (
           <option key={s} value={s}>
@@ -103,27 +112,32 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
         id="nickname"
         placeholder='e.g. "My Camry"'
         error={errors.nickname?.message}
-        {...register('nickname')}
+        {...register("nickname")}
       />
 
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input
           type="checkbox"
           className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-          {...register('is_primary')}
+          {...register("is_primary")}
         />
         Set as primary vehicle
       </label>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3">
+        <Button type="submit" fullWidth isLoading={isSubmitting}>
+          {vehicle ? "Update Vehicle" : "Add Vehicle"}
+        </Button>
         {onCancel && (
-          <Button type="button" variant="secondary" fullWidth onClick={onCancel}>
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            onClick={onCancel}
+          >
             Cancel
           </Button>
         )}
-        <Button type="submit" fullWidth isLoading={isSubmitting}>
-          {vehicle ? 'Update Vehicle' : 'Add Vehicle'}
-        </Button>
       </div>
     </form>
   );

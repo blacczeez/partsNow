@@ -1909,7 +1909,7 @@ function toRad(deg: number): number {
 /* tailwind.config.ts */
 colors: {
   primary: {
-    DEFAULT: '#1E40AF',  /* Deep Blue */
+    DEFAULT: '#321A71',  /* Deep Blue */
     light: '#3B82F6',
     dark: '#1E3A8A',
   },

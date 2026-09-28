@@ -38,7 +38,7 @@ export function VehiclePickerSheet({
         <div className="flex flex-col items-center gap-3 py-8">
           <Car className="h-10 w-10 text-slate-300" />
           <p className="text-sm text-slate-500">No vehicles saved yet</p>
-          <Link href="/account/vehicles" onClick={onClose}>
+          <Link href="/account?tab=vehicles" onClick={onClose}>
             <Button variant="secondary" size="sm">
               <Plus className="mr-1.5 h-4 w-4" />
               Add vehicle
@@ -111,7 +111,7 @@ export function VehiclePickerSheet({
           ))}
 
           <Link
-            href="/account/vehicles"
+            href="/account?tab=vehicles"
             className="block py-2 text-center text-sm text-primary hover:underline"
             onClick={onClose}
           >

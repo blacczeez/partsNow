@@ -37,7 +37,7 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
   if (error || !order) {
     return (
       <div className="flex flex-col items-center gap-4 px-4 py-20">
-        <Package className="h-12 w-12 text-slate-300" />
+        <Package className="h-12 w-12 text-[#A3A3A3]" />
         <p className="text-sm font-medium text-slate-600">
           {error || 'Order not found'}
         </p>
@@ -64,20 +64,20 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
 
       {/* Step indicator */}
       <div className="flex items-center gap-0 py-5 text-sm">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#A3A3A3] text-xs font-medium text-[#A3A3A3]">
           1
         </span>
-        <span className="ml-2 text-slate-400">Shopping cart</span>
-        <span className="mx-3 h-px w-8 bg-slate-300" />
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 text-xs font-medium text-slate-400">
+        <span className="ml-2 text-[#A3A3A3]">Shopping cart</span>
+        <span className="mx-3 h-px w-8 bg-[#A3A3A3]" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#A3A3A3] text-xs font-medium text-[#A3A3A3]">
           2
         </span>
-        <span className="ml-2 text-slate-400">Checkout details</span>
-        <span className="mx-3 hidden h-px w-8 bg-slate-300 sm:block" />
-        <span className="hidden h-6 w-6 items-center justify-center rounded-full bg-[#E07A3A] text-xs font-bold text-white sm:flex">
+        <span className="ml-2 text-[#A3A3A3]">Checkout details</span>
+        <span className="mx-3 hidden h-px w-8 bg-[#A3A3A3] sm:block" />
+        <span className="hidden h-6 w-6 items-center justify-center rounded-full bg-[#FF6600] text-xs font-bold text-white sm:flex">
           3
         </span>
-        <span className="ml-2 hidden font-medium text-[#E07A3A] sm:inline">
+        <span className="ml-2 hidden font-medium text-[#FF6600] sm:inline">
           Order complete
         </span>
       </div>
@@ -86,8 +86,8 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* ── Left: Order details card ── */}
         <div className="min-w-0 flex-1">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
-            <p className="text-sm font-medium text-[#E07A3A]">Thank you!</p>
+          <div className="bg-white p-6 sm:p-8">
+            <p className="text-sm font-medium text-[#FF6600]">Thank you!</p>
             <h1 className="font-marketing-display mt-1 text-2xl font-bold text-slate-900">
               Your order has been received
             </h1>
@@ -108,7 +108,7 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
                   </div>
                 ))}
                 {itemImages.length > 4 && (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-slate-100 bg-slate-50 text-sm font-medium text-slate-400 sm:h-20 sm:w-20">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-slate-100 bg-slate-50 text-sm font-medium text-[#A3A3A3] sm:h-20 sm:w-20">
                     +{itemImages.length - 4}
                   </div>
                 )}
@@ -123,7 +123,7 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
                     key={item.id}
                     className="flex h-16 w-16 items-center justify-center rounded-lg border border-slate-100 bg-slate-50 sm:h-20 sm:w-20"
                   >
-                    <Package className="h-6 w-6 text-slate-300" />
+                    <Package className="h-6 w-6 text-[#A3A3A3]" />
                   </div>
                 ))}
               </div>
@@ -156,7 +156,7 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Payment method</span>
-                <span className="font-medium text-[#E07A3A]">
+                <span className="font-medium text-[#FF6600]">
                   {PAYMENT_LABELS[order.payment_method] ||
                     order.payment_method}
                 </span>
@@ -164,9 +164,9 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
             </div>
 
             {/* Track order button */}
-            <div className="mt-8">
+            <div className="mt-8 flex justify-center">
               <Link href={`/order/${order.id}`}>
-                <Button fullWidth className="h-12 text-base">
+                <Button className="h-11 px-21 w-full text-base bg-[#3E208D] text-white">
                   Track your order
                 </Button>
               </Link>
@@ -176,7 +176,7 @@ function OrderCompleteContent({ orderId }: { orderId: string }) {
 
         {/* ── Right: Success illustration ── */}
         <aside className="hidden w-80 shrink-0 lg:block">
-          <div className="flex h-full items-start justify-center rounded-xl border border-dashed border-slate-200 bg-white p-8">
+          <div className="flex  items-start justify-center rounded-xl border border-dashed border-slate-200 bg-white p-8">
             <div className="relative">
               {/* Decorative stars */}
               <svg

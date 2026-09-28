@@ -8,8 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-market-primary text-white hover:bg-primary-dark active:bg-primary-dark',
-        secondary: 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50',
+        primary: 'bg-[#321A71] text-white hover:bg-primary-dark active:bg-primary-dark',
+        secondary: 'bg-[#F4EBFF] text-[#321A71] hover:bg-slate-50',
         destructive: 'bg-error text-white hover:bg-red-700',
         ghost: 'text-primary hover:bg-blue-50',
         link: 'text-primary underline-offset-4 hover:underline',
