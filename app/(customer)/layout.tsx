@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { MobileCustomerHeader } from '@/components/layout/mobile-customer-header';
@@ -41,13 +41,17 @@ function CustomerShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!isLoading && user && <SetupRedirect />}
-      <CustomerTopNav />
+      <Suspense fallback={null}>
+        <CustomerTopNav />
+      </Suspense>
       <MobileCustomerHeader cartCount={itemCount} />
       <main className="min-h-full flex-1 pb-20 lg:pb-0">
         <div className="mx-auto w-full max-w-7xl lg:px-1">{children}</div>
       </main>
       <Footer />
-      <BottomNav cartCount={itemCount} />
+      <Suspense fallback={null}>
+        <BottomNav cartCount={itemCount} />
+      </Suspense>
     </>
   );
 }

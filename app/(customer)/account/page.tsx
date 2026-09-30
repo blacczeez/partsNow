@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -2535,7 +2535,7 @@ function getSectionLabel(section: Section): string {
 }
 
 /* ─── Main page ─── */
-export default function AccountPage() {
+function AccountPageContent() {
   const { user, isLoading, needsSetup, refresh } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2669,5 +2669,19 @@ export default function AccountPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <AccountPageContent />
+    </Suspense>
   );
 }
